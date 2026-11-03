@@ -2,21 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Loader2, Coins, Users, Gift, MessageSquare, AlertCircle, 
-  ArrowUpRight, Plus, ThumbsUp, FileText, Send, Sparkles, Filter, CheckCircle2 
+  ArrowUpRight, Plus, ThumbsUp, FileText, Send, Sparkles, Filter, 
+  CheckCircle2, Search, Calendar, ChevronRight, ShieldCheck, Flame, 
+  ExternalLink, Building2, Clock, Check, Share2, DollarSign, Trophy
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
 import { useNotifications } from "../../hooks/useNotifications";
-import MissionProgressCard from "../../components/dashboard/MissionProgressCard";
-import ReferralCard from "../../components/dashboard/ReferralCard";
-import YourWeb3GuyCard from "../../components/dashboard/YourWeb3GuyCard";
-import HireInCryptoCard from "../../components/dashboard/HireInCryptoCard";
-import CreatePostModal from "../../components/dashboard/CreatePostModal";
-import InvestorCRM from "../../components/dashboard/InvestorCRM";
-import DashboardNewsWidget from "../../components/dashboard/DashboardNewsWidget";
 import GuaranteeSLAWidget from "../../components/dashboard/GuaranteeSLAWidget";
 import DueDiligenceMemoModal from "../../components/dashboard/DueDiligenceMemoModal";
-import SyndicateAnchorCard from "../../components/dashboard/SyndicateAnchorCard";
+import CreatePostModal from "../../components/dashboard/CreatePostModal";
 import { buildInstitutionalMemo } from "../../lib/institutionalMemo";
 import { useFounderStartups } from "../../hooks/useFounderStartups";
 import { 
@@ -24,20 +19,143 @@ import {
   toggleLikePost, 
   addPostComment, 
   getPostComments, 
-  FeedPost, 
-  PostComment, 
-  PostTag 
+  FeedPost 
 } from "../../lib/posts";
 import { getMonthlyIntroRequestUsage, MonthlyIntroQuotaStatus } from "../../lib/quota";
 
-const TAG_FILTERS: { value: string; label: string }[] = [
-  { value: 'all', label: 'All Posts' },
-  { value: 'raising', label: '#raising' },
-  { value: 'hiring', label: '#hiring' },
-  { value: 'grant', label: '#grant' },
-  { value: 'partnership', label: '#partnership' },
-  { value: 'serviceneeded', label: '#serviceneeded' },
-  { value: 'update', label: '#update' },
+interface OpportunityItem {
+  id: string;
+  name: string;
+  firm: string;
+  type: "VC Fund" | "Angel Syndicate" | "Ecosystem Grant" | "Double-Blind Match";
+  sectors: string[];
+  stage: string;
+  checkSize: string;
+  matchScore: number;
+  matchLevel: string;
+  location: string;
+  partnerName: string;
+  partnerRole: string;
+  responseSla: string;
+  thesisSummary: string;
+  warmIntroAvailable: boolean;
+  warmIntroFounder?: string;
+  verified: boolean;
+}
+
+const CURATED_OPPORTUNITIES: OpportunityItem[] = [
+  {
+    id: "opp_decasonic",
+    name: "Decasonic Ventures",
+    firm: "Decasonic",
+    type: "VC Fund",
+    sectors: ["AI & Agents", "Web3 Infra", "SaaS"],
+    stage: "Pre-Seed / Seed",
+    checkSize: "$100k - $500k",
+    matchScore: 96,
+    matchLevel: "TIER-1 CONVICTION",
+    location: "Chicago & San Francisco",
+    partnerName: "Dr. Sarah Chen",
+    partnerRole: "General Partner",
+    responseSla: "< 48 Hours",
+    thesisSummary: "Focuses on tech-native infrastructure, agentic workflows, and high-throughput data layers. Strong appetite for founders with Delaware C-Corps and early traction signals.",
+    warmIntroAvailable: true,
+    warmIntroFounder: "Elena Rostova",
+    verified: true
+  },
+  {
+    id: "opp_framework",
+    name: "Framework Ventures",
+    firm: "Framework",
+    type: "VC Fund",
+    sectors: ["Fintech", "ZK Protocols", "DeFi"],
+    stage: "Seed",
+    checkSize: "$250k - $1.5M",
+    matchScore: 94,
+    matchLevel: "HIGH CONVICTION",
+    location: "San Francisco, CA",
+    partnerName: "Michael Anderson",
+    partnerRole: "Co-Founder & Partner",
+    responseSla: "< 72 Hours",
+    thesisSummary: "Known for hands-on network participation, deep tokenomics audit, and liquidity support. Co-leads rounds with tier-1 syndicates.",
+    warmIntroAvailable: true,
+    warmIntroFounder: "Marcus Vance",
+    verified: true
+  },
+  {
+    id: "opp_solana_grant",
+    name: "Solana Foundation Ecosystem Grant",
+    firm: "Solana Foundation",
+    type: "Ecosystem Grant",
+    sectors: ["Infrastructure", "Consumer Tech", "DevTools"],
+    stage: "Non-Dilutive",
+    checkSize: "Up to $100,000",
+    matchScore: 92,
+    matchLevel: "ACTIVE GRANT",
+    location: "Global / Remote",
+    partnerName: "Grants Committee",
+    partnerRole: "Lead Reviewer",
+    responseSla: "5 Business Days",
+    thesisSummary: "Direct non-dilutive capital grants for open-source toolkits, SDKs, high-TPS consumer applications, and developer primitives.",
+    warmIntroAvailable: false,
+    verified: true
+  },
+  {
+    id: "opp_delphi",
+    name: "Delphi Digital Syndicate",
+    firm: "Delphi Ventures",
+    type: "Angel Syndicate",
+    sectors: ["AI", "Gaming", "DeFi"],
+    stage: "Pre-Seed / Seed",
+    checkSize: "$100k - $350k",
+    matchScore: 91,
+    matchLevel: "HIGH CONVICTION",
+    location: "New York, NY",
+    partnerName: "Marcus Vance",
+    partnerRole: "Managing Director",
+    responseSla: "< 24 Hours",
+    thesisSummary: "Fast-moving syndicate backed by research analysts. Delivers instant fast-pass feedback and active marketing advisory post-investment.",
+    warmIntroAvailable: true,
+    warmIntroFounder: "Akash Kumar",
+    verified: true
+  },
+  {
+    id: "opp_arbitrum_grant",
+    name: "Arbitrum Foundation Grant Pool",
+    firm: "Arbitrum Foundation",
+    type: "Ecosystem Grant",
+    sectors: ["Layer-2", "DeFi", "Smart Contracts"],
+    stage: "Non-Dilutive",
+    checkSize: "Up to $150,000",
+    matchScore: 89,
+    matchLevel: "ACTIVE GRANT",
+    location: "Global / Remote",
+    partnerName: "Ecosystem Council",
+    partnerRole: "Grant Allocator",
+    responseSla: "7 Business Days",
+    thesisSummary: "Grant initiative providing milestones-based capital, co-marketing support, and technical audit credits for protocols deploying on Arbitrum Nitro.",
+    warmIntroAvailable: false,
+    verified: true
+  },
+  {
+    id: "opp_pantera",
+    name: "Pantera Capital",
+    firm: "Pantera Capital",
+    type: "VC Fund",
+    sectors: ["Fintech", "Institutional Tech", "Web3"],
+    stage: "Seed to Series A",
+    checkSize: "$250k - $2.0M",
+    matchScore: 88,
+    matchLevel: "TOP TIER ALLOCATOR",
+    location: "Menlo Park, CA",
+    partnerName: "Paul Veradittakit",
+    partnerRole: "Managing Partner",
+    responseSla: "< 5 Days",
+    thesisSummary: "One of the earliest and most respected institutional funds. Looks for mission-driven teams with deep technical domain expertise.",
+    warmIntroAvailable: true,
+    warmIntroFounder: "David Chen",
+    verified: true
+  }
 ];
 
 export default function Feed() {
@@ -46,18 +164,18 @@ export default function Feed() {
   const { founderProfile, loading: profileLoading, refetch: refetchProfile } = useFounderProfile();
   const { unreadCount } = useNotifications();
 
-  const [activeTab, setActiveTab] = useState<'community' | 'intros'>('community');
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(true);
-  const [selectedTagFilter, setSelectedTagFilter] = useState('all');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [activeCategoryPill, setActiveCategoryPill] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityItem>(CURATED_OPPORTUNITIES[0]);
   const [isMemoOpen, setIsMemoOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [introRequested, setIntroRequested] = useState<Record<string, boolean>>({});
 
   const { startups } = useFounderStartups();
   const activeStartup = startups[0] || null;
   const memoData = buildInstitutionalMemo(founderProfile, activeStartup);
 
-  // Quota state
+  // Intro Quota State
   const [quotaStatus, setQuotaStatus] = useState<MonthlyIntroQuotaStatus>({
     usedCount: 0,
     freeCap: 5,
@@ -66,491 +184,367 @@ export default function Feed() {
     extraIntroCreditCost: 5,
   });
 
-  // Comments drawer state
-  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
-  const [commentsMap, setCommentsMap] = useState<Record<string, PostComment[]>>({});
-  const [commentInput, setCommentInput] = useState('');
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
-  // Load feed posts & monthly quota
-  const loadPosts = async () => {
-    setLoadingPosts(true);
-    const data = await getFeedPosts(selectedTagFilter);
-    setPosts(data);
-    setLoadingPosts(false);
-  };
-
   useEffect(() => {
-    loadPosts();
     if (user?.uid) {
       getMonthlyIntroRequestUsage(user.uid).then(setQuotaStatus);
     }
-  }, [selectedTagFilter, user?.uid]);
+  }, [user?.uid]);
 
-  const handleToggleLike = async (postId: string) => {
-    if (!user?.uid) return;
-    const success = await toggleLikePost(postId, user.uid);
-    if (success) {
-      setPosts((prev) =>
-        prev.map((p) => {
-          if (p.id === postId) {
-            const isLiked = p.likedBy?.includes(user.uid);
-            const newLikedBy = isLiked
-              ? p.likedBy.filter((id) => id !== user.uid)
-              : [...(p.likedBy || []), user.uid];
-            return {
-              ...p,
-              likedBy: newLikedBy,
-              likesCount: isLiked ? p.likesCount - 1 : p.likesCount + 1,
-            };
-          }
-          return p;
-        })
-      );
-    }
+  const userCredits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
+
+  const handleRequestIntro = (opp: OpportunityItem) => {
+    setIntroRequested((prev) => ({ ...prev, [opp.id]: true }));
+    alert(`Warm intro requested to ${opp.partnerName} (${opp.name})! Fast-Pass memo submitted to thesis queue.`);
   };
 
-  const handleOpenComments = async (postId: string) => {
-    if (activeCommentPostId === postId) {
-      setActiveCommentPostId(null);
-      return;
-    }
-    setActiveCommentPostId(postId);
-    if (!commentsMap[postId]) {
-      const comments = await getPostComments(postId);
-      setCommentsMap((prev) => ({ ...prev, [postId]: comments }));
-    }
-  };
+  const filteredOpportunities = CURATED_OPPORTUNITIES.filter((opp) => {
+    if (activeCategoryPill === "vcs" && opp.type !== "VC Fund") return false;
+    if (activeCategoryPill === "matches" && !opp.warmIntroAvailable) return false;
+    if (activeCategoryPill === "grants" && opp.type !== "Ecosystem Grant") return false;
 
-  const handleAddComment = async (postId: string) => {
-    if (!commentInput.trim() || !user?.uid) return;
-    setIsSubmittingComment(true);
-
-    const newComment = await addPostComment(
-      postId,
-      user.uid,
-      profile?.full_name || 'Anonymous Founder',
-      profile?.role || 'founder',
-      commentInput.trim()
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      opp.name.toLowerCase().includes(q) ||
+      opp.partnerName.toLowerCase().includes(q) ||
+      opp.sectors.some((s) => s.toLowerCase().includes(q)) ||
+      opp.stage.toLowerCase().includes(q)
     );
-
-    setIsSubmittingComment(false);
-
-    if (newComment) {
-      setCommentInput('');
-      setCommentsMap((prev) => ({
-        ...prev,
-        [postId]: [...(prev[postId] || []), newComment],
-      }));
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, commentsCount: p.commentsCount + 1 } : p))
-      );
-    }
-  };
-
-  const userCredits = profile?.credits || 0;
+  });
 
   return (
-    <div className="space-y-6 pb-24 text-slate-900 dark:text-slate-100 font-sans">
-      {/* ── 1. HIREINCRYPTO-STYLE TOP HORIZONTAL PILL BAR ── */}
-      <div className="border border-neutral-200 dark:border-[#262626] rounded-2xl bg-white dark:bg-[#111111] px-5 py-2.5 flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+    <div className="space-y-5 pb-24 text-slate-900 dark:text-slate-100 font-sans">
+      
+      {/* ══════════════════════════════════════════════════════════
+          1. HIREINCRYPTO TOP HORIZONTAL CATEGORY PILL BAR
+         ══════════════════════════════════════════════════════════ */}
+      <div className="border border-slate-200 dark:border-[#262626] rounded-2xl bg-white dark:bg-[#111111] px-4 py-2 flex items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
           {[
-            { id: "all", label: "Feed & Deals", count: posts.length, path: "/dashboard/feed" },
-            { id: "matches", label: "Double-Blind Matches", count: 3, path: "/dashboard/matches" },
-            { id: "vcs", label: "Check-Writers", count: "180+", path: "/dashboard/investors" },
-            { id: "sla", label: "30-Day SLA", count: "24d left", path: "/dashboard/feed#sla" },
-            { id: "grants", label: "Ecosystem Grants", count: 35, path: "/dashboard/grants" },
-            { id: "credits", label: "Perks & Credits", count: "$500k", path: "/dashboard/credits" },
-          ].map((pill) => (
-            <button
-              key={pill.id}
-              onClick={() => {
-                if (pill.path.includes("#")) {
-                  const el = document.getElementById("sla-section");
-                  el?.scrollIntoView({ behavior: "smooth" });
-                } else {
-                  navigate(pill.path);
-                }
-              }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                pill.id === "all"
-                  ? "bg-black text-white dark:bg-white dark:text-black shadow-xs"
-                  : "bg-neutral-100 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
-              }`}
-            >
-              <span>{pill.label}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                  pill.id === "all"
-                    ? "bg-white/20 text-white dark:bg-black/20 dark:text-black"
-                    : "bg-neutral-200 dark:bg-white/10 text-neutral-500 dark:text-neutral-300"
+            { id: "all", label: "All Opportunities", count: "180+" },
+            { id: "matches", label: "Double-Blind Matches", count: 3 },
+            { id: "vcs", label: "Check-Writers", count: "180+" },
+            { id: "grants", label: "Ecosystem Grants", count: 35 },
+            { id: "vetted", label: "Vetted Agencies", count: 109, path: "/dashboard/services" },
+            { id: "sla", label: "30-Day SLA Window", count: "24d left", path: "/dashboard/bookings" },
+          ].map((pill) => {
+            const isSelected = activeCategoryPill === pill.id;
+            return (
+              <button
+                key={pill.id}
+                onClick={() => {
+                  if (pill.path) {
+                    navigate(pill.path);
+                  } else {
+                    setActiveCategoryPill(pill.id);
+                  }
+                }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                  isSelected
+                    ? "bg-black text-white dark:bg-white dark:text-black shadow-xs"
+                    : "bg-slate-100 dark:bg-[#18191e] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white"
                 }`}
               >
-                {pill.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Welcome & Quota Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 font-medium text-xs sm:text-sm mt-1">
-            Institutional dealflow feed, warm intro quota, and double-blind ecosystem matchmaking
-          </p>
+                <span>{pill.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                  isSelected
+                    ? "bg-white/20 text-white dark:bg-black/20 dark:text-black"
+                    : "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-300"
+                }`}>
+                  {pill.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="hidden lg:flex items-center gap-2 shrink-0">
           <button
             onClick={() => setIsMemoOpen(true)}
-            className="bg-white hover:bg-slate-50 dark:bg-[#111111] dark:hover:bg-[#171717] text-slate-800 dark:text-white border border-slate-200 dark:border-[#262626] font-mono font-bold text-xs uppercase tracking-wider px-4 py-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer shrink-0"
-            title="Generate institutional 1-page tear sheet accepted by partner VCs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#18191e] hover:bg-slate-200 dark:hover:bg-[#202127] text-slate-800 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-white/5 cursor-pointer"
           >
-            <FileText size={15} className="text-[#0070F3]" />
-            <span>Institutional 1-Page Memo</span>
+            <FileText size={13} className="text-[#0070F3]" />
+            <span>Fast-Pass Memo</span>
           </button>
-
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-[#0070F3] hover:bg-[#0060DF] text-white font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 font-mono"
+            onClick={() => navigate('/dashboard/credits')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 text-xs font-mono font-bold cursor-pointer"
           >
-            <Plus size={16} />
-            <span>New Post (1 Credit)</span>
+            <Coins size={12} />
+            <span>{userCredits} Credits</span>
           </button>
         </div>
       </div>
 
-      {/* Stats & Quota Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Stat 1: Credit Balance */}
-        <div 
-          onClick={() => navigate('/dashboard/credits')}
-          className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#262626] p-5 flex items-center gap-4 shadow-xs hover:border-amber-500/40 transition-all cursor-pointer group"
-        >
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 group-hover:scale-105 transition-transform">
-            <Coins size={18} />
+      {/* ══════════════════════════════════════════════════════════
+          2. SUMMARY & SLA TELEMETRY STRIP
+         ══════════════════════════════════════════════════════════ */}
+      <div className="border border-slate-200 dark:border-[#262626] rounded-2xl bg-white dark:bg-[#111111] px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-[#00F5A0] shrink-0 font-mono font-black text-xs">
+            SLA
           </div>
           <div>
-            <div className="text-xl font-mono font-bold text-amber-600 dark:text-amber-400 leading-none">{userCredits}</div>
-            <div className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">
-              Spendable Credits
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                Guaranteed Partner Meeting SLA: Active Window
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-[#00F5A0] text-[9px] font-mono font-black uppercase border border-emerald-500/25">
+                100% Refundable
+              </span>
             </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+              1 of 3 partner calls completed • 24 days remaining in delivery window • 5 free monthly intro quota active
+            </p>
           </div>
         </div>
 
-        {/* Stat 2: Monthly Warm Intro Quota */}
-        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#262626] p-5 flex items-center gap-4 shadow-xs hover:border-[#0070F3]/40 transition-all">
-          <div className="w-10 h-10 rounded-xl bg-[#0070F3]/10 border border-[#0070F3]/30 flex items-center justify-center text-[#0070F3]">
-            <Gift size={18} />
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => navigate('/dashboard/bookings')}
+            className="px-4 py-2 rounded-xl bg-[#0070F3] hover:bg-[#0060DF] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <Calendar size={13} />
+            <span>Manage Partner Calls (1/3)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          3. MASTER-DETAIL SPLIT WORKSPACE (HireInCrypto Layout)
+         ══════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        
+        {/* ── LEFT MASTER LIST: OPPORTUNITY CARDS (7 Cols) ── */}
+        <div className="lg:col-span-7 space-y-3.5">
+          {/* Quick Search & Sub-Filter Bar */}
+          <div className="flex items-center gap-2 bg-white dark:bg-[#111111] p-2.5 rounded-2xl border border-slate-200 dark:border-[#262626] shadow-xs">
+            <Search size={15} className="text-slate-400 ml-2 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search check-writers, partner names, thesis keywords..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent border-none text-xs font-medium text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400"
+            />
+            <span className="text-[11px] font-mono text-slate-400 px-2 shrink-0">
+              {filteredOpportunities.length} matches
+            </span>
           </div>
-          <div>
-            <div className="text-xl font-mono font-bold text-[#0070F3] leading-none">
-              {quotaStatus.usedCount} / {quotaStatus.freeCap}
-            </div>
-            <div className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">
-              Monthly Intros ({quotaStatus.remainingFree} Free Left)
-            </div>
+
+          {/* Cards List */}
+          <div className="space-y-3">
+            {filteredOpportunities.map((opp) => {
+              const isSelected = selectedOpportunity.id === opp.id;
+              const hasRequested = introRequested[opp.id];
+
+              return (
+                <div
+                  key={opp.id}
+                  onClick={() => setSelectedOpportunity(opp)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${
+                    isSelected
+                      ? "bg-slate-50 dark:bg-[#16171b] border-[#0070F3] dark:border-[#0070F3] shadow-md ring-1 ring-[#0070F3]/30"
+                      : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#262626] hover:border-slate-300 dark:hover:border-[#383838] shadow-xs"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-[#1c1d22] border border-slate-200 dark:border-white/10 flex items-center justify-center font-mono font-black text-sm text-[#0070F3] shrink-0">
+                        {opp.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                            {opp.name}
+                          </h3>
+                          {opp.verified && (
+                            <CheckCircle2 size={13} className="text-[#0070F3] shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                          {opp.partnerName} • <span className="font-bold text-slate-700 dark:text-slate-300">{opp.partnerRole}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[10px] font-bold ${
+                        opp.matchScore >= 92
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/25"
+                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25"
+                      }`}>
+                        {opp.matchScore}% FIT
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Badges / Metrics Row */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                      Check: {opp.checkSize}
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                      {opp.stage}
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                      SLA: {opp.responseSla}
+                    </span>
+                  </div>
+
+                  {/* Sectors */}
+                  <div className="flex flex-wrap items-center gap-1">
+                    {opp.sectors.map((sec) => (
+                      <span
+                        key={sec}
+                        className="px-2 py-0.2 rounded text-[9px] font-mono font-medium bg-slate-50 dark:bg-[#1a1b20] text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-white/5"
+                      >
+                        {sec}
+                      </span>
+                    ))}
+                  </div>
+
+                  {opp.warmIntroAvailable && opp.warmIntroFounder && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] font-mono text-emerald-600 dark:text-[#00F5A0] font-bold">
+                      <span className="flex items-center gap-1">
+                        <Sparkles size={11} /> Warm intro available via {opp.warmIntroFounder}
+                      </span>
+                      <span className="text-[10px] uppercase text-slate-400 font-bold">Double-Blind ✓</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Stat 3: Unread Alerts */}
-        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#262626] p-5 flex items-center gap-4 shadow-xs hover:border-purple-500/40 transition-all">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-500">
-            <AlertCircle size={18} />
-          </div>
-          <div>
-            <div className="text-xl font-mono font-bold text-purple-600 dark:text-purple-400 leading-none">{unreadCount}</div>
-            <div className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">
-              Unread Alerts
-            </div>
-          </div>
-        </div>
+        {/* ── RIGHT DETAIL COLUMN: INSPECTION PANE (5 Cols - Sticky) ── */}
+        <div className="lg:col-span-5 sticky top-24">
+          <div className="rounded-3xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] p-6 shadow-sm space-y-5">
+            
+            {/* Header info */}
+            <div className="flex items-start justify-between border-b border-slate-200 dark:border-[#262626] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#0070F3]/10 border border-[#0070F3]/30 flex items-center justify-center text-[#0070F3] font-mono font-black text-lg shadow-xs">
+                  {selectedOpportunity.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      {selectedOpportunity.name}
+                    </h2>
+                    <CheckCircle2 size={14} className="text-[#0070F3]" />
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    {selectedOpportunity.partnerName} • {selectedOpportunity.partnerRole}
+                  </p>
+                </div>
+              </div>
 
-        {/* Stat 4: Quota Status Badge */}
-        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#262626] p-5 flex items-center gap-4 shadow-xs hover:border-emerald-500/40 transition-all">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-[#00F5A0]">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <div className="text-xs font-mono font-bold text-emerald-700 dark:text-[#00F5A0] leading-tight">
-              {quotaStatus.isOverCap ? '5 Credits / Extra Intro' : 'Free Tier Active'}
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] font-mono text-[10px] font-black uppercase border border-emerald-500/30">
+                {selectedOpportunity.matchLevel}
+              </span>
             </div>
-            <div className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">
-              Intro Quota Status
+
+            {/* Match Diagnosis Metric Box */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#16171b] border border-slate-200 dark:border-white/5 space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-500 font-bold">Algorithmic Thesis Match</span>
+                <span className="text-emerald-600 dark:text-[#00F5A0] font-black text-sm">
+                  {selectedOpportunity.matchScore}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-white/10 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-[#0070F3] h-full rounded-full transition-all duration-500"
+                  style={{ width: `${selectedOpportunity.matchScore}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                <div>Response SLA: <strong className="text-slate-800 dark:text-white">{selectedOpportunity.responseSla}</strong></div>
+                <div>Location: <strong className="text-slate-800 dark:text-white">{selectedOpportunity.location}</strong></div>
+              </div>
+            </div>
+
+            {/* Investment Focus & Thesis */}
+            <div className="space-y-1.5">
+              <h4 className="text-[11px] font-mono font-bold uppercase text-slate-400 tracking-wider">
+                Partner Investment Focus
+              </h4>
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+                {selectedOpportunity.thesisSummary}
+              </p>
+            </div>
+
+            {/* Key Term Specs */}
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-100 dark:border-white/5">
+                <span className="text-[10px] text-slate-400 uppercase block mb-0.5">Typical Check</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedOpportunity.checkSize}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-100 dark:border-white/5">
+                <span className="text-[10px] text-slate-400 uppercase block mb-0.5">Target Stage</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedOpportunity.stage}</span>
+              </div>
+            </div>
+
+            {/* Primary Action Buttons */}
+            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-[#262626]">
+              <button
+                onClick={() => handleRequestIntro(selectedOpportunity)}
+                disabled={introRequested[selectedOpportunity.id]}
+                className="w-full py-3 px-4 bg-[#0070F3] hover:bg-[#0060DF] disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                {introRequested[selectedOpportunity.id] ? (
+                  <>
+                    <CheckCircle2 size={15} /> Intro Request Dispatched
+                  </>
+                ) : (
+                  <>
+                    <Share2 size={15} /> Request Warm Intro (1 Credit / Quota)
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => navigate('/dashboard/bookings')}
+                className="w-full py-3 px-4 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-900 dark:text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Calendar size={15} /> Book Partner Pitch Call (30-Day SLA)
+              </button>
+
+              <button
+                onClick={() => setIsMemoOpen(true)}
+                className="w-full py-2.5 px-4 text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs font-mono font-bold transition-all text-center cursor-pointer"
+              >
+                Generate 1-Page Fast-Pass Memo →
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Guaranteed Partner Meeting SLA Widget */}
-      <div id="sla-section">
-        <GuaranteeSLAWidget
-          completedCallsCount={1}
-          daysRemaining={24}
-          onViewMeetings={() => navigate('/dashboard/bookings')}
-          onClaimRefund={() => navigate('/dashboard/settings?tab=billing')}
-        />
-      </div>
-
-      {/* Investor CRM & Fundraise Progress Board */}
-      {user?.uid && (
-        <InvestorCRM 
-          founderId={user.uid} 
-          fundingGoal={
-            founderProfile?.funding_goal
-              ? parseFloat(String(founderProfile.funding_goal).replace(/[^0-9.]/g, '')) || 500000
-              : 500000
-          } 
+      {/* Due Diligence Memo Modal */}
+      {isMemoOpen && (
+        <DueDiligenceMemoModal
+          isOpen={isMemoOpen}
+          onClose={() => setIsMemoOpen(false)}
+          memo={memoData}
         />
       )}
 
-      {/* Main Layout Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Community Posts & Tag Filters */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Header & Tabs */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-[#262626] pb-4">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab('community')}
-                className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                  activeTab === 'community'
-                    ? 'bg-[#0070F3]/15 text-[#0070F3] border border-[#0070F3]/30 shadow-xs'
-                    : 'bg-white dark:bg-[#111111] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white border border-slate-200 dark:border-[#262626]'
-                }`}
-              >
-                Community Feed
-              </button>
-              <button
-                onClick={() => navigate('/dashboard/network')}
-                className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-white dark:bg-[#111111] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white border border-slate-200 dark:border-[#262626] transition-all cursor-pointer shadow-xs"
-              >
-                Browse Network Intros
-              </button>
-            </div>
-          </div>
-
-          {/* Tag Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            <Filter size={14} className="text-slate-400 shrink-0 mr-1" />
-            <div className="flex items-center gap-1.5 flex-nowrap">
-              {TAG_FILTERS.map((tf) => (
-                <button
-                  key={tf.value}
-                  onClick={() => setSelectedTagFilter(tf.value)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    selectedTagFilter === tf.value
-                      ? 'bg-[#0070F3]/15 text-[#0070F3] border border-[#0070F3]/30 shadow-xs'
-                      : 'bg-white dark:bg-[#111111] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white border border-slate-200 dark:border-[#262626]'
-                  }`}
-                >
-                  {tf.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Posts List */}
-          {loadingPosts ? (
-            <div className="flex justify-center py-16 bg-white dark:bg-[#111111] rounded-3xl border border-slate-200 dark:border-[#262626]">
-              <Loader2 size={28} className="animate-spin text-[#0070F3]" />
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="bg-white dark:bg-[#111111] rounded-3xl border border-slate-200 dark:border-[#262626] p-12 text-center space-y-4 shadow-xs">
-              <div className="w-12 h-12 bg-[#0070F3]/10 border border-[#0070F3]/30 rounded-2xl flex items-center justify-center mx-auto text-[#0070F3]">
-                <Sparkles size={24} />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">No posts found in this tag category</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Be the first founder to post a pitch, hiring call, or update to the Raisequity network!
-              </p>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="px-5 py-2.5 bg-[#0070F3] hover:bg-[#0060DF] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer font-mono"
-              >
-                Create Post (1 Credit)
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {posts.map((post) => {
-                const isLiked = user?.uid ? post.likedBy?.includes(user.uid) : false;
-                const isCommentsOpen = activeCommentPostId === post.id;
-                const comments = commentsMap[post.id] || [];
-
-                return (
-                  <div
-                    key={post.id}
-                    className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 shadow-xs space-y-4 hover:border-slate-300 dark:hover:border-[#383838] transition-all text-slate-900 dark:text-slate-100"
-                  >
-                    {/* Post Author Header */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-[#0070F3]/10 border border-[#0070F3]/30 flex items-center justify-center text-[#0070F3] font-black text-sm uppercase shadow-xs">
-                          {post.authorName.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 dark:text-white text-sm">{post.authorName}</span>
-                            <span className="text-[9px] font-mono uppercase bg-slate-100 dark:bg-[#171717] text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-[#262626] font-bold">
-                              {post.authorRole}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            {new Date(post.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Tag Badge */}
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/30">
-                        #{post.tag}
-                      </span>
-                    </div>
-
-                    {/* Post Title & Content */}
-                    <div className="space-y-2">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">{post.title}</h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                        {post.content}
-                      </p>
-                    </div>
-
-                    {/* Pitch Deck Attachment Link */}
-                    {post.pitchDeckUrl && (
-                      <div className="bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] rounded-2xl p-3.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <FileText size={16} className="text-[#0070F3] shrink-0" />
-                          <span className="text-xs text-slate-800 dark:text-slate-200 font-bold truncate max-w-[200px] sm:max-w-xs font-mono">
-                            {post.pitchDeckName || 'Pitch_Deck.pdf'}
-                          </span>
-                        </div>
-                        <a
-                          href={post.pitchDeckUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-[#0070F3]/10 hover:bg-[#0070F3]/20 text-[#0070F3] text-xs font-mono font-bold px-3 py-1.5 rounded-xl border border-[#0070F3]/25 flex items-center gap-1 transition-all"
-                        >
-                          View PDF <ArrowUpRight size={13} />
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Post Actions Bar */}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-[#262626] text-xs text-slate-500 dark:text-slate-400">
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => handleToggleLike(post.id)}
-                          className={`flex items-center gap-1.5 font-bold transition-colors cursor-pointer ${
-                            isLiked ? 'text-[#0070F3]' : 'hover:text-black dark:hover:text-white'
-                          }`}
-                        >
-                          <ThumbsUp size={14} className={isLiked ? 'fill-[#0070F3] text-[#0070F3]' : ''} />
-                          <span>{post.likesCount || 0} Likes</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenComments(post.id)}
-                          className="flex items-center gap-1.5 font-bold hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                        >
-                          <MessageSquare size={14} />
-                          <span>{post.commentsCount || 0} Comments</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Comments Drawer */}
-                    {isCommentsOpen && (
-                      <div className="pt-4 border-t border-slate-100 dark:border-[#262626] space-y-4 animate-fadeIn">
-                        {/* Comments List */}
-                        <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                          {comments.length === 0 ? (
-                            <div className="text-[11px] text-slate-400 dark:text-slate-500 italic font-mono">No comments yet. Start the conversation!</div>
-                          ) : (
-                            comments.map((c) => (
-                              <div key={c.id} className="bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] rounded-xl p-3 text-xs space-y-1">
-                                <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400">
-                                  <span className="font-bold text-slate-900 dark:text-white font-mono">{c.authorName} ({c.authorRole})</span>
-                                  <span className="font-mono text-slate-400">{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed">{c.commentText}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        {/* Comment Input */}
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={commentInput}
-                            onChange={(e) => setCommentInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                            placeholder="Write a comment..."
-                            className="bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] focus:border-[#0070F3] text-slate-900 dark:text-white placeholder:text-slate-400 text-xs rounded-xl px-3.5 py-2.5 flex-1 focus:outline-none"
-                          />
-                          <button
-                            onClick={() => handleAddComment(post.id)}
-                            disabled={isSubmittingComment || !commentInput.trim()}
-                            className="bg-[#0070F3] hover:bg-[#0060DF] disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-xs font-mono"
-                          >
-                            <Send size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Mission Progress, News, Syndicate Anchor, YourWeb3Guy & HireInCrypto Widgets */}
-        <div className="space-y-6">
-          {/* Lead-Check Syndicate Anchor Card */}
-          <SyndicateAnchorCard
-            readinessScore={92}
-            companyName={founderProfile?.company_name || 'Your Startup'}
-            onRequestIntake={() => navigate('/dashboard/bookings')}
-          />
-
-          <MissionProgressCard
-            profileCompleteness={founderProfile?.completeness_pct ?? (founderProfile?.profile_complete ? 100 : 75)}
-            missingFields={['pitch_deck', 'raise_amount']}
-            contactsCount={founderProfile?.contacts_contributed_count ?? 1}
-            onReviewClick={() => navigate('/onboarding')}
-            onAddClick={() => navigate('/dashboard/investors')}
-          />
-          <DashboardNewsWidget />
-          <YourWeb3GuyCard />
-          <HireInCryptoCard />
-          <ReferralCard referralCode={profile?.referral_code || 'RAISEQUITY'} isInline={true} />
-        </div>
-      </div>
-
-      {/* Institutional Due Diligence Fast-Pass Memo Modal */}
-      <DueDiligenceMemoModal
-        isOpen={isMemoOpen}
-        onClose={() => setIsMemoOpen(false)}
-        memo={memoData}
-      />
-
       {/* Create Post Modal */}
-      {user?.uid && (
+      {isCreateModalOpen && (
         <CreatePostModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onSuccess={loadPosts}
-          authorId={user.uid}
-          authorName={profile?.full_name || 'Anonymous Founder'}
-          authorEmail={profile?.email || user.email || ''}
-          authorRole={profile?.role || 'founder'}
+          onSuccess={() => {
+            setIsCreateModalOpen(false);
+          }}
+          authorId={user?.uid || "founder"}
+          authorName={founderProfile?.full_name || profile?.full_name || "Founder"}
+          authorEmail={user?.email || "founder@raisequity.com"}
+          authorRole={profile?.role || "founder"}
           userCredits={userCredits}
         />
       )}

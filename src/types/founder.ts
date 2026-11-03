@@ -77,6 +77,8 @@ export interface FounderInvestorContact {
   id: string;
   founder_id: string;
   investor_name: string;
+  investor_email?: string | null;
+  investor_telegram?: string | null;
   investor_linkedin: string | null;
   fund_name: string | null;
   relationship_description: string | null;

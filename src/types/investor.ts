@@ -124,5 +124,9 @@ export interface Web3Investor {
   avatar_url?: string;
   verified?: boolean;
   know_count?: number;
+  warm_intro_founder?: string;
+  warm_intro_company?: string;
+  warm_intro_available?: boolean;
+  contributed_by?: string;
   created_at?: string;
 }

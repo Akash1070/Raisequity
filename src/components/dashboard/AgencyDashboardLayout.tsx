@@ -66,7 +66,7 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
 
   const agencyName = (profile as any)?.agency_name || profile?.company_name || profile?.full_name || "ChainCraft Labs";
   const agencyHandle = ((profile as any)?.handle || agencyName.toLowerCase().replace(/[^a-z0-9]/g, "")) || "chaincraft";
-  const credits = profile?.credit_balance ?? 150;
+  const credits = profile?.credit_balance ?? 50;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`https://raisequity.com/agency/${agencyHandle}`);

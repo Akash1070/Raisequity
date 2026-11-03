@@ -164,6 +164,8 @@ export default function App() {
             <Route path="programs" element={<Network />} />
             <Route path="accelerators" element={<Navigate to="/dashboard/programs" replace />} />
             <Route path="launches" element={<LaunchDirectory />} />
+            <Route path="launch" element={<LaunchDirectory />} />
+            <Route path="launch/submit" element={<LaunchSubmit />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="settings" element={<Settings />} />
             <Route path="services" element={<ServicesDirectory />} />
@@ -230,7 +232,6 @@ export default function App() {
             <Route path="content" element={<AdminContent />} />
             <Route path="network" element={<AdminNetwork />} />
             <Route path="launches" element={<AdminLaunches />} />
-            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* ========== FALLBACK ========== */}

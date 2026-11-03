@@ -12,7 +12,7 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   free_monthly_intros: 5,         // Free monthly intro requests
   monthly_intro_free_cap: 5,
   trial_days: 15,                 // 15-day free trial on signup
-  trial_starter_credits: 150,     // 150 starter credits on signup
+  trial_starter_credits: 50,     // 50 starter credits on signup
   first_deal_discount_pct: 50,    // 50% discount on 1st closed deal success fee
   first_deal_waived: true,
   credit_costs: {

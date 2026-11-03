@@ -9,29 +9,22 @@ import { scanCompanyWebsite } from "../../lib/gemini";
 import PlanCard, { PLANS, PlanDetails } from "../../components/dashboard/PlanCard";
 import InvestorContactForm, { ContactFormData } from "../../components/dashboard/InvestorContactForm";
 import BlurbPreview from "../../components/dashboard/BlurbPreview";
-import { safeStorage } from "../../lib/storage";
+import { db } from "../../lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const urlTab = searchParams.get("tab");
 
   const [activeTab, setActiveTab] = useState("profile");
-  const { signOut, user } = useAuth();
+  const { signOut, user, profile } = useAuth();
   const { founderProfile, updateProfile, refetch: refetchProfile } = useFounderProfile();
   const { contacts, addContact, deleteContact } = useInvestorContacts();
   const navigate = useNavigate();
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
-  
   const [scanningWebsite, setScanningWebsite] = useState(false);
-  const [theme, setTheme] = useState(() => safeStorage.getItem("theme") || "dark");
-
-  // Apply dark theme to document root by default
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-    safeStorage.setItem("theme", "dark");
-  }, []);
 
   const handleScanWebsite = async () => {
     if (!profileForm.company_website) return;
@@ -97,15 +90,15 @@ export default function Settings() {
     }
   }, [urlTab]);
 
-  // Sync profile form when profile loads
+  // Sync profile form when profile loads or auth profile is available
   useEffect(() => {
     if (founderProfile) {
       setProfileForm({
-        full_name: founderProfile.full_name || "",
-        linkedin_url: founderProfile.linkedin_url || "",
+        full_name: founderProfile.full_name || profile?.full_name || user?.displayName || "",
+        linkedin_url: founderProfile.linkedin_url || profile?.linkedin_url || "",
         twitter_url: founderProfile.twitter_url || "",
         location: founderProfile.location || "",
-        company_name: founderProfile.company_name || "",
+        company_name: founderProfile.company_name || profile?.company_name || "",
         company_website: founderProfile.company_website || "",
         what_company_does: founderProfile.what_company_does || "",
         traction_signal: founderProfile.traction_signal || "",
@@ -116,8 +109,15 @@ export default function Settings() {
         founder_background: founderProfile.founder_background || "",
         business_model: founderProfile.business_model || ""
       });
+    } else if (profile || user) {
+      setProfileForm((prev) => ({
+        ...prev,
+        full_name: prev.full_name || profile?.full_name || user?.displayName || user?.email?.split('@')[0] || "",
+        company_name: prev.company_name || profile?.company_name || "",
+        linkedin_url: prev.linkedin_url || profile?.linkedin_url || ""
+      }));
     }
-  }, [founderProfile]);
+  }, [founderProfile, profile, user]);
 
   const handleLogout = async () => {
     try {
@@ -148,16 +148,56 @@ export default function Settings() {
     setAddingContact(true);
     setContactError(null);
     try {
+      const founderName = founderProfile?.full_name || profile?.full_name || user?.displayName || "Verified Founder";
+      const founderCompany = founderProfile?.company_name || profile?.company_name || "Portfolio Co";
+      const checkMin = parseFloat(newContact.check_size_min) || 50;
+      const checkMax = parseFloat(newContact.check_size_max) || 250;
+
       await addContact({
         investor_name: newContact.investor_name,
+        investor_email: newContact.investor_email || null,
         investor_linkedin: newContact.investor_linkedin || null,
         fund_name: newContact.fund_name || null,
         relationship_description: newContact.relationship_description || null,
         sectors_invested_in: newContact.sectors_invested_in,
-        check_size_min: parseFloat(newContact.check_size_min) || null,
-        check_size_max: parseFloat(newContact.check_size_max) || null,
+        check_size_min: checkMin,
+        check_size_max: checkMax,
         verified: true
       });
+
+      // SEED directly into global web3_investors & investor_connections so it appears in Admin & Check-Writers CRM
+      try {
+        await addDoc(collection(db, "web3_investors"), {
+          name: newContact.investor_name,
+          firm: newContact.fund_name || "Private Angel",
+          category: newContact.fund_name ? "FUND" : "ANGEL",
+          email: newContact.investor_email || "contact@raisequity.com",
+          linkedin: newContact.investor_linkedin || "",
+          sectors: newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["AI", "Tech", "SaaS"],
+          check_size: `$${checkMin}k - $${checkMax}k`,
+          know_count: 1,
+          warm_intro_founder: founderName,
+          warm_intro_company: founderCompany,
+          warm_intro_available: true,
+          contributed_by: founderName,
+          verified: true,
+          created_at: new Date().toISOString()
+        });
+
+        await addDoc(collection(db, "investor_connections"), {
+          founderId: user?.uid,
+          founderName,
+          founderCompany,
+          investorName: newContact.investor_name,
+          investorFirm: newContact.fund_name || "Private Angel",
+          ticketSize: `$${checkMin}k - $${checkMax}k`,
+          sectors: newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["Tech"],
+          status: "verified",
+          created_at: new Date().toISOString()
+        });
+      } catch (seedErr) {
+        console.warn("[Settings] Error seeding investor to global collections:", seedErr);
+      }
 
       // Clear form
       setNewContact({
@@ -172,10 +212,9 @@ export default function Settings() {
       });
 
       // Award referral credits on new contact additions (100 credits per contact)
-      if (founderProfile) {
-        await updateProfile({ credits: (founderProfile.credits || 0) + 100 });
-        await refetchProfile();
-      }
+      const currentCredits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
+      await updateProfile({ credits: currentCredits + 100 });
+      await refetchProfile();
     } catch (err: any) {
       setContactError(err.message || "Failed to add contact.");
     } finally {
@@ -538,29 +577,45 @@ export default function Settings() {
               <div className="bg-slate-50 dark:bg-[#141414] p-6 rounded-3xl border border-slate-200 dark:border-[#262626] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xs">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
-                    Current Subscription &amp; SLA Status
+                    Current Subscription &amp; SLA Status (Live Gateway)
                   </span>
                   <div className="text-2xl font-mono font-extrabold text-slate-900 dark:text-white capitalize flex items-center gap-2.5">
-                    {founderProfile?.plan || "Basic"} Plan
-                    <span className="bg-emerald-500/15 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/30 text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-lg shadow-xs">
-                      30-Day SLA Active
+                    {(profile as any)?.subscription_tier || founderProfile?.plan || "Starter Free"} Plan
+                    <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-lg shadow-xs border ${
+                      profile?.has_active_subscription || profile?.subscription_status === 'active'
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-[#00F5A0] border-emerald-500/30'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                    }`}>
+                      {profile?.has_active_subscription || profile?.subscription_status === 'active' ? '30-Day SLA Active ✓' : 'Free Tier (50 Credits)'}
                     </span>
                   </div>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block mb-1 text-left md:text-right">
-                    Available Credits
-                  </span>
-                  <div className="text-xl font-mono font-extrabold text-[#00F5A0] flex items-center gap-1">
-                    {founderProfile?.credits || 0}
-                    <span className="text-xs font-mono text-slate-400">Credits</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">
+                    Gateway: <span className="font-bold text-slate-700 dark:text-slate-200">Dodo Payments (Verified Webhook)</span>
+                    {profile?.trial_ends_at ? ` • Trial window ends: ${new Date(profile.trial_ends_at).toLocaleDateString()}` : ''}
                   </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block mb-1 text-left md:text-right">
+                      Spendable Credits
+                    </span>
+                    <div className="text-xl font-mono font-extrabold text-amber-500 dark:text-amber-400 flex items-center gap-1">
+                      {founderProfile?.credits ?? profile?.credit_balance ?? 50}
+                      <span className="text-xs font-mono text-slate-400">Credits</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/checkout')}
+                    className="px-4 py-2 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer"
+                  >
+                    Top Up / Upgrade
+                  </button>
                 </div>
               </div>
 
               {/* Subscriptions Grid */}
               <div className="space-y-4">
-                <h4 className="text-xs font-mono font-bold uppercase text-white tracking-wider">
+                <h4 className="text-xs font-mono font-bold uppercase text-slate-900 dark:text-white tracking-wider">
                   Available Institutional Membership Plans
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -581,7 +636,7 @@ export default function Settings() {
           {/* COMMUNITY TAB */}
           {activeTab === "community" && (
             <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <h3 className="text-base font-extrabold text-white font-mono">Founder Community Forum</h3>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Founder Community Forum</h3>
               
               <div className="bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-[#262626] rounded-3xl p-8 shadow-xs">
                 <div className="flex items-center gap-4 mb-6">
@@ -603,7 +658,7 @@ export default function Settings() {
                   </div>
                   <div className="bg-white dark:bg-[#111111] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
                     <span className="text-[10px] font-mono font-bold uppercase text-slate-500 block mb-1">Starter Quota</span>
-                    <span className="text-sm font-mono font-bold text-emerald-600 dark:text-[#00F5A0]">150 Free Credits</span>
+                    <span className="text-sm font-mono font-bold text-emerald-600 dark:text-[#00F5A0]">50 Free Credits</span>
                   </div>
                   <div className="bg-white dark:bg-[#111111] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
                     <span className="text-[10px] font-mono font-bold uppercase text-slate-500 block mb-1">Ecosystem Access</span>

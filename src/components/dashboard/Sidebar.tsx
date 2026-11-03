@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
-  Home, Users, Share2, Briefcase, Settings, LogOut, Gift, Coins, Crown, Sparkles, Zap, Flame, Rocket
+  Home, Users, Share2, Briefcase, Settings, LogOut, Gift, Coins, Crown, Sparkles, Zap, Flame, Rocket, Clock
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
@@ -66,7 +66,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const fullName = founderProfile?.full_name || profile?.full_name || user?.email?.split("@")[0] || "Founder";
   const avatarUrl = founderProfile?.profile_photo_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName.split(" ")[0]}`;
   const plan = founderProfile?.plan || 'basic';
-  const credits = founderProfile?.credits ?? profile?.credit_balance ?? 150;
+  const credits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
   const referralCode = founderProfile?.referral_code || 'RAISEQUITY';
 
   const handleLogout = async () => {
@@ -124,9 +124,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         <SidebarItem to="/dashboard/feed" icon={<Home size={16} />} label="Feed & Telemetry" />
         <SidebarItem to="/dashboard/matches" icon={<Users size={16} />} label="Double-Blind Matches" badge={3} />
         <SidebarItem to="/dashboard/investors" icon={<Briefcase size={16} />} label="Check-Writers CRM" />
+        <SidebarItem to="/dashboard/bookings" icon={<Clock size={16} />} label="30-Day SLA Calls" badge={1} />
         <SidebarItem to="/dashboard/services" icon={<Sparkles size={16} />} label="Vetted Web3 Agencies" badge={109} />
         <SidebarItem to="/dashboard/network" icon={<Share2 size={16} />} label="Network Partners" />
-        <SidebarItem to="/launch" icon={<Rocket size={16} />} label="Launch Directory" />
+        <SidebarItem to="/dashboard/launch" icon={<Rocket size={16} />} label="Launch Directory" />
         <SidebarItem to="/dashboard/grants" icon={<Zap size={16} />} label="Grants Directory" />
         <SidebarItem to="/dashboard/credits" icon={<Gift size={16} />} label="Perks & Credits" />
       </nav>

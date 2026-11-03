@@ -229,3 +229,4 @@ run().catch(err => {
   console.error('Seeder execution error:', err);
   process.exit(1);
 });
+

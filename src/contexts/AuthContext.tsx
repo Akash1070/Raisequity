@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               first_deal_fee_waived: false,
               trial_ends_at: new Date(Date.now() + 15 * 86400000).toISOString(),
               has_active_subscription: false,
-              credit_balance: 150,
+              credit_balance: 50,
               created_at: new Date().toISOString(),
             };
 
@@ -206,7 +206,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Investors require manual admin review/approval before transacting
       const isApprovedByDefault = publicRole !== 'investor';
       const trialDays = 15;
-      const trialStarterCredits = 150;
+      const trialStarterCredits = 50;
       const trialEndsAt = new Date(Date.now() + trialDays * 86400000).toISOString();
       const referralCode = `RQ-${newUser.uid.slice(0, 6).toUpperCase()}`;
 
@@ -274,8 +274,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!snap.exists()) {
         const trialDays = 15;
-        // Must match DEFAULT_GLOBAL_CONFIG.trial_starter_credits (150) — email signup path uses the same value.
-        const trialStarterCredits = 150;
+        // Must match DEFAULT_GLOBAL_CONFIG.trial_starter_credits (50) — email signup path uses the same value.
+        const trialStarterCredits = 50;
         const trialEndsAt = new Date(Date.now() + trialDays * 86400000).toISOString();
         const referralCode = `RQ-${googleUser.uid.slice(0, 6).toUpperCase()}`;
         const referredBy = safeStorage.getItem('rq_ref_code') || null;

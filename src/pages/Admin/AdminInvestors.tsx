@@ -318,7 +318,7 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
               : "border-transparent text-slate-400 hover:text-slate-600"
           }`}
         >
-          <Database size={16} /> Web3 Investor Database ({totalInvestorCount ? totalInvestorCount.toLocaleString() : directoryInvestors.length})
+          <Database size={16} /> Verified Investor Database ({totalInvestorCount ? totalInvestorCount.toLocaleString() : directoryInvestors.length})
         </button>
         <button
           onClick={() => setActiveTab("platform")}

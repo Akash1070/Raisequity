@@ -26,13 +26,35 @@ export function useFounderProfile() {
       if (snap.exists()) {
         const data = snap.data() as FounderProfile;
         if (data.credits === undefined || data.credits === null) {
-          data.credits = 150;
+          data.credits = 50;
         }
         console.log('[useFounderProfile] Profile loaded:', data.id, data.full_name);
         setFounderProfile(data);
       } else {
-        console.warn('[useFounderProfile] No founder_profile doc found for:', uid);
-        setFounderProfile(null);
+        console.log('[useFounderProfile] Creating/fallback founder_profile doc for:', uid);
+        const userDocRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userDocRef);
+        const userData = userSnap.exists() ? userSnap.data() : null;
+
+        const fallbackProfile: FounderProfile = {
+          id: uid,
+          user_id: uid,
+          full_name: userData?.full_name || user?.displayName || user?.email?.split('@')[0] || 'Founder',
+          email: user?.email || '',
+          company_name: userData?.company_name || '',
+          linkedin_url: userData?.linkedin_url || '',
+          credits: userData?.credit_balance ?? 50,
+          plan: userData?.subscription_status === 'active' ? 'pro' : 'basic',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as unknown as FounderProfile;
+
+        try {
+          await setDoc(docRef, fallbackProfile, { merge: true });
+        } catch (e) {
+          console.warn('[useFounderProfile] fallback setDoc warning:', e);
+        }
+        setFounderProfile(fallbackProfile);
       }
     } catch (err: any) {
       console.error('[useFounderProfile] Firestore fetch error:', err?.message || err);
@@ -69,7 +91,7 @@ export function useFounderProfile() {
       id: uid,
       user_id: uid,
       referral_code: referralCode,
-      credits: profileData.credits ?? 150,
+      credits: profileData.credits ?? 50,
       ...profileData,
     } as FounderProfile;
 

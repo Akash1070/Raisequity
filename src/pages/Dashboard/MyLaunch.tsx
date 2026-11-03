@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  Rocket, TrendingUp, Eye, ThumbsUp, CheckCircle2, AlertCircle, Edit3, Trash2, Globe, ExternalLink, ShieldCheck, Sparkles, Loader2, Save, X, Plus, Trophy, Zap, ArrowRight, Share2, Award, Check
+  Rocket, TrendingUp, Eye, ThumbsUp, CheckCircle2, AlertCircle, Edit3, Trash2, Globe, ExternalLink, ShieldCheck, Sparkles, Loader2, Save, X, Plus, Trophy, Zap, ArrowRight, Share2, Award, Check, FileText
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFounderCompany } from '../../hooks/useFounderCompany';
@@ -188,12 +188,33 @@ export default function MyLaunch() {
             </span>
 
             <h2 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-black dark:text-white mb-3">
-              No Directory Launch Published Yet
+              Launch Your Product, Earn DR Backlinks &amp; Climb the Weekly Leaderboard
             </h2>
 
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm sm:text-base font-medium leading-relaxed mb-8 max-w-lg">
-              You haven't listed a startup in the current weekly cohort. Launch in under 2 minutes to lock your spot on the live showcase and begin collecting verified investor upvotes.
+            <p className="text-neutral-600 dark:text-neutral-300 text-sm font-medium leading-relaxed mb-6 max-w-xl text-center">
+              This isn't just another directory. Raisequity is built for one thing: <strong>getting your product seen and ranked everywhere that matters</strong>. 
+              Plugging into our engine optimizes your product for <strong>GEO, AEO, and SEO</strong> so you show up across LLMs like ChatGPT, Claude, and Perplexity, as well as top search engines.
             </p>
+
+            {/* Feature Highlights Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left mb-8 w-full max-w-xl">
+              <div className="p-3 bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-200/80 dark:border-white/5 flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                <Sparkles size={15} className="text-emerald-500 shrink-0 mt-0.5" />
+                <span><strong>50+ Data Points Extracted:</strong> AI scans your website and instantly creates a fully optimized launch page.</span>
+              </div>
+              <div className="p-3 bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-200/80 dark:border-white/5 flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                <FileText size={15} className="text-[#0070F3] shrink-0 mt-0.5" />
+                <span><strong>Auto Blog Article:</strong> Generates a high-quality article built to rank fast and drive high-intent organic traffic.</span>
+              </div>
+              <div className="p-3 bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-200/80 dark:border-white/5 flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                <Globe size={15} className="text-purple-500 shrink-0 mt-0.5" />
+                <span><strong>High DR Backlinks:</strong> Permanent do-follow backlinks and llms.txt integration for domain authority.</span>
+              </div>
+              <div className="p-3 bg-neutral-50 dark:bg-white/5 rounded-xl border border-neutral-200/80 dark:border-white/5 flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                <Trophy size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                <span><strong>Weekly Leaderboard:</strong> Live exposure to early adopters and our network of 180+ verified check-writers.</span>
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">

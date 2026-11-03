@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const fullName = founderProfile?.full_name || profile?.full_name || user?.email?.split("@")[0] || "Founder";
   const avatarUrl = founderProfile?.profile_photo_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName.split(" ")[0]}`;
   const plan = founderProfile?.plan || 'basic';
-  const credits = founderProfile?.credits ?? profile?.credit_balance ?? 150;
+  const credits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
 
   const planColors: Record<string, string> = {
     basic: "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700",

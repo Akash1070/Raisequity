@@ -14,9 +14,9 @@ describe('Phase 2 Platform Infrastructure Tests', () => {
       expect(diffDays).toBe(15);
     });
 
-    it('assigns 100 starter credits on signup for founders', () => {
+    it('assigns 50 starter credits on signup for founders', () => {
       const starterCredits = DEFAULT_GLOBAL_CONFIG.trial_starter_credits;
-      expect(starterCredits).toBe(100);
+      expect(starterCredits).toBe(50);
     });
   });
 

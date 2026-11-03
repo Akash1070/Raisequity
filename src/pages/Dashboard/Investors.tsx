@@ -19,7 +19,7 @@ const CATEGORY_OPTIONS = ["All", "VC Fund", "Angel Investor", "Accelerator", "In
 
 export default function Investors() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { founderProfile, refetch: refetchProfile } = useFounderProfile();
 
   const [activeTab, setActiveTab] = useState<"directory" | "graph">("directory");
@@ -243,14 +243,14 @@ export default function Investors() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-[32px] font-black tracking-tight text-slate-900 dark:text-white font-heading">
-              Web3 Investor Network &amp; Directory
+              Investor Network &amp; Check-Writers Directory
             </h1>
-            <span className="px-3 py-1 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-black border border-purple-200/60 dark:border-purple-800/40 flex items-center gap-1.5 shadow-2xs">
-              <Sparkles size={14} className="text-amber-500" /> {founderProfile?.credits ?? 0} Credits Available
+            <span className="px-3 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 rounded-full text-xs font-black border border-amber-500/30 flex items-center gap-1.5 shadow-2xs">
+              <Sparkles size={14} className="text-amber-500" /> {founderProfile?.credits ?? profile?.credit_balance ?? 50} Credits Available
             </span>
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium text-xs md:text-sm">
-            Access direct verified investor emails, Telegram handles, and crowdsourced warm introduction networks.
+            Access direct verified check-writer emails, Telegram handles, and crowdsourced warm introduction networks for Tech, AI, SaaS, Web2 &amp; Web3 startups.
           </p>
         </div>
 
@@ -303,7 +303,7 @@ export default function Investors() {
               : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
-          <Database size={16} /> Web3 Investor Database ({totalServerCount ? totalServerCount.toLocaleString() : directoryInvestors.length})
+          <Database size={16} /> Investor Directory ({totalServerCount ? totalServerCount.toLocaleString() : directoryInvestors.length})
         </button>
         <button
           onClick={() => setActiveTab("graph")}
@@ -372,14 +372,14 @@ export default function Investors() {
           {loadingDirectory ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
               <Loader2 size={32} className="animate-spin text-slate-900" />
-              <p className="text-xs font-mono font-bold text-slate-400">Loading Web3 investor database...</p>
+              <p className="text-xs font-mono font-bold text-slate-400">Loading investor database...</p>
             </div>
           ) : filteredDirectory.length === 0 ? (
             <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center shadow-xs">
               <Database size={32} className="mx-auto text-slate-300 mb-3" />
-              <h3 className="font-black text-base text-slate-900">No Web3 Investors Found</h3>
+              <h3 className="font-black text-base text-slate-900">No Investors Found</h3>
               <p className="text-slate-500 font-medium text-xs max-w-sm mx-auto mt-1">
-                Try adjusting your search query or filters to browse active crypto funds and angels.
+                Try adjusting your search query or filters to browse active funds and check-writers.
               </p>
             </div>
           ) : (
@@ -424,6 +424,13 @@ export default function Investors() {
 
                       {/* Details & Badges */}
                       <div className="space-y-2.5 mb-6">
+                        {inv.warm_intro_founder && (
+                          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-[#00F5A0] text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-2xs">
+                            <Sparkles size={12} className="text-emerald-500" />
+                            <span>Warm Intro Available via {inv.warm_intro_founder}</span>
+                          </div>
+                        )}
+
                         <div className="flex items-center justify-between text-xs font-semibold">
                           <span className="text-slate-400 font-medium">Check Size:</span>
                           <span className="font-black text-slate-900 dark:text-white">{inv.check_size || "$100k"}</span>
