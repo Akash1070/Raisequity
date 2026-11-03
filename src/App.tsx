@@ -32,7 +32,6 @@ const InvestorOnboarding = lazy(() => import("./pages/Dashboard/InvestorOnboardi
 const AgencyOnboarding = lazy(() => import("./pages/Dashboard/AgencyOnboarding"));
 const Feed = lazy(() => import("./pages/Dashboard/Feed"));
 const Matches = lazy(() => import("./pages/Dashboard/Matches"));
-const DashboardNetwork = lazy(() => import("./pages/Dashboard/Network"));
 const Coaching = lazy(() => import("./pages/Dashboard/Coaching"));
 const DashboardInvestors = lazy(() => import("./pages/Dashboard/Investors"));
 const ServicesDirectory = lazy(() => import("./pages/Dashboard/ServicesDirectory"));

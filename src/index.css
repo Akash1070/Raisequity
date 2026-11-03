@@ -96,6 +96,19 @@ body {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* Institutional High-Density 80% Scale for Desktop Terminals */
+@media (min-width: 1024px) {
+  html {
+    zoom: 0.8;
+  }
+  .min-h-screen {
+    min-height: 125vh !important;
+  }
+  .h-screen {
+    height: 125vh !important;
+  }
+}
+
 html.dark body {
   background-color: #000000;
   color: #EDEDED;

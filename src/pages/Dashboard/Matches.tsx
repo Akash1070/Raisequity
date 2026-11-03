@@ -95,7 +95,7 @@ export default function Matches() {
   const isPending = selected?.status === "pending";
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col gap-6 text-slate-900 dark:text-slate-100 pb-6 font-sans">
+    <div className="flex-1 min-h-[600px] lg:h-[calc(125vh-120px)] flex flex-col gap-6 text-slate-900 dark:text-slate-100 pb-6 font-sans">
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono">Peer Founder Matches</h1>
         <p className="text-slate-500 dark:text-slate-400 text-xs font-mono mt-1">{matches.length} active match{matches.length !== 1 ? "es" : ""}</p>

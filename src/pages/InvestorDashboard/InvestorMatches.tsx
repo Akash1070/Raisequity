@@ -59,7 +59,7 @@ export default function InvestorMatches() {
   const founder = company?.users;
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col gap-6">
+    <div className="flex-1 min-h-[600px] lg:h-[calc(125vh-140px)] flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[32px] font-black tracking-tight text-black">Matches</h1>

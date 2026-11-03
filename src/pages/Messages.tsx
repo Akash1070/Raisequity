@@ -239,7 +239,7 @@ export default function Messages() {
   };
 
   return (
-    <div className="h-[calc(100vh-100px)] flex flex-col font-sans text-[#171717] dark:text-[#EDEDED]">
+    <div className="flex-1 min-h-[600px] lg:h-[calc(125vh-120px)] flex flex-col font-sans text-[#171717] dark:text-[#EDEDED]">
       
       {/* ── TOP HEADER / SUITE TITLE ── */}
       <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-200 dark:border-white/10 shrink-0">
