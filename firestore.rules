@@ -150,6 +150,8 @@ service cloud.firestore {
 
     // Public catalogue / content
     match /launches/{id} { allow read: if true; allow write: if signedIn(); }
+    match /deal_flow/{id} { allow read: if true; allow write: if signedIn(); }
+    match /network_partners/{id} { allow read: if true; allow write: if signedIn(); }
     match /launch_comments/{id} { allow read: if true; allow create: if signedIn(); allow update, delete: if isAdmin(); }
     match /content_posts/{id} { allow read: if true; allow write: if isAdmin(); }
     match /grants/{id} { allow read: if true; allow write: if isAdmin(); }

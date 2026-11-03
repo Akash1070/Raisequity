@@ -45,7 +45,7 @@ const DEFAULT_SLA_CALLS: SLACallSlot[] = [
     fundName: "Framework & Delphi Digital",
     thesisMatch: 92,
     status: "ready_to_schedule",
-    meetingUrl: "https://cal.com/raisequity-partners/30min-fast-pass",
+    meetingUrl: "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy",
     notes: "Double-blind match confirmed. Slot available for direct partner pitch.",
   },
   {
@@ -280,20 +280,20 @@ export default function Bookings() {
           </div>
 
           <a
-            href="https://cal.com/raisequity-partners/30min-fast-pass"
+            href={(profile as any)?.calendar_booking_url || "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy"}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-800 dark:text-white rounded-xl text-xs font-bold transition-all"
           >
-            Open in Cal.com <ExternalLink size={12} />
+            Open in Topmate <ExternalLink size={12} />
           </a>
         </div>
 
-        {/* Embedded Cal UI Preview Box */}
+        {/* Embedded Booking Preview Box */}
         <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[#16171b] border border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] text-[10px] font-mono font-bold">
-              <Sparkles size={11} /> Next Available Window: Tomorrow, 2:00 PM EST
+              <Sparkles size={11} /> Next Available Window: Today / Tomorrow
             </div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Instant Partner Fast-Pass Session (30 Minutes)
@@ -304,10 +304,10 @@ export default function Bookings() {
           </div>
 
           <button
-            onClick={() => window.open("https://cal.com/raisequity-partners/30min-fast-pass", "_blank")}
+            onClick={() => window.open((profile as any)?.calendar_booking_url || "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy", "_blank")}
             className="w-full md:w-auto px-6 py-3 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
           >
-            <Calendar size={14} /> Open Cal.com Picker →
+            <Calendar size={14} /> Book Partner Session on Topmate →
           </button>
         </div>
       </div>

@@ -50,6 +50,7 @@ export default function Onboarding() {
 
   // Onboarding Form State
   const [form, setForm] = useState({
+    profile_subtype: "founder", // "founder" | "scout"
     // Step 1
     full_name: "",
     location: "",
@@ -138,6 +139,7 @@ export default function Onboarding() {
 
         setForm(prev => ({
           ...prev,
+          profile_subtype: pData.profile_subtype || uData.profile_subtype || localDraft?.form?.profile_subtype || prev.profile_subtype || "founder",
           full_name: pData.full_name || uData.full_name || localDraft?.form?.full_name || user?.displayName || prev.full_name,
           location: pData.location || localDraft?.form?.location || prev.location,
           linkedin_url: pData.linkedin_url || uData.linkedin_url || localDraft?.form?.linkedin_url || prev.linkedin_url,
@@ -370,6 +372,7 @@ export default function Onboarding() {
         await setDoc(founderProfileRef, {
           id: uid,
           user_id: uid,
+          profile_subtype: form.profile_subtype,
           full_name: form.full_name,
           email: user?.email || "",
           profile_photo_url: avatarPreview || null,
@@ -465,6 +468,7 @@ export default function Onboarding() {
         const userRef = doc(db, "users", uid);
         await setDoc(userRef, {
           onboarding_completed: true,
+          profile_subtype: form.profile_subtype,
           full_name: form.full_name,
           company_name: form.company_name,
           linkedin_url: form.linkedin_url,
@@ -596,6 +600,47 @@ export default function Onboarding() {
                   <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
                 </label>
                 <span className="text-[11px] text-gray-400 mt-2 font-medium">Profile Photo</span>
+              </div>
+
+              {/* Role Subtype: Founder vs Venture Scout */}
+              <div>
+                <label className={labelCls}>Are you raising as a Founder or submitting as a Venture Scout?</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => set("profile_subtype", "founder")}
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      form.profile_subtype === "founder"
+                        ? "border-black bg-black text-white shadow-md dark:border-white dark:bg-white dark:text-black"
+                        : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs">🚀 Startup Founder</span>
+                      {form.profile_subtype === "founder" && <CheckCircle2 size={14} />}
+                    </div>
+                    <p className={`text-[11px] leading-tight ${form.profile_subtype === "founder" ? "text-gray-300 dark:text-neutral-600" : "text-gray-400"}`}>
+                      Raising capital, launching product, and matching with thesis-aligned lead checks.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("profile_subtype", "scout")}
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      form.profile_subtype === "scout"
+                        ? "border-black bg-black text-white shadow-md dark:border-white dark:bg-white dark:text-black"
+                        : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs">🔍 Venture Scout / Deal Partner</span>
+                      {form.profile_subtype === "scout" && <CheckCircle2 size={14} />}
+                    </div>
+                    <p className={`text-[11px] leading-tight ${form.profile_subtype === "scout" ? "text-gray-300 dark:text-neutral-600" : "text-gray-400"}`}>
+                      Sourcing high-conviction deals, submitting cohort tear-sheets, and earning credits.
+                    </p>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

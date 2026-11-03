@@ -336,18 +336,18 @@ export default function ServiceProviders() {
            ══════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           
-          {/* CARD 4A: Source & Earn (Image 7 Exact Match) */}
+          {/* CARD 4A: Partner with Startups */}
           <div className="lg:col-span-2 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 sm:p-7 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
               <div className="max-w-md">
                 <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#0070F3]/10 text-[#0070F3] font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                  DECENTRALIZED SCOUT ENGINE
+                  HIGH-CONVICTION CLIENT PIPELINE
                 </div>
                 <h2 className="text-2xl sm:text-[26px] font-heading font-black text-black dark:text-white tracking-tight mb-2 leading-tight">
-                  Source &amp; Earn
+                  Connect with 99+ Funded Startups
                 </h2>
                 <p className="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed mb-4">
-                  Earn reputation and carry by sourcing institutional-grade protocols. Over $14B in pipeline already managed by our scout decentralized engine.
+                  Direct access to pre-seed, seed, and growth protocols actively hiring for KOL marketing, GTM advisory, smart contract audits, and exchange listings.
                 </p>
 
                 <div className="flex items-center gap-3">
@@ -355,9 +355,9 @@ export default function ServiceProviders() {
                     <div className="w-8 h-8 rounded-full bg-indigo-500 text-white font-bold text-xs flex items-center justify-center border-2 border-white dark:border-[#121316]">AK</div>
                     <div className="w-8 h-8 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center border-2 border-white dark:border-[#121316]">DC</div>
                     <div className="w-8 h-8 rounded-full bg-amber-500 text-white font-bold text-xs flex items-center justify-center border-2 border-white dark:border-[#121316]">ER</div>
-                    <div className="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">+120</div>
+                    <div className="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">+99</div>
                   </div>
-                  <span className="font-mono text-xs text-neutral-400">120+ Verified Scouts</span>
+                  <span className="font-mono text-xs text-neutral-400">99+ Hiring Startups</span>
                 </div>
               </div>
 
@@ -372,12 +372,12 @@ export default function ServiceProviders() {
             </div>
 
             <div className="pt-4 mt-6 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
-              <span className="font-mono text-xs text-neutral-400">Carry Share: <strong className="text-black dark:text-white">Up to 20% Scout Carry</strong></span>
+              <span className="font-mono text-xs text-neutral-400">Dealflow Access: <strong className="text-black dark:text-white">Direct RFP &amp; Founder Intros</strong></span>
               <Link
                 to="/login?role=agency"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 shadow-xs"
               >
-                <span>Become a Scout</span>
+                <span>Partner with Startups</span>
                 <ArrowRight size={14} />
               </Link>
             </div>

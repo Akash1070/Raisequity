@@ -19,7 +19,8 @@ import {
   ChevronRight,
   ExternalLink,
   Flame,
-  LayoutGrid
+  LayoutGrid,
+  Rocket
 } from "lucide-react";
 import { db } from "../lib/firebase";
 import { collection, query, getDocs, limit } from "firebase/firestore";
@@ -496,25 +497,25 @@ export default function Founders() {
            ══════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           
-          {/* CARD 5A: Source & Earn (Image 7 Exact Bento Architecture) */}
+          {/* CARD 5A: Submit Your Deal */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <h3 className="text-xl font-heading font-black text-black dark:text-white tracking-tight">
-                    Source &amp; Earn
+                    Submit Your Deal
                   </h3>
                   <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#0070F3]/10 text-[#0070F3] font-mono text-[9px] font-black uppercase tracking-wider mt-1">
                     $14B PIPELINE MANAGED
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white shrink-0">
-                  <Share2 size={18} />
+                  <Rocket size={18} />
                 </div>
               </div>
 
               <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Earn reputation and carry by sourcing institutional-grade protocols. Over $14B in pipeline already managed by our scout decentralized engine.
+                Launch your startup in our curated weekly cohort. Connect with 180+ verified venture check-writers and unlock automated Fast-Pass introductions.
               </p>
 
               {/* Avatar Cluster */}
@@ -523,9 +524,9 @@ export default function Founders() {
                   <div className="w-7 h-7 rounded-full bg-indigo-500 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">AK</div>
                   <div className="w-7 h-7 rounded-full bg-emerald-500 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">DC</div>
                   <div className="w-7 h-7 rounded-full bg-amber-500 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">ER</div>
-                  <div className="w-7 h-7 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[9px] flex items-center justify-center border-2 border-white dark:border-[#121316]">+120</div>
+                  <div className="w-7 h-7 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[9px] flex items-center justify-center border-2 border-white dark:border-[#121316]">+99</div>
                 </div>
-                <span className="font-mono text-[10px] text-neutral-400">Verified Scouts</span>
+                <span className="font-mono text-[10px] text-neutral-400">99+ Cohort Startups</span>
               </div>
             </div>
 
@@ -533,7 +534,7 @@ export default function Founders() {
               to="/login?role=founder"
               className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block shadow-xs"
             >
-              Become a Scout →
+              Submit Your Deal →
             </Link>
           </div>
 

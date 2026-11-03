@@ -15,8 +15,10 @@ import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import type { InvestorConnection } from "../../types";
 import type { Web3Investor } from "../../types/investor";
 
-const SECTOR_OPTIONS = ["All", "DeFi", "Layer 1", "DePIN", "Web3 Infrastructure", "AI", "SaaS", "GameFi", "NFT"];
+const SECTOR_OPTIONS = ["All", "AI", "SaaS", "DeFi", "Web3 Infrastructure", "Layer 1", "DePIN", "Fintech", "GameFi", "RWA", "Security", "Consumer"];
 const CATEGORY_OPTIONS = ["All", "VC Fund", "Angel Investor", "Accelerator", "Incubator", "Family Office", "Ecosystem Fund"];
+const STAGE_OPTIONS = ["All", "Pre-seed", "Seed", "Series A", "Series B+", "Growth"];
+const CHECK_SIZE_OPTIONS = ["All", "<$50k", "$50k - $250k", "$250k - $1M", "$1M+"];
 
 export default function Investors() {
   const navigate = useNavigate();
@@ -40,6 +42,12 @@ export default function Investors() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sectorFilter, setSectorFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [stageFilter, setStageFilter] = useState("All");
+  const [checkSizeFilter, setCheckSizeFilter] = useState("All");
+  const [warmIntroOnly, setWarmIntroOnly] = useState(false);
+  const [unlockedOnly, setUnlockedOnly] = useState(false);
+  const [highConvictionOnly, setHighConvictionOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"fit" | "intros" | "name">("fit");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showDeclareModal, setShowDeclareModal] = useState(false);
@@ -215,8 +223,8 @@ export default function Investors() {
   ) as (Web3Investor & { match: import("../../lib/matching").MatchResult })[];
   const matchById = new Map(rankedDirectory.map((r) => [r.id, r.match]));
 
-  // Filtering Web3 Directory (best fit first)
-  const filteredDirectory = rankedDirectory.filter((inv) => {
+  // Filtering Web3 Directory (best fit first with advanced multi-filters)
+  let filteredDirectory = rankedDirectory.filter((inv) => {
     const matchesSearch =
       !searchTerm ||
       inv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -225,8 +233,28 @@ export default function Investors() {
     const matchesCategory = categoryFilter === "All" || inv.category === categoryFilter;
     const matchesSector =
       sectorFilter === "All" || (inv.sectors && inv.sectors.some((s) => s.toLowerCase().includes(sectorFilter.toLowerCase())));
-    return matchesSearch && matchesCategory && matchesSector;
+    const matchesStage =
+      stageFilter === "All" || (inv.stage && inv.stage.toLowerCase().includes(stageFilter.toLowerCase()));
+
+    let matchesCheck = true;
+    if (checkSizeFilter === "<$50k") matchesCheck = inv.check_size?.includes("25k") || inv.check_size?.includes("50k");
+    else if (checkSizeFilter === "$50k - $250k") matchesCheck = inv.check_size?.includes("50k") || inv.check_size?.includes("100k") || inv.check_size?.includes("250k");
+    else if (checkSizeFilter === "$250k - $1M") matchesCheck = inv.check_size?.includes("500k") || inv.check_size?.includes("1M") || inv.check_size?.includes("750k");
+    else if (checkSizeFilter === "$1M+") matchesCheck = inv.check_size?.includes("1M") || inv.check_size?.includes("2M") || inv.check_size?.includes("5M");
+
+    const matchesWarm = !warmIntroOnly || Boolean(inv.warm_intro_founder || (inv.know_count && inv.know_count > 0));
+    const matchesUnlocked = !unlockedOnly || unlockedIds.includes(inv.id);
+    const m = matchById.get(inv.id);
+    const matchesConviction = !highConvictionOnly || (m && m.score >= 70);
+
+    return matchesSearch && matchesCategory && matchesSector && matchesStage && matchesCheck && matchesWarm && matchesUnlocked && matchesConviction;
   });
+
+  if (sortBy === "intros") {
+    filteredDirectory.sort((a, b) => (b.know_count || 0) - (a.know_count || 0));
+  } else if (sortBy === "name") {
+    filteredDirectory.sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   // Filtering Connections Graph
   const filteredConnections = declaredConnections.filter((conn) => {
@@ -348,22 +376,125 @@ export default function Investors() {
 
         {/* Category Filter (Directory Only) */}
         {activeTab === "directory" && (
-          <div className="relative">
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="appearance-none bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none shadow-2xs text-slate-900 dark:text-white"
-            >
-              {CATEGORY_OPTIONS.map((c) => (
-                <option key={c} value={c} className="bg-white dark:bg-[#111111] text-slate-900 dark:text-white">
-                  Category: {c}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
+          <>
+            <div className="relative">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="appearance-none bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none shadow-2xs text-slate-900 dark:text-white"
+              >
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c} className="bg-white dark:bg-[#111111] text-slate-900 dark:text-white">
+                    Type: {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className="appearance-none bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none shadow-2xs text-slate-900 dark:text-white"
+              >
+                {STAGE_OPTIONS.map((st) => (
+                  <option key={st} value={st} className="bg-white dark:bg-[#111111] text-slate-900 dark:text-white">
+                    Stage: {st}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={checkSizeFilter}
+                onChange={(e) => setCheckSizeFilter(e.target.value)}
+                className="appearance-none bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none shadow-2xs text-slate-900 dark:text-white"
+              >
+                {CHECK_SIZE_OPTIONS.map((cs) => (
+                  <option key={cs} value={cs} className="bg-white dark:bg-[#111111] text-slate-900 dark:text-white">
+                    Check: {cs}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </>
         )}
       </div>
+
+      {/* Advanced Quick-Filter Pills & Sort Bar */}
+      {activeTab === "directory" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setHighConvictionOnly(!highConvictionOnly)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                highConvictionOnly
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white"
+              }`}
+            >
+              <span>🔥 70%+ Fit Only</span>
+            </button>
+
+            <button
+              onClick={() => setWarmIntroOnly(!warmIntroOnly)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                warmIntroOnly
+                  ? "bg-[#0070F3] text-white shadow-xs"
+                  : "bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white"
+              }`}
+            >
+              <span>🤝 Warm Bridges Only</span>
+            </button>
+
+            <button
+              onClick={() => setUnlockedOnly(!unlockedOnly)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                unlockedOnly
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white"
+              }`}
+            >
+              <span>🔓 Unlocked ({unlockedIds.length})</span>
+            </button>
+
+            {(highConvictionOnly || warmIntroOnly || unlockedOnly || stageFilter !== "All" || checkSizeFilter !== "All" || sectorFilter !== "All" || categoryFilter !== "All" || searchTerm) && (
+              <button
+                onClick={() => {
+                  setHighConvictionOnly(false);
+                  setWarmIntroOnly(false);
+                  setUnlockedOnly(false);
+                  setStageFilter("All");
+                  setCheckSizeFilter("All");
+                  setSectorFilter("All");
+                  setCategoryFilter("All");
+                  setSearchTerm("");
+                }}
+                className="text-[11px] font-mono font-bold text-slate-400 hover:text-rose-500 transition-colors ml-2 cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="text-slate-400">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-xl px-3 py-1.5 font-bold text-xs outline-none cursor-pointer text-slate-800 dark:text-slate-200"
+            >
+              <option value="fit">Highest Fit %</option>
+              <option value="intros">Most Warm Bridges</option>
+              <option value="name">Name (A-Z)</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: WEB3 INVESTOR DATABASE */}
       {activeTab === "directory" && (
@@ -474,7 +605,13 @@ export default function Investors() {
                           <div className="space-y-2 pt-1">
                             {inv.email && (
                               <div className="flex items-center justify-between bg-white dark:bg-[#121316] p-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white font-bold">
-                                <span className="truncate mr-2">✉️ {inv.email}</span>
+                                <a
+                                  href={`mailto:${inv.email}?subject=${encodeURIComponent(`Intro: ${founderProfile?.company_name || 'Startup'} (Raisequity Dealflow)`)}&body=${encodeURIComponent(`Hi ${inv.name.split(' ')[0]},\n\nI am building ${founderProfile?.company_name || 'our startup'} (${founderProfile?.what_company_does || 'Tech'}). We noticed ${inv.firm}'s investments in ${inv.sectors?.[0] || 'this sector'} and wanted to share our fast-pass tear sheet.\n\nWebsite: ${founderProfile?.company_website || ''}`)}`}
+                                  className="truncate mr-2 text-indigo-600 dark:text-indigo-400 hover:underline"
+                                  title="Click to email direct pitch"
+                                >
+                                  ✉️ {inv.email}
+                                </a>
                                 <button
                                   onClick={() => copyToClipboard(inv.email!, `email-${inv.id}`)}
                                   className="text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer shrink-0"
@@ -495,6 +632,26 @@ export default function Investors() {
                                 <ExternalLink size={14} className="text-sky-600" />
                               </a>
                             )}
+
+                            <div className="flex items-center gap-2 pt-1">
+                              {inv.email && (
+                                <a
+                                  href={`mailto:${inv.email}?subject=${encodeURIComponent(`Intro: ${founderProfile?.company_name || 'Startup'}`)}`}
+                                  className="flex-1 py-1.5 px-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-lg text-[10px] font-mono font-bold text-center transition-colors"
+                                >
+                                  ✉️ Send Pitch Email
+                                </a>
+                              )}
+                              <button
+                                onClick={() => {
+                                  const blurb = `Hi ${inv.name.split(' ')[0]},\n\nWe are building ${founderProfile?.company_name || 'our startup'}. ${founderProfile?.what_company_does || ''} Targeting ${inv.stage || 'Seed'} round (${inv.check_size || '$100k'}).\nWebsite: ${founderProfile?.company_website || ''}`;
+                                  copyToClipboard(blurb, `blurb-${inv.id}`);
+                                }}
+                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-mono font-bold text-center transition-colors cursor-pointer"
+                              >
+                                {copiedId === `blurb-${inv.id}` ? "✓ Blurb Copied" : "📋 Copy Blurb"}
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-2 pt-1 text-xs font-mono text-slate-400">

@@ -4,10 +4,11 @@ import {
   Activity, X, Save, ExternalLink, Star, Edit, Search, Sparkles, 
   CheckCircle2, AlertCircle, ArrowUpRight, ShieldCheck, Flame, ArrowRight, ArrowLeft
 } from "lucide-react";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { LaunchItem } from "../../types/launch";
 import { projects } from "../../data/projects";
+import { SEEDED_LAUNCHES, SEEDED_DEAL_FLOW } from "../../data/dealFlowData";
 
 const defaultSampleLaunches: LaunchItem[] = projects.slice(0, 8).map((p, idx) => {
   const dates = [
@@ -52,6 +53,8 @@ export default function AdminLaunches() {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [form, setForm] = useState<Partial<LaunchItem>>({
     id: "",
@@ -92,16 +95,36 @@ export default function AdminLaunches() {
     }
   };
 
-  const handleSeedDefaults = async () => {
-    if (!confirm("Seed 8 default project launch submissions into Firestore database?")) return;
+  const handleSync98Deals = async () => {
     setSeeding(true);
+    setSyncFeedback({ type: 'success', message: 'Syncing 98 verified projects into Firestore deal_flow & launches...' });
     try {
-      for (const item of defaultSampleLaunches) {
-        await setDoc(doc(db, "launches", item.id), item);
+      // 1. Batch write to launches
+      const batchSize = 100;
+      for (let i = 0; i < SEEDED_LAUNCHES.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = SEEDED_LAUNCHES.slice(i, i + batchSize);
+        chunk.forEach((l: any) => {
+          batch.set(doc(db, "launches", l.id), l, { merge: true });
+        });
+        await batch.commit();
       }
+
+      // 2. Batch write to deal_flow
+      for (let i = 0; i < SEEDED_DEAL_FLOW.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const chunk = SEEDED_DEAL_FLOW.slice(i, i + batchSize);
+        chunk.forEach((d: any) => {
+          batch.set(doc(db, "deal_flow", d.id), d, { merge: true });
+        });
+        await batch.commit();
+      }
+
       await fetchLaunches();
+      setSyncFeedback({ type: 'success', message: `Successfully synced ${SEEDED_LAUNCHES.length} verified projects to Firestore!` });
+      setTimeout(() => setSyncFeedback(null), 5000);
     } catch (err: any) {
-      alert("Seeding error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Sync error: " + (err.message || 'Failed') });
     } finally {
       setSeeding(false);
     }
@@ -138,8 +161,10 @@ export default function AdminLaunches() {
       setLaunches([payload, ...launches.filter(l => l.id !== lId)]);
       setShowForm(false);
       resetForm();
+      setSyncFeedback({ type: 'success', message: 'Project launch saved successfully!' });
+      setTimeout(() => setSyncFeedback(null), 4000);
     } catch (err: any) {
-      alert("Save error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Save error: " + (err.message || 'Failed') });
     }
   };
 
@@ -149,12 +174,19 @@ export default function AdminLaunches() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this launch project?")) return;
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      setTimeout(() => setConfirmDeleteId(null), 4000);
+      return;
+    }
+    setConfirmDeleteId(null);
     try {
       await deleteDoc(doc(db, "launches", id));
       setLaunches(launches.filter(l => l.id !== id));
+      setSyncFeedback({ type: 'success', message: 'Launch removed.' });
+      setTimeout(() => setSyncFeedback(null), 3000);
     } catch (err: any) {
-      alert("Delete error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Delete error: " + (err.message || 'Failed') });
     }
   };
 
@@ -164,7 +196,7 @@ export default function AdminLaunches() {
       await updateDoc(doc(db, "launches", id), { status: nextStatus });
       setLaunches(launches.map(l => l.id === id ? { ...l, status: nextStatus as any } : l));
     } catch (err: any) {
-      alert("Status toggle error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Status toggle error: " + err.message });
     }
   };
 
@@ -173,7 +205,7 @@ export default function AdminLaunches() {
       await updateDoc(doc(db, "launches", id), { is_winner: !current });
       setLaunches(launches.map(l => l.id === id ? { ...l, is_winner: !current } : l));
     } catch (err: any) {
-      alert("Winner toggle error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Winner toggle error: " + err.message });
     }
   };
 
@@ -182,7 +214,7 @@ export default function AdminLaunches() {
       await updateDoc(doc(db, "launches", id), { badgeVerified: !current });
       setLaunches(launches.map(l => l.id === id ? { ...l, badgeVerified: !current } : l));
     } catch (err: any) {
-      alert("Verification toggle error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Verification toggle error: " + err.message });
     }
   };
 
@@ -194,7 +226,7 @@ export default function AdminLaunches() {
       await updateDoc(doc(db, "launches", id), { scheduled_date: newDate });
       setLaunches(launches.map(l => l.id === id ? { ...l, scheduled_date: newDate } : l));
     } catch (err: any) {
-      alert("Date shift error: " + err.message);
+      setSyncFeedback({ type: 'error', message: "Date shift error: " + err.message });
     }
   };
 
@@ -259,26 +291,36 @@ export default function AdminLaunches() {
           <p className="text-gray-500 font-medium mt-1">Manage project launches, daily slot queues, paid fast-tracks, and revenue monetization.</p>
         </div>
         <div className="flex items-center gap-3">
-          {launches.length === 0 && (
-            <button
-              onClick={handleSeedDefaults}
-              disabled={seeding}
-              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-3 rounded-2xl font-bold text-sm hover:bg-emerald-700 shadow-md transition-all disabled:opacity-50"
-            >
-              <Sparkles size={16} /> {seeding ? "Importing..." : "Seed Default Projects (8)"}
-            </button>
-          )}
+          <button
+            onClick={handleSync98Deals}
+            disabled={seeding}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <Sparkles size={16} /> {seeding ? "Syncing..." : `⚡ Sync 98 CSV Deals`}
+          </button>
           <button
             onClick={() => {
               if (showForm) resetForm();
               setShowForm(!showForm);
             }}
-            className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-2xl font-bold text-sm hover:bg-gray-800 shadow-md transition-all"
+            className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-2xl font-bold text-sm hover:bg-gray-800 shadow-md transition-all cursor-pointer"
           >
             {showForm ? <X size={16} /> : <Plus size={16} />} {showForm ? "Cancel" : "Add Submission"}
           </button>
         </div>
       </div>
+
+      {/* Sync Feedback Notification Banner */}
+      {syncFeedback && (
+        <div className={`p-4 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between ${
+          syncFeedback.type === 'success'
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            : 'bg-red-50 text-red-800 border-red-200'
+        }`}>
+          <span>{syncFeedback.message}</span>
+          <button onClick={() => setSyncFeedback(null)} className="text-slate-400 hover:text-slate-700 ml-4">✕</button>
+        </div>
+      )}
 
       {/* METRICS & REVENUE CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

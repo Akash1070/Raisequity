@@ -40,6 +40,7 @@ import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import OneClickSafeModal from "../../components/investor/OneClickSafeModal";
 import CalBookingEmbed from "../../components/investor/CalBookingEmbed";
 import TelegramThesisAlertModal from "../../components/investor/TelegramThesisAlertModal";
+import { SEEDED_DEAL_FLOW } from "../../data/dealFlowData";
 
 interface DealItem {
   id: string;
@@ -65,6 +66,14 @@ interface DealItem {
   description: string;
   keywords: string[];
   authenticityScore: number;
+  website_url?: string;
+  pitch_deck?: string;
+  chain?: string;
+  token?: string;
+  min_ticket?: string;
+  twitter_handle?: string;
+  telegram_handle?: string;
+  traction?: string;
 }
 
 const CURATED_HIRE_DEALS: DealItem[] = [
@@ -319,43 +328,28 @@ export default function DealFeed() {
     }
   };
 
-  // Fetch live startups from Firestore
+  // Fetch live deals from Firestore or fallback to 98 seeded projects
   useEffect(() => {
     async function loadLiveStartups() {
       try {
-        const startupsSnap = await getDocs(query(collection(db, "startups"), limit(25)));
-        if (!startupsSnap.empty) {
-          const liveItems: DealItem[] = startupsSnap.docs.map(docSnap => {
-            const data = docSnap.data();
-            return {
-              id: docSnap.id,
-              founder_id: data.founder_id || '',
-              founder_email: data.founder_email || '',
-              name: data.name || 'Stealth Startup',
-              founder: data.founder_name || 'Founder',
-              sector: data.sector || 'AI & SaaS',
-              industry: [data.sector || 'SaaS'],
-              stage: data.stage || 'Seed Round',
-              targetRaise: data.raise_amount ? `$${Number(data.raise_amount).toLocaleString()}` : '$750,000',
-              valuationCap: data.valuation_cap ? `$${(Number(data.valuation_cap) / 1000000).toFixed(1)}M Cap` : '$6.0M Cap',
-              location: data.location || 'San Francisco, CA',
-              matchScore: 95,
-              matchLevel: 'HIGH CONVICTION',
-              roundType: 'Seed Lead',
-              isPreLaunch: true,
-              preLaunchDaysRemaining: 7,
-              leadAnchor: '$50,000 Reserved by Network Angels',
-              tagline: data.tagline || data.description || 'Verified early-stage startup.',
-              description: data.description || data.problem || 'Institutional seed round candidate on Raisequity.',
-              keywords: [data.sector?.toLowerCase() || 'ai', 'seed_round', 'delaware_c_corp'],
-              authenticityScore: 98,
-            };
-          });
+        const dealFlowSnap = await getDocs(query(collection(db, "deal_flow"), limit(100)));
+        if (!dealFlowSnap.empty) {
+          const liveDeals = dealFlowSnap.docs.map(d => ({ id: d.id, ...d.data() })) as DealItem[];
+          setDeals(liveDeals);
+          if (liveDeals.length > 0) {
+            setSelectedDealId(liveDeals[0].id);
+          }
+          return;
+        }
 
-          setDeals([...liveItems, ...CURATED_HIRE_DEALS]);
+        // Fallback to high-density seeded deals dataset (98 verified projects)
+        if (SEEDED_DEAL_FLOW && SEEDED_DEAL_FLOW.length > 0) {
+          setDeals([...SEEDED_DEAL_FLOW as DealItem[], ...CURATED_HIRE_DEALS]);
+          setSelectedDealId(SEEDED_DEAL_FLOW[0].id);
         }
       } catch (err) {
-        console.warn("[DealFeed] Error loading startups:", err);
+        console.warn("[DealFeed] Error loading deals from Firestore, using seeded dataset:", err);
+        setDeals([...SEEDED_DEAL_FLOW as DealItem[], ...CURATED_HIRE_DEALS]);
       }
     }
 
@@ -684,6 +678,47 @@ export default function DealFeed() {
                 <span className="text-[10px] text-[#0070F3] uppercase font-bold block mb-1">Round Status</span>
                 <span className="font-black text-xs text-[#0070F3]">{selectedDeal.roundType}</span>
               </div>
+            </div>
+
+            {/* Project Quick Links & Web3 Info */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
+              {selectedDeal.website_url && (
+                <a
+                  href={selectedDeal.website_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <ExternalLink size={12} className="text-[#0070F3]" />
+                  <span>Website</span>
+                </a>
+              )}
+              {selectedDeal.pitch_deck && (
+                <a
+                  href={selectedDeal.pitch_deck}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-bold flex items-center gap-1.5 transition-colors border border-purple-200 dark:border-purple-800/40"
+                >
+                  <FileText size={12} />
+                  <span>Pitch Deck ↗</span>
+                </a>
+              )}
+              {selectedDeal.chain && (
+                <span className="px-2.5 py-1 rounded-xl bg-neutral-100 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-300 font-bold">
+                  ⛓️ {selectedDeal.chain}
+                </span>
+              )}
+              {selectedDeal.token && selectedDeal.token !== '—' && (
+                <span className="px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold">
+                  🪙 {selectedDeal.token}
+                </span>
+              )}
+              {selectedDeal.min_ticket && selectedDeal.min_ticket !== '—' && (
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold">
+                  🎯 Min: {selectedDeal.min_ticket}
+                </span>
+              )}
             </div>
 
             {/* Description & Problem-Solution */}

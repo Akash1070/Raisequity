@@ -136,3 +136,4 @@ export default function OnboardingTrackSwitcher({ currentTrack }: TrackSwitcherP
     </div>
   );
 }
+

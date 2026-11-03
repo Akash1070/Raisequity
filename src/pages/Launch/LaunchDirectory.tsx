@@ -28,6 +28,7 @@ import { safeStorage } from '../../lib/storage';
 import MyLaunch from '../Dashboard/MyLaunch';
 import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { NumberTicker } from '../../components/ui/NumberTicker';
+import { SEEDED_LAUNCHES } from '../../data/dealFlowData';
 
 const CORE_NARRATIVES = ['All', 'AI', 'Web3', 'SaaS', 'Infrastructure'];
 
@@ -178,6 +179,12 @@ export default function LaunchDirectory() {
       for (const curated of CURATED_INSTITUTIONAL_LAUNCHES) {
         if (!combined.some((item) => item.id === curated.id || item.slug === curated.slug)) {
           combined.push(curated);
+        }
+      }
+
+      for (const seeded of SEEDED_LAUNCHES) {
+        if (!combined.some((item) => item.id === seeded.id || item.slug === seeded.slug)) {
+          combined.push(seeded);
         }
       }
 
@@ -589,18 +596,18 @@ export default function LaunchDirectory() {
                ══════════════════════════════════════════════════════════ */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               
-              {/* CARD 5A: Source & Earn (Image 7 Exact Match) */}
+              {/* CARD 5A: Verified Dealflow Submission */}
               <div className="lg:col-span-2 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 sm:p-7 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="max-w-md">
                     <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#0070F3]/10 text-[#0070F3] font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                      DECENTRALIZED SCOUT ENGINE
+                      VERIFIED DEALFLOW ENGINE
                     </div>
                     <h2 className="text-2xl sm:text-[26px] font-heading font-black text-black dark:text-white tracking-tight mb-2 leading-tight">
-                      Source &amp; Earn
+                      Submit Your Startup Deal
                     </h2>
                     <p className="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed mb-4">
-                      Earn reputation and carry by sourcing institutional-grade protocols. Over $14B in pipeline already managed by our scout decentralized engine.
+                      Get your project directly in front of 180+ verified check-writers. Earn guaranteed dofollow backlinks, community upvotes, and automated Fast-Pass investor syndication.
                     </p>
 
                     <div className="flex items-center gap-3">
@@ -608,9 +615,9 @@ export default function LaunchDirectory() {
                         <div className="w-8 h-8 rounded-full bg-indigo-500 text-white font-bold text-xs flex items-center justify-center border-2 border-white dark:border-[#121316]">AK</div>
                         <div className="w-8 h-8 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center border-2 border-white dark:border-[#121316]">DC</div>
                         <div className="w-8 h-8 rounded-full bg-amber-500 text-white font-bold text-xs flex items-center justify-center border-2 border-white dark:border-[#121316]">ER</div>
-                        <div className="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">+120</div>
+                        <div className="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[10px] flex items-center justify-center border-2 border-white dark:border-[#121316]">+99</div>
                       </div>
-                      <span className="font-mono text-xs text-neutral-400">120+ Verified Scouts</span>
+                      <span className="font-mono text-xs text-neutral-400">99+ Live Deals in Active Cohort</span>
                     </div>
                   </div>
 
@@ -625,12 +632,12 @@ export default function LaunchDirectory() {
                 </div>
 
                 <div className="pt-4 mt-6 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
-                  <span className="font-mono text-xs text-neutral-400">Carry Share: <strong className="text-black dark:text-white">Up to 20% Scout Carry</strong></span>
+                  <span className="font-mono text-xs text-neutral-400">Fast-Pass SLA: <strong className="text-black dark:text-white">3 Partner Calls in 30 Days</strong></span>
                   <button
-                    onClick={() => handleProtectedAction('/launch/submit')}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 shadow-xs"
+                    onClick={() => handleProtectedAction('/dashboard/launch/submit')}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 shadow-xs cursor-pointer"
                   >
-                    <span>Become a Scout</span>
+                    <span>Submit Startup Deal</span>
                     <ArrowRight size={14} />
                   </button>
                 </div>
