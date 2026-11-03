@@ -78,7 +78,7 @@ export async function getWeb3Investors(
   options?: { limit?: number; sector?: string }
 ): Promise<Web3Investor[]> {
   try {
-    const maxLimit = options?.limit ?? (isAdmin ? 1000 : 300);
+    const maxLimit = options?.limit ?? 5000;
     const colRef = collection(db, COLLECTION_NAME);
     let q = query(colRef, limit(maxLimit));
 

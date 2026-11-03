@@ -32,6 +32,7 @@ export default function MyLaunch() {
   const [badgeModalOpen, setBadgeModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [confirmDeleteLaunch, setConfirmDeleteLaunch] = useState(false);
 
   const fetchLaunches = async () => {
     const uid = user?.uid || (user as any)?.id;
@@ -77,7 +78,12 @@ export default function MyLaunch() {
 
   const handleDelete = async () => {
     if (!activeLaunch) return;
-    if (!window.confirm('Are you sure you want to unpublish and delete this directory launch?')) return;
+    if (!confirmDeleteLaunch) {
+      setConfirmDeleteLaunch(true);
+      setTimeout(() => setConfirmDeleteLaunch(false), 4000);
+      return;
+    }
+    setConfirmDeleteLaunch(false);
     setSaving(true);
     const res = await deleteLaunch(activeLaunch.id);
     if (res.success) {
@@ -95,7 +101,7 @@ export default function MyLaunch() {
     if (!uid) return;
     const comp = company as any;
     if (!comp?.company_name || !comp?.company_website) {
-      navigate('/launch/submit');
+      navigate('/dashboard/launch/submit');
       return;
     }
 
@@ -159,7 +165,7 @@ export default function MyLaunch() {
           </div>
 
           <Link
-            to="/launch/submit"
+            to="/dashboard/launch/submit"
             className="self-start sm:self-auto inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <Plus size={15} /> Submit New Launch
@@ -230,7 +236,7 @@ export default function MyLaunch() {
               ) : null}
 
               <Link
-                to="/launch/submit"
+                to="/dashboard/launch/submit"
                 className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <Rocket size={15} /> Submit Custom Launch →
@@ -445,10 +451,14 @@ export default function MyLaunch() {
               </button>
               <button
                 onClick={handleDelete}
-                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-full transition-all cursor-pointer"
-                title="Delete Directory Listing"
+                className={`transition-all cursor-pointer ${
+                  confirmDeleteLaunch
+                    ? "px-3 py-1.5 bg-rose-600 text-white font-mono text-[10px] font-black rounded-full shadow-xs"
+                    : "p-2 text-rose-500 hover:bg-rose-500/10 rounded-full"
+                }`}
+                title={confirmDeleteLaunch ? "Click again to confirm unpublish" : "Delete Directory Listing"}
               >
-                <Trash2 size={16} />
+                {confirmDeleteLaunch ? "Confirm Delete?" : <Trash2 size={16} />}
               </button>
             </div>
           ) : (

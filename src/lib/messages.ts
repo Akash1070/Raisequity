@@ -312,3 +312,6 @@ export async function fetchDirectoryMembers(currentUserId: string): Promise<Conv
 
   return results;
 }
+
+export { sendDirectMessage as sendMessage };
+

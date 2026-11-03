@@ -27,6 +27,7 @@ import { db } from "../../lib/firebase";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { safeStorage } from "../../lib/storage";
 import { Logo } from "../../components/ui/Logo";
+import OnboardingTrackSwitcher from "../../components/onboarding/OnboardingTrackSwitcher";
 
 const SERVICE_TRACKS = [
   "Full-Stack Dev & Smart Contracts",
@@ -84,19 +85,14 @@ export default function AgencyOnboarding() {
     if (uid) {
       const isLocalCompleted = Boolean(safeStorage.getItem(`rq_onboarding_completed_${uid}`));
       if (profile?.onboarding_completed || isLocalCompleted) {
-        navigate("/dashboard/feed", { replace: true });
+        navigate("/agency-dashboard/rfps", { replace: true });
         return;
       }
 
-      // Check role routing
-      const userRole = profile?.role;
-      if (userRole === "founder") {
-        navigate("/onboarding", { replace: true });
-        return;
-      }
-      if (userRole === "investor") {
-        navigate("/investor-onboarding", { replace: true });
-        return;
+      // Ensure role is synchronized to service_provider
+      if (uid && profile && profile.role !== "service_provider" && !profile.onboarding_completed) {
+        updateDoc(doc(db, "users", uid), { role: "service_provider" }).catch(() => {});
+        safeStorage.setItem(`rq_user_role_${uid}`, "service_provider");
       }
     }
 
@@ -298,6 +294,7 @@ export default function AgencyOnboarding() {
 
       {/* Main Form Body */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 pb-20">
+        <OnboardingTrackSwitcher currentTrack="service_provider" />
         <div className="w-full max-w-[680px]">
           <AnimatePresence mode="wait">
 

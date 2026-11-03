@@ -25,11 +25,18 @@ import {
   Copy,
   Terminal,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Loader2,
+  Coins,
+  CheckCircle,
+  AlertTriangle
 } from "lucide-react";
-import { collection, getDocs, query, limit } from "firebase/firestore";
+import { collection, getDocs, query, limit, addDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
+import { spendCredits } from "../../lib/credits";
+import { getOrCreateConversation, sendDirectMessage } from "../../lib/messages";
+import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import OneClickSafeModal from "../../components/investor/OneClickSafeModal";
 import CalBookingEmbed from "../../components/investor/CalBookingEmbed";
 import TelegramThesisAlertModal from "../../components/investor/TelegramThesisAlertModal";
@@ -214,6 +221,103 @@ export default function DealFeed() {
   const [safeModalOpen, setSafeModalOpen] = useState(false);
   const [calModalOpen, setCalModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
+  const [bookingCall, setBookingCall] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+
+  const handleConfirmDiligenceCall = async () => {
+    if (!user) return;
+    const currentCredits = profile?.credit_balance ?? 0;
+    if (currentCredits < 25) {
+      setBookingError("Insufficient credits. 25 credits required to book a partner diligence call.");
+      setCreditModalOpen(true);
+      return;
+    }
+
+    setBookingCall(true);
+    setBookingError(null);
+    try {
+      const spendRes = await spendCredits(
+        user.uid,
+        'diligence_call',
+        25,
+        'discretionary_addon',
+        { founder: selectedDeal.founder, company: selectedDeal.name }
+      );
+
+      if (!spendRes.success) {
+        setBookingError(spendRes.error || "Credit deduction failed.");
+        setBookingCall(false);
+        return;
+      }
+
+      await addDoc(collection(db, "call_bookings"), {
+        investor_id: user.uid,
+        investor_name: profile?.full_name || user.email?.split("@")[0] || "Accredited Partner",
+        investor_email: user.email || "",
+        founder_id: selectedDeal.founder_id || selectedDeal.id,
+        founder_name: selectedDeal.founder,
+        company_name: selectedDeal.name,
+        round_stage: selectedDeal.stage,
+        target_raise: selectedDeal.targetRaise,
+        status: "confirmed",
+        created_at: new Date().toISOString()
+      });
+
+      if (selectedDeal.founder_id) {
+        await addDoc(collection(db, "notifications"), {
+          user_id: selectedDeal.founder_id,
+          type: "diligence_call",
+          title: "New Partner Diligence Call Booked",
+          message: `${profile?.full_name || 'An accredited investor'} booked a 30-min diligence meeting for ${selectedDeal.name}.`,
+          created_at: new Date().toISOString(),
+          read: false
+        });
+      }
+
+      try {
+        const recipientUid = selectedDeal.founder_id || "founder_partner";
+        const convId = await getOrCreateConversation(
+          {
+            id: user.uid,
+            name: profile?.full_name || "Accredited Partner",
+            role: "investor",
+            email: user.email || "investor@raisequity.com"
+          },
+          {
+            id: recipientUid,
+            name: selectedDeal.founder,
+            role: "founder",
+            email: selectedDeal.founder_email || "founder@raisequity.com",
+            headline: `${selectedDeal.name} · Founder`
+          }
+        );
+
+        await sendDirectMessage({
+          conversationId: convId,
+          sender: {
+            id: user.uid,
+            name: profile?.full_name || "Accredited Partner",
+            role: "investor",
+            email: user.email || "investor@raisequity.com"
+          },
+          recipientId: recipientUid,
+          recipientRole: "founder",
+          content: `Hi ${selectedDeal.founder}, I just booked a 30-min diligence session for ${selectedDeal.name}. Looking forward to reviewing your metrics and roadmap.`
+        });
+      } catch (mErr) {
+        console.warn("Automated direct message error:", mErr);
+      }
+
+      setBookingSuccess(true);
+    } catch (err: any) {
+      console.error("Call booking error:", err);
+      setBookingError(err.message || "Failed to schedule diligence call.");
+    } finally {
+      setBookingCall(false);
+    }
+  };
 
   // Fetch live startups from Firestore
   useEffect(() => {
@@ -688,37 +792,122 @@ export default function DealFeed() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-[#121316] border border-neutral-200 dark:border-white/10 rounded-[28px] max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-heading font-black text-lg text-black dark:text-white">
+              <h3 className="font-heading font-black text-lg text-black dark:text-white flex items-center gap-2">
+                <Coins size={18} className="text-amber-500" />
                 Schedule Diligence Call with {selectedDeal.name}
               </h3>
-              <button onClick={() => setCalModalOpen(false)} className="text-neutral-400 hover:text-black dark:hover:text-white">✕</button>
+              <button
+                onClick={() => {
+                  setCalModalOpen(false);
+                  setBookingSuccess(false);
+                  setBookingError(null);
+                }}
+                className="text-neutral-400 hover:text-black dark:hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            <p className="text-xs text-neutral-500 font-mono">
-              Confirmed 30-min partner diligence meeting with founder {selectedDeal.founder}.
-            </p>
-            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200 dark:border-white/5 space-y-2 font-mono text-xs">
-              <div className="flex justify-between">
-                <span className="text-neutral-400">Stage:</span>
-                <strong className="text-black dark:text-white">{selectedDeal.stage}</strong>
+
+            {bookingSuccess ? (
+              <div className="space-y-4 py-2">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-500/30 flex items-start gap-3">
+                  <CheckCircle size={20} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-200 font-heading">
+                      Diligence Call Booked (25 Credits Deducted)
+                    </h4>
+                    <p className="text-xs font-mono text-emerald-800 dark:text-emerald-300/80 mt-1 leading-relaxed">
+                      Session reserved with founder <strong>{selectedDeal.founder}</strong>. A calendar invite and automated direct messaging channel have been established.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-neutral-50 dark:bg-[#18191e] rounded-xl border border-neutral-200 dark:border-white/5 font-mono text-xs space-y-1">
+                  <div className="flex justify-between text-neutral-500">
+                    <span>Company:</span>
+                    <strong className="text-black dark:text-white">{selectedDeal.name}</strong>
+                  </div>
+                  <div className="flex justify-between text-neutral-500">
+                    <span>Round:</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400">{selectedDeal.targetRaise} @ {selectedDeal.valuationCap}</strong>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setCalModalOpen(false);
+                      setBookingSuccess(false);
+                      navigate("/investor-dashboard/messages");
+                    }}
+                    className="flex-1 py-3 px-4 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <MessageSquare size={14} /> Open Direct Chat with Founder 💬
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCalModalOpen(false);
+                      setBookingSuccess(false);
+                    }}
+                    className="py-3 px-5 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-extrabold text-xs transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">Target Raise:</span>
-                <strong className="text-emerald-500">{selectedDeal.targetRaise}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">Valuation Cap:</span>
-                <strong className="text-black dark:text-white">{selectedDeal.valuationCap}</strong>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                alert(`Diligence call request sent to ${selectedDeal.founder}. You will receive a calendar invitation shortly.`);
-                setCalModalOpen(false);
-              }}
-              className="w-full py-3 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all cursor-pointer"
-            >
-              Confirm 30-Min Call Request →
-            </button>
+            ) : (
+              <>
+                <p className="text-xs text-neutral-500 font-mono">
+                  Confirm 30-min partner diligence meeting with founder <strong>{selectedDeal.founder}</strong>.
+                </p>
+
+                {/* Credit Cost & Balance Pill */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 font-mono text-xs">
+                  <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-bold">
+                    <Coins size={14} className="text-amber-500" /> Diligence Call Fee: 25 Credits
+                  </span>
+                  <span className="text-neutral-600 dark:text-neutral-400">
+                    Your Balance: <strong className="text-black dark:text-white">{profile?.credit_balance ?? 50}</strong>
+                  </span>
+                </div>
+
+                {bookingError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 rounded-xl border border-red-500/30 text-xs font-mono text-red-600 dark:text-red-300 flex items-center justify-between">
+                    <span>{bookingError}</span>
+                    <button
+                      onClick={() => setCreditModalOpen(true)}
+                      className="px-2.5 py-1 bg-red-600 text-white rounded-lg font-bold text-[10px] cursor-pointer"
+                    >
+                      + Top Up
+                    </button>
+                  </div>
+                )}
+
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200 dark:border-white/5 space-y-2 font-mono text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Stage:</span>
+                    <strong className="text-black dark:text-white">{selectedDeal.stage}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Target Raise:</span>
+                    <strong className="text-emerald-500">{selectedDeal.targetRaise}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Valuation Cap:</span>
+                    <strong className="text-black dark:text-white">{selectedDeal.valuationCap}</strong>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleConfirmDiligenceCall}
+                  disabled={bookingCall}
+                  className="w-full py-3.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 shadow-xs disabled:opacity-50"
+                >
+                  {bookingCall ? <Loader2 size={15} className="animate-spin" /> : <Coins size={14} className="text-amber-400" />}
+                  {bookingCall ? "Securing Session & Deducting Credits..." : "Confirm 30-Min Call Request (25 Credits) →"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -729,6 +918,13 @@ export default function DealFeed() {
           onClose={() => setTelegramModalOpen(false)}
         />
       )}
+
+      <CreditPackageModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+        requiredCredits={25}
+        actionTitle="Schedule Partner Diligence Call"
+      />
 
     </div>
   );

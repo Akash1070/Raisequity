@@ -83,14 +83,22 @@ const RECOMMENDED_STARTUPS: RecommendedStartup[] = [
 
 export default function RecommendedFounders() {
   const [invited, setInvited] = useState<Record<string, boolean>>({});
+  const [introSuccessNote, setIntroSuccessNote] = useState<string | null>(null);
 
   const handleRequestIntro = (id: string, name: string) => {
     setInvited((prev) => ({ ...prev, [id]: true }));
-    alert(`Double-blind intro request sent to ${name}. If accepted, a calendar invite will be automatically dispatched.`);
+    setIntroSuccessNote(`Double-blind intro request dispatched to ${name}. Calendar invite will synchronize automatically once confirmed.`);
+    setTimeout(() => setIntroSuccessNote(null), 5000);
   };
 
   return (
     <div className="w-full space-y-6">
+      {introSuccessNote && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs">
+          <span>✓ {introSuccessNote}</span>
+          <button onClick={() => setIntroSuccessNote(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-80">✕</button>
+        </div>
+      )}
       
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">

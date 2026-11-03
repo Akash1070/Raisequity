@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { User, CreditCard, Shield, Bell, LogOut, CheckCircle2, Users, Loader2, Trash2, Plus, Save, Sparkles, Sun, Moon, Share2, Terminal } from "lucide-react";
+import { 
+  User, CreditCard, Shield, Bell, LogOut, CheckCircle2, Users, Loader2, 
+  Trash2, Plus, Save, Sparkles, Sun, Moon, Share2, Terminal, Briefcase, 
+  Coins, ShieldCheck, Globe, ExternalLink, Link2, DollarSign
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
@@ -9,8 +13,9 @@ import { scanCompanyWebsite } from "../../lib/gemini";
 import PlanCard, { PLANS, PlanDetails } from "../../components/dashboard/PlanCard";
 import InvestorContactForm, { ContactFormData } from "../../components/dashboard/InvestorContactForm";
 import BlurbPreview from "../../components/dashboard/BlurbPreview";
+import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import { db } from "../../lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -22,9 +27,158 @@ export default function Settings() {
   const { contacts, addContact, deleteContact } = useInvestorContacts();
   const navigate = useNavigate();
 
+  const userRole = profile?.role || "founder";
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+
   const [savingProfile, setSavingProfile] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
   const [scanningWebsite, setScanningWebsite] = useState(false);
+
+  // Founder Profile State
+  const [profileForm, setProfileForm] = useState({
+    full_name: "",
+    linkedin_url: "",
+    twitter_url: "",
+    location: "",
+    company_name: "",
+    company_website: "",
+    what_company_does: "",
+    traction_signal: "",
+    opportunity_stat: "",
+    why_now: "",
+    team_credential: "",
+    funding_goal: "",
+    founder_background: "",
+    business_model: ""
+  });
+
+  // Investor Profile State
+  const [investorForm, setInvestorForm] = useState({
+    full_name: "",
+    firm_name: "",
+    role_title: "Managing Partner",
+    location: "",
+    linkedin_url: "",
+    twitter_url: "",
+    diligence_link: "",
+    min_check_size: "50",
+    max_check_size: "250",
+    preferred_sectors: ["AI", "Web3", "SaaS"],
+    bio: "",
+    accredited_investor: true
+  });
+
+  // Agency Profile State
+  const [agencyForm, setAgencyForm] = useState({
+    agency_name: "",
+    contact_name: "",
+    website_url: "",
+    work_email: "",
+    location: "",
+    linkedin_url: "",
+    specialties: ["Full-Stack Dev & Smart Contracts", "Security Audits"],
+    hourly_rate: "$150 / hr",
+    escrow_payout_address: "",
+    portfolio_url: "",
+    bio: ""
+  });
+
+  // New contact form state (Founder Rolodex)
+  const [newContact, setNewContact] = useState<ContactFormData>({
+    investor_name: "",
+    investor_email: "",
+    investor_linkedin: "",
+    fund_name: "",
+    relationship_description: "",
+    sectors_invested_in: [],
+    check_size_min: "",
+    check_size_max: ""
+  });
+  const [addingContact, setAddingContact] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+
+  // Billing states
+  const [billingLoading, setBillingLoading] = useState(false);
+
+  // Handle URL Tab syncing
+  useEffect(() => {
+    if (urlTab === "my-investors" || urlTab === "investors") {
+      setActiveTab("investors");
+    } else if (urlTab === "billing") {
+      setActiveTab("billing");
+    } else if (urlTab === "services" || urlTab === "thesis") {
+      setActiveTab("thesis");
+    }
+  }, [urlTab]);
+
+  // Load profile data into form based on active role
+  useEffect(() => {
+    const uid = user?.uid || (user as any)?.id;
+    if (!uid) return;
+
+    if (userRole === "investor") {
+      getDoc(doc(db, "investor_profiles", uid)).then((snap) => {
+        const invData = snap.exists() ? snap.data() : {};
+        setInvestorForm({
+          full_name: invData.full_name || profile?.full_name || user?.displayName || "",
+          firm_name: invData.fund_name || profile?.company_name || "",
+          role_title: invData.investor_type || "Partner / Angel",
+          location: invData.geography || (profile as any)?.location || "",
+          linkedin_url: invData.linkedin_url || profile?.linkedin_url || "",
+          twitter_url: invData.twitter_url || "",
+          diligence_link: invData.cal_link || invData.calendly_link || "",
+          min_check_size: String(invData.min_check_size || "50"),
+          max_check_size: String(invData.max_check_size || "250"),
+          preferred_sectors: invData.preferred_sectors || ["AI", "Web3", "SaaS"],
+          bio: invData.bio || invData.thesis_description || "",
+          accredited_investor: invData.accredited_investor ?? true
+        });
+      }).catch(() => {});
+    } else if (userRole === "service_provider") {
+      getDoc(doc(db, "agency_profiles", uid)).then((snap) => {
+        const agData = snap.exists() ? snap.data() : {};
+        setAgencyForm({
+          agency_name: agData.agency_name || profile?.company_name || "ChainCraft Labs",
+          contact_name: agData.contact_name || profile?.full_name || user?.displayName || "",
+          website_url: agData.website_url || "",
+          work_email: agData.work_email || profile?.email || user?.email || "",
+          location: agData.location || "",
+          linkedin_url: agData.linkedin_url || profile?.linkedin_url || "",
+          specialties: agData.selected_tracks || ["Full-Stack Dev & Smart Contracts", "Security Audits"],
+          hourly_rate: agData.hourly_rate || "$150 / hr",
+          escrow_payout_address: agData.payout_address || "",
+          portfolio_url: agData.portfolio_url || "",
+          bio: agData.bio || ""
+        });
+      }).catch(() => {});
+    } else {
+      if (founderProfile) {
+        setProfileForm({
+          full_name: founderProfile.full_name || profile?.full_name || user?.displayName || "",
+          linkedin_url: founderProfile.linkedin_url || profile?.linkedin_url || "",
+          twitter_url: founderProfile.twitter_url || "",
+          location: founderProfile.location || "",
+          company_name: founderProfile.company_name || profile?.company_name || "",
+          company_website: founderProfile.company_website || "",
+          what_company_does: founderProfile.what_company_does || "",
+          traction_signal: founderProfile.traction_signal || "",
+          opportunity_stat: founderProfile.opportunity_stat || "",
+          why_now: founderProfile.why_now || "",
+          team_credential: founderProfile.team_credential || "",
+          funding_goal: founderProfile.funding_goal || "",
+          founder_background: founderProfile.founder_background || "",
+          business_model: founderProfile.business_model || ""
+        });
+      } else if (profile || user) {
+        setProfileForm((prev) => ({
+          ...prev,
+          full_name: prev.full_name || profile?.full_name || user?.displayName || user?.email?.split('@')[0] || "",
+          company_name: prev.company_name || profile?.company_name || "",
+          linkedin_url: prev.linkedin_url || profile?.linkedin_url || ""
+        }));
+      }
+    }
+  }, [userRole, founderProfile, profile, user]);
 
   const handleScanWebsite = async () => {
     if (!profileForm.company_website) return;
@@ -45,79 +199,6 @@ export default function Settings() {
       setScanningWebsite(false);
     }
   };
-  
-  // New contact form state
-  const [newContact, setNewContact] = useState<ContactFormData>({
-    investor_name: "",
-    investor_email: "",
-    investor_linkedin: "",
-    fund_name: "",
-    relationship_description: "",
-    sectors_invested_in: [],
-    check_size_min: "",
-    check_size_max: ""
-  });
-  const [addingContact, setAddingContact] = useState(false);
-  const [contactError, setContactError] = useState<string | null>(null);
-
-  // Billing states
-  const [billingLoading, setBillingLoading] = useState(false);
-
-  // Profile form state
-  const [profileForm, setProfileForm] = useState({
-    full_name: "",
-    linkedin_url: "",
-    twitter_url: "",
-    location: "",
-    company_name: "",
-    company_website: "",
-    what_company_does: "",
-    traction_signal: "",
-    opportunity_stat: "",
-    why_now: "",
-    team_credential: "",
-    funding_goal: "",
-    founder_background: "",
-    business_model: ""
-  });
-
-  // Keep tab in sync with url query parameters
-  useEffect(() => {
-    if (urlTab === "my-investors" || urlTab === "investors") {
-      setActiveTab("investors");
-    } else if (urlTab === "billing") {
-      setActiveTab("billing");
-    }
-  }, [urlTab]);
-
-  // Sync profile form when profile loads or auth profile is available
-  useEffect(() => {
-    if (founderProfile) {
-      setProfileForm({
-        full_name: founderProfile.full_name || profile?.full_name || user?.displayName || "",
-        linkedin_url: founderProfile.linkedin_url || profile?.linkedin_url || "",
-        twitter_url: founderProfile.twitter_url || "",
-        location: founderProfile.location || "",
-        company_name: founderProfile.company_name || profile?.company_name || "",
-        company_website: founderProfile.company_website || "",
-        what_company_does: founderProfile.what_company_does || "",
-        traction_signal: founderProfile.traction_signal || "",
-        opportunity_stat: founderProfile.opportunity_stat || "",
-        why_now: founderProfile.why_now || "",
-        team_credential: founderProfile.team_credential || "",
-        funding_goal: founderProfile.funding_goal || "",
-        founder_background: founderProfile.founder_background || "",
-        business_model: founderProfile.business_model || ""
-      });
-    } else if (profile || user) {
-      setProfileForm((prev) => ({
-        ...prev,
-        full_name: prev.full_name || profile?.full_name || user?.displayName || user?.email?.split('@')[0] || "",
-        company_name: prev.company_name || profile?.company_name || "",
-        linkedin_url: prev.linkedin_url || profile?.linkedin_url || ""
-      }));
-    }
-  }, [founderProfile, profile, user]);
 
   const handleLogout = async () => {
     try {
@@ -129,11 +210,64 @@ export default function Settings() {
   };
 
   const handleSaveProfile = async () => {
+    const uid = user?.uid || (user as any)?.id;
+    if (!uid) return;
     setSavingProfile(true);
     setSavedProfile(false);
+
     try {
-      const res = await updateProfile(profileForm);
-      if (res.error) throw new Error(res.error);
+      if (userRole === "investor") {
+        await setDoc(doc(db, "investor_profiles", uid), {
+          id: uid,
+          full_name: investorForm.full_name,
+          fund_name: investorForm.firm_name,
+          investor_type: investorForm.role_title,
+          geography: investorForm.location,
+          linkedin_url: investorForm.linkedin_url,
+          twitter_url: investorForm.twitter_url,
+          cal_link: investorForm.diligence_link,
+          min_check_size: parseFloat(investorForm.min_check_size) || 50,
+          max_check_size: parseFloat(investorForm.max_check_size) || 250,
+          preferred_sectors: investorForm.preferred_sectors,
+          thesis_description: investorForm.bio,
+          accredited_investor: investorForm.accredited_investor,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+
+        await updateDoc(doc(db, "users", uid), {
+          full_name: investorForm.full_name,
+          company_name: investorForm.firm_name,
+          linkedin_url: investorForm.linkedin_url,
+          updated_at: new Date().toISOString()
+        });
+      } else if (userRole === "service_provider") {
+        await setDoc(doc(db, "agency_profiles", uid), {
+          id: uid,
+          agency_name: agencyForm.agency_name,
+          contact_name: agencyForm.contact_name,
+          website_url: agencyForm.website_url,
+          work_email: agencyForm.work_email,
+          location: agencyForm.location,
+          linkedin_url: agencyForm.linkedin_url,
+          selected_tracks: agencyForm.specialties,
+          hourly_rate: agencyForm.hourly_rate,
+          payout_address: agencyForm.escrow_payout_address,
+          portfolio_url: agencyForm.portfolio_url,
+          bio: agencyForm.bio,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+
+        await updateDoc(doc(db, "users", uid), {
+          full_name: agencyForm.contact_name,
+          company_name: agencyForm.agency_name,
+          linkedin_url: agencyForm.linkedin_url,
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        const res = await updateProfile(profileForm);
+        if (res.error) throw new Error(res.error);
+      }
+
       setSavedProfile(true);
       setTimeout(() => setSavedProfile(false), 3000);
     } catch (err) {
@@ -178,28 +312,13 @@ export default function Settings() {
           know_count: 1,
           warm_intro_founder: founderName,
           warm_intro_company: founderCompany,
-          warm_intro_available: true,
-          contributed_by: founderName,
           verified: true,
           created_at: new Date().toISOString()
         });
-
-        await addDoc(collection(db, "investor_connections"), {
-          founderId: user?.uid,
-          founderName,
-          founderCompany,
-          investorName: newContact.investor_name,
-          investorFirm: newContact.fund_name || "Private Angel",
-          ticketSize: `$${checkMin}k - $${checkMax}k`,
-          sectors: newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["Tech"],
-          status: "verified",
-          created_at: new Date().toISOString()
-        });
       } catch (seedErr) {
-        console.warn("[Settings] Error seeding investor to global collections:", seedErr);
+        console.warn("Direct investor seeding warning:", seedErr);
       }
 
-      // Clear form
       setNewContact({
         investor_name: "",
         investor_email: "",
@@ -210,19 +329,13 @@ export default function Settings() {
         check_size_min: "",
         check_size_max: ""
       });
-
-      // Award referral credits on new contact additions (100 credits per contact)
-      const currentCredits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
-      await updateProfile({ credits: currentCredits + 100 });
-      await refetchProfile();
     } catch (err: any) {
-      setContactError(err.message || "Failed to add contact.");
+      setContactError(err.message || "Failed to add investor contact.");
     } finally {
       setAddingContact(false);
     }
   };
 
-  // Handle Plan selection upgrades
   const handleSelectPlan = async (plan: PlanDetails) => {
     if (!founderProfile) return;
     setBillingLoading(true);
@@ -246,35 +359,62 @@ export default function Settings() {
     }
   };
 
-  const inputCls = "w-full bg-white dark:bg-[#141414] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 font-mono text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-[#0070F3] outline-none transition-all shadow-xs";
+  const inputCls = "w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3 font-mono text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-[#0070F3] outline-none transition-all shadow-xs";
   const labelCls = "text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 px-1 block mb-1.5";
 
-  const tabs = [
-    { id: "profile", label: "Profile", icon: <User size={16} /> },
-    { id: "investors", label: "My Investors", icon: <Users size={16} /> },
-    { id: "billing", label: "Billing & SLA", icon: <CreditCard size={16} /> },
-    { id: "community", label: "Community", icon: <Share2 size={16} /> },
-  ];
+  // Role-Specific Navigation Tabs
+  const getTabs = () => {
+    if (userRole === "investor") {
+      return [
+        { id: "profile", label: "Investor Profile", icon: <User size={16} /> },
+        { id: "thesis", label: "Check Size & Thesis", icon: <Briefcase size={16} /> },
+        { id: "billing", label: "Credits & Subscription", icon: <Coins size={16} /> },
+      ];
+    }
+    if (userRole === "service_provider") {
+      return [
+        { id: "profile", label: "Agency Profile", icon: <User size={16} /> },
+        { id: "thesis", label: "Services & Escrow", icon: <ShieldCheck size={16} /> },
+        { id: "billing", label: "Credits & Billing", icon: <Coins size={16} /> },
+      ];
+    }
+    return [
+      { id: "profile", label: "Profile", icon: <User size={16} /> },
+      { id: "investors", label: "My Investors", icon: <Users size={16} /> },
+      { id: "billing", label: "Billing & SLA", icon: <CreditCard size={16} /> },
+      { id: "community", label: "Community", icon: <Share2 size={16} /> },
+    ];
+  };
+
+  const currentTabs = getTabs();
 
   return (
     <div className="space-y-8 pb-24 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono">Settings &amp; SLA Controls</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-xs font-mono mt-1">Manage institutional founder verification, deal tear-sheets, and 30-Day SLA status</p>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono">
+          {userRole === "investor" ? "Institutional Partner Settings" : userRole === "service_provider" ? "Vetted Agency & Partner Settings" : "Settings & SLA Controls"}
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 text-xs font-mono mt-1">
+          {userRole === "investor" 
+            ? "Manage verified check-writer thesis, Cal.com diligence links, and credit allocations" 
+            : userRole === "service_provider"
+            ? "Manage studio specialties, escrow settlement rails, and client communication credits"
+            : "Manage institutional founder verification, deal tear-sheets, and 30-Day SLA status"}
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Navigation Sidebar */}
         <div className="w-full lg:w-56 space-y-1.5 shrink-0">
-          {tabs.map((tab) => (
+          {currentTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-mono text-xs font-bold transition-all border cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-[#0070F3]/15 text-[#0070F3] border-[#0070F3]/30 shadow-xs"
-                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#262626] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#171717]"
+                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#171717]"
               }`}
             >
               {tab.icon}
@@ -291,14 +431,307 @@ export default function Settings() {
         </div>
 
         {/* Tab content panel */}
-        <div className="flex-1 bg-white dark:bg-[#111111] rounded-[32px] border border-slate-200 dark:border-[#262626] shadow-xs p-6 sm:p-8 min-h-[500px]">
+        <div className="flex-1 bg-white dark:bg-[#111111] rounded-[32px] border border-slate-200 dark:border-white/10 shadow-xs p-6 sm:p-8 min-h-[500px]">
           
-          {/* PROFILE TAB */}
-          {activeTab === "profile" && (
+          {/* ══════════════════════════════════════════════════════════
+              PROFILE TAB: INVESTOR VIEW
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "profile" && userRole === "investor" && (
             <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <h3 className="text-base font-extrabold text-white font-mono">Institutional Founder Profile</h3>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Institutional Investor Profile</h3>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  Accredited Partner
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>Full Name *</label>
+                  <input
+                    className={inputCls}
+                    value={investorForm.full_name}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, full_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Firm / Fund / Syndicate Name *</label>
+                  <input
+                    className={inputCls}
+                    value={investorForm.firm_name}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, firm_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Role / Title</label>
+                  <input
+                    className={inputCls}
+                    placeholder="e.g. Managing Partner, Angel"
+                    value={investorForm.role_title}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, role_title: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Geography / Base Location</label>
+                  <input
+                    className={inputCls}
+                    placeholder="e.g. New York, London, Singapore"
+                    value={investorForm.location}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, location: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>LinkedIn URL</label>
+                  <input
+                    className={inputCls}
+                    placeholder="https://linkedin.com/in/username"
+                    value={investorForm.linkedin_url}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, linkedin_url: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Twitter / X Profile</label>
+                  <input
+                    className={inputCls}
+                    placeholder="@handle"
+                    value={investorForm.twitter_url}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, twitter_url: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-8 py-3 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-2xl text-xs font-mono font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50 mt-4 active:scale-95 shadow-xs"
+              >
+                {savingProfile ? <Loader2 size={14} className="animate-spin" /> : savedProfile ? <CheckCircle2 size={14} /> : <Save size={14} />}
+                {savingProfile ? "Saving..." : savedProfile ? "Saved!" : "Save Investor Profile"}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              THESIS TAB: INVESTOR VIEW
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "thesis" && userRole === "investor" && (
+            <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Check Size &amp; Diligence Cal Link</h3>
+                <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30">
+                  Direct Intro Matching
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>Min Check Size ($k USD)</label>
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={investorForm.min_check_size}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, min_check_size: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Max Check Size ($k USD)</label>
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={investorForm.max_check_size}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, max_check_size: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Cal.com or Calendly Diligence Link</label>
+                <div className="relative">
+                  <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    className={`${inputCls} pl-11`}
+                    placeholder="https://cal.com/your-name/30min"
+                    value={investorForm.diligence_link}
+                    onChange={(e) => setInvestorForm((p) => ({ ...p, diligence_link: e.target.value }))}
+                  />
+                </div>
+                <p className="text-[10px] font-mono text-slate-400 mt-1">Founders can directly book 30-min diligence calls with you using credits.</p>
+              </div>
+
+              <div>
+                <label className={labelCls}>Investment Thesis &amp; Scope</label>
+                <textarea
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                  placeholder="Outline what sectors, revenue milestones, and architectures catch your high-conviction interest..."
+                  value={investorForm.bio}
+                  onChange={(e) => setInvestorForm((p) => ({ ...p, bio: e.target.value }))}
+                />
+              </div>
+
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-8 py-3 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-2xl text-xs font-mono font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50 mt-4 active:scale-95 shadow-xs"
+              >
+                {savingProfile ? <Loader2 size={14} className="animate-spin" /> : savedProfile ? <CheckCircle2 size={14} /> : <Save size={14} />}
+                {savingProfile ? "Saving..." : savedProfile ? "Saved!" : "Save Thesis Settings"}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              PROFILE TAB: AGENCY VIEW
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "profile" && userRole === "service_provider" && (
+            <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Vetted Agency Profile</h3>
+                <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/30">
+                  Escrow Verified
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>Agency / Studio Name *</label>
+                  <input
+                    className={inputCls}
+                    value={agencyForm.agency_name}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, agency_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Lead Contact Person *</label>
+                  <input
+                    className={inputCls}
+                    value={agencyForm.contact_name}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, contact_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Official Website URL</label>
+                  <input
+                    className={inputCls}
+                    placeholder="https://agency.io"
+                    value={agencyForm.website_url}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, website_url: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Direct Work Email</label>
+                  <input
+                    className={inputCls}
+                    value={agencyForm.work_email}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, work_email: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Location</label>
+                  <input
+                    className={inputCls}
+                    placeholder="e.g. Berlin, San Francisco, Remote"
+                    value={agencyForm.location}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, location: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>LinkedIn URL</label>
+                  <input
+                    className={inputCls}
+                    value={agencyForm.linkedin_url}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, linkedin_url: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-8 py-3 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-2xl text-xs font-mono font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50 mt-4 active:scale-95 shadow-xs"
+              >
+                {savingProfile ? <Loader2 size={14} className="animate-spin" /> : savedProfile ? <CheckCircle2 size={14} /> : <Save size={14} />}
+                {savingProfile ? "Saving..." : savedProfile ? "Saved!" : "Save Agency Profile"}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              SERVICES TAB: AGENCY VIEW
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "thesis" && userRole === "service_provider" && (
+            <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Specialties &amp; Escrow Settlement</h3>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  Milestone Protected
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>Hourly Rate / Starting Retainer</label>
+                  <input
+                    className={inputCls}
+                    placeholder="e.g. $150 / hr or $5,000 / month"
+                    value={agencyForm.hourly_rate}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, hourly_rate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Escrow Payout Address (EVM / Solana / Wire)</label>
+                  <input
+                    className={inputCls}
+                    placeholder="0x... or bank wire IBAN"
+                    value={agencyForm.escrow_payout_address}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, escrow_payout_address: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Client Portfolio / Case Studies Link</label>
+                <div className="relative">
+                  <ExternalLink className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    className={`${inputCls} pl-11`}
+                    placeholder="https://github.com/agency or https://behance.net/agency"
+                    value={agencyForm.portfolio_url}
+                    onChange={(e) => setAgencyForm((p) => ({ ...p, portfolio_url: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Studio Bio &amp; Technical Capabilities</label>
+                <textarea
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                  placeholder="Detail your engineering team size, security audit track record, or growth case studies..."
+                  value={agencyForm.bio}
+                  onChange={(e) => setAgencyForm((p) => ({ ...p, bio: e.target.value }))}
+                />
+              </div>
+
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-8 py-3 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-2xl text-xs font-mono font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50 mt-4 active:scale-95 shadow-xs"
+              >
+                {savingProfile ? <Loader2 size={14} className="animate-spin" /> : savedProfile ? <CheckCircle2 size={14} /> : <Save size={14} />}
+                {savingProfile ? "Saving..." : savedProfile ? "Saved!" : "Save Agency Capabilities"}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              PROFILE TAB: FOUNDER VIEW
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "profile" && userRole === "founder" && (
+            <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Institutional Founder Profile</h3>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
                   Delaware C-Corp Ready
                 </span>
               </div>
@@ -338,8 +771,8 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 space-y-4">
-                <h4 className="text-xs font-mono font-bold uppercase text-white tracking-wider">Company &amp; Fast-Pass Memo</h4>
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10 space-y-4">
+                <h4 className="text-xs font-mono font-bold uppercase text-slate-900 dark:text-white tracking-wider">Company &amp; Fast-Pass Memo</h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div>
@@ -363,7 +796,7 @@ export default function Settings() {
                         type="button"
                         onClick={handleScanWebsite}
                         disabled={scanningWebsite || !profileForm.company_website}
-                        className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-2xl text-[10px] font-mono font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer border border-emerald-500/40"
+                        className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-2xl text-[10px] font-mono font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer border border-emerald-500/30"
                       >
                         {scanningWebsite ? (
                           <Loader2 size={12} className="animate-spin" />
@@ -452,7 +885,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800">
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10">
                 <label className={labelCls}>Live Fast-Pass Memo Preview</label>
                 <BlurbPreview
                   whatCompanyDoes={profileForm.what_company_does}
@@ -467,7 +900,7 @@ export default function Settings() {
               <button
                 onClick={handleSaveProfile}
                 disabled={savingProfile}
-                className="px-8 py-3 bg-[#00F5A0] hover:bg-[#00D68B] text-black rounded-2xl text-xs font-mono font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(0,245,160,0.3)] mt-4 active:scale-95"
+                className="px-8 py-3 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-2xl text-xs font-mono font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50 mt-4 active:scale-95 shadow-xs"
               >
                 {savingProfile ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -481,24 +914,26 @@ export default function Settings() {
             </motion.div>
           )}
 
-          {/* MY INVESTORS TAB */}
-          {activeTab === "investors" && (
+          {/* ══════════════════════════════════════════════════════════
+              MY INVESTORS TAB (FOUNDERS)
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "investors" && userRole === "founder" && (
             <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
               <div>
-                <h3 className="text-base font-extrabold text-white font-mono">My Investor Rolodex</h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5 leading-relaxed">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">My Investor Rolodex</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 leading-relaxed">
                   Contribute check-writers you are connected with to earn credits (+100 per contact) and unlock peer warm intros.
                 </p>
               </div>
 
               {contactError && (
-                <div className="p-3 bg-red-500/10 text-red-300 rounded-xl text-xs font-mono font-bold border border-red-500/30">
+                <div className="p-3 bg-red-500/10 text-red-600 dark:text-red-300 rounded-xl text-xs font-mono font-bold border border-red-500/30">
                   {contactError}
                 </div>
               )}
 
               {/* Add form using modular form component */}
-              <div className="bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-[#262626] rounded-2xl p-5 space-y-4">
+              <div className="bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
                 <h4 className="text-xs font-mono font-bold uppercase text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Plus size={14} className="text-[#0070F3]" />
                   Contribute New Contact
@@ -513,7 +948,7 @@ export default function Settings() {
                 <button
                   onClick={handleAddInvestor}
                   disabled={addingContact || !newContact.investor_name.trim()}
-                  className="px-6 py-2.5 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-all disabled:opacity-50 flex items-center gap-2 shadow-xs font-mono"
+                  className="px-6 py-2.5 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-xl text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-all disabled:opacity-50 flex items-center gap-2 shadow-xs"
                 >
                   {addingContact ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                   Submit &amp; Earn 100 Credits
@@ -522,9 +957,9 @@ export default function Settings() {
 
               {/* Contacts directory list */}
               <div className="space-y-3.5 pt-4">
-                <h4 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider flex justify-between items-center border-b border-slate-200 dark:border-[#262626] pb-2">
+                <h4 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-2">
                   <span>Your Contributed Network ({contacts.length})</span>
-                  <span className="text-[10px] text-emerald-600 dark:text-[#00F5A0] font-bold uppercase">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">
                     {contacts.length >= 3 ? "Network Unlocked ✓" : `${3 - contacts.length} more needed`}
                   </span>
                 </h4>
@@ -538,7 +973,7 @@ export default function Settings() {
                     {contacts.map((c) => (
                       <div
                         key={c.id}
-                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-[#262626] rounded-2xl shadow-xs"
+                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xs"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-[#0070F3]/10 border border-[#0070F3]/30 flex items-center justify-center font-mono font-black text-[#0070F3] text-sm shrink-0">
@@ -552,7 +987,7 @@ export default function Settings() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/30 text-[8px] font-mono font-black uppercase px-2 py-0.5 rounded">
+                          <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[8px] font-mono font-black uppercase px-2 py-0.5 rounded">
                             Verified
                           </span>
                           <button
@@ -570,23 +1005,25 @@ export default function Settings() {
             </motion.div>
           )}
 
-          {/* BILLING & SLA TAB */}
+          {/* ══════════════════════════════════════════════════════════
+              BILLING & CREDITS TAB (ALL ROLES)
+             ══════════════════════════════════════════════════════════ */}
           {activeTab === "billing" && (
             <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
               {/* Current Status Banner */}
-              <div className="bg-slate-50 dark:bg-[#141414] p-6 rounded-3xl border border-slate-200 dark:border-[#262626] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xs">
+              <div className="bg-slate-50 dark:bg-[#141414] p-6 rounded-3xl border border-slate-200 dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xs">
                 <div>
                   <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block mb-1">
                     Current Subscription &amp; SLA Status (Live Gateway)
                   </span>
                   <div className="text-2xl font-mono font-extrabold text-slate-900 dark:text-white capitalize flex items-center gap-2.5">
-                    {(profile as any)?.subscription_tier || founderProfile?.plan || "Starter Free"} Plan
+                    {(profile as any)?.subscription_tier || founderProfile?.plan || (userRole === "investor" ? "Institutional Partner" : "Starter Free")}
                     <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-lg shadow-xs border ${
-                      profile?.has_active_subscription || profile?.subscription_status === 'active'
-                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-[#00F5A0] border-emerald-500/30'
+                      profile?.has_active_subscription || profile?.subscription_status === 'active' || userRole === "investor"
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
                         : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
                     }`}>
-                      {profile?.has_active_subscription || profile?.subscription_status === 'active' ? '30-Day SLA Active ✓' : 'Free Tier (50 Credits)'}
+                      {profile?.has_active_subscription || profile?.subscription_status === 'active' || userRole === "investor" ? 'Active Partner SLA ✓' : 'Free Tier (50 Credits)'}
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">
@@ -605,10 +1042,10 @@ export default function Settings() {
                     </div>
                   </div>
                   <button
-                    onClick={() => navigate('/checkout')}
-                    className="px-4 py-2 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    onClick={() => setCreditModalOpen(true)}
+                    className="px-4 py-2.5 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    Top Up / Upgrade
+                    <Plus size={13} /> Top Up Credits
                   </button>
                 </div>
               </div>
@@ -633,12 +1070,14 @@ export default function Settings() {
             </motion.div>
           )}
 
-          {/* COMMUNITY TAB */}
-          {activeTab === "community" && (
+          {/* ══════════════════════════════════════════════════════════
+              COMMUNITY TAB (FOUNDER)
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "community" && userRole === "founder" && (
             <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-mono">Founder Community Forum</h3>
               
-              <div className="bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-[#262626] rounded-3xl p-8 shadow-xs">
+              <div className="bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-3xl p-8 shadow-xs">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 bg-[#0070F3]/10 border border-[#0070F3]/30 rounded-2xl flex items-center justify-center text-[#0070F3] shrink-0 shadow-xs">
                     <Share2 size={26} />
@@ -651,34 +1090,30 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                  <div className="bg-white dark:bg-[#111111] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
-                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 block mb-1">Post Cost</span>
-                    <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">1 Credit / Post</span>
-                  </div>
-                  <div className="bg-white dark:bg-[#111111] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
-                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 block mb-1">Starter Quota</span>
-                    <span className="text-sm font-mono font-bold text-emerald-600 dark:text-[#00F5A0]">50 Free Credits</span>
-                  </div>
-                  <div className="bg-white dark:bg-[#111111] p-4 rounded-2xl border border-slate-200 dark:border-[#262626]">
-                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 block mb-1">Ecosystem Access</span>
-                    <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">Verified Founders Only</span>
-                  </div>
+                <div className="p-4 bg-white dark:bg-[#1a1b20] rounded-2xl border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    Community Channels Active: <strong>#ai-founders</strong>, <strong>#seed-syndicates</strong>, <strong>#web3-infra</strong>
+                  </span>
+                  <button
+                    onClick={() => navigate("/dashboard/messages")}
+                    className="px-4 py-2 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl font-bold cursor-pointer transition-all shadow-xs"
+                  >
+                    Open Messages
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => navigate('/dashboard/feed')}
-                  className="w-full sm:w-auto px-6 py-3.5 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-2xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 font-mono"
-                >
-                  Go to Community Feed
-                  <Share2 size={14} />
-                </button>
               </div>
             </motion.div>
           )}
 
         </div>
       </div>
+
+      <CreditPackageModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+        requiredCredits={100}
+        actionTitle="Institutional Credit Packages"
+      />
     </div>
   );
 }

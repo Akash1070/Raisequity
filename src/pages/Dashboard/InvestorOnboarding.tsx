@@ -22,6 +22,9 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { upsertInvestorProfile, getInvestorProfile, getInvestorPreferences } from "../../lib/investors";
 import { safeStorage } from "../../lib/storage";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import OnboardingTrackSwitcher from "../../components/onboarding/OnboardingTrackSwitcher";
 import type { InvestorOnboardingData, InvestorType } from "../../types/investor";
 import { Logo } from "../../components/ui/Logo";
 
@@ -70,15 +73,10 @@ export default function InvestorOnboarding() {
       return;
     }
 
-    // Role check: If profile is founder or agency, direct to their dedicated onboarding
-    const userRole = profile?.role;
-    if (userRole === "founder") {
-      navigate("/onboarding", { replace: true });
-      return;
-    }
-    if (userRole === "service_provider") {
-      navigate("/agency-onboarding", { replace: true });
-      return;
+    // Ensure role is synchronized to investor since user is on investor onboarding
+    if (uid && profile && profile.role !== "investor" && !profile.onboarding_completed) {
+      updateDoc(doc(db, "users", uid), { role: "investor" }).catch(() => {});
+      safeStorage.setItem(`rq_user_role_${uid}`, "investor");
     }
 
     async function loadExistingInvestorData() {
@@ -235,6 +233,7 @@ export default function InvestorOnboarding() {
 
       {/* Body */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 pb-20">
+        <OnboardingTrackSwitcher currentTrack="investor" />
         <div className="w-full max-w-[640px]">
           <AnimatePresence mode="wait">
             {/* ──────────────── STEP 1: Identity ──────────────── */}

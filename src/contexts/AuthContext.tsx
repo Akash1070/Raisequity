@@ -25,7 +25,7 @@ type AuthContextType = {
   loading: boolean;
   signIn: (email: string, password?: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, role: UserRole, fullName: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: (preferredRole?: UserRole) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -227,7 +227,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         subscription_status: publicRole === 'investor' ? 'active' : 'trial',
         trial_ends_at: trialEndsAt,
         has_active_subscription: publicRole === 'investor',
-        credit_balance: publicRole === 'investor' ? 0 : trialStarterCredits,
+        credit_balance: trialStarterCredits,
         referral_code: referralCode,
         referred_by: referredBy,
         created_at: new Date().toISOString(),
@@ -236,22 +236,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userRef = doc(db, 'users', newUser.uid);
       await setDoc(userRef, initialProfile);
 
-      // Record starter credits transaction if applicable
-      if (publicRole !== 'investor') {
-        try {
-          const txRef = doc(db, 'credit_transactions', `tx_starter_${newUser.uid}`);
-          await setDoc(txRef, {
-            userId: newUser.uid,
-            type: 'earn',
-            source: 'trial_starter',
-            amount: trialStarterCredits,
-            balanceAfter: trialStarterCredits,
-            timestamp: new Date().toISOString(),
-            metadata: { note: '15-day free trial starter credits' }
-          });
-        } catch (txErr) {
-          console.warn('[AuthContext] Could not record starter credits ledger:', txErr);
-        }
+      // Record starter credits transaction for all new users
+      try {
+        const txRef = doc(db, 'credit_transactions', `tx_starter_${newUser.uid}`);
+        await setDoc(txRef, {
+          userId: newUser.uid,
+          type: 'earn',
+          source: 'trial_starter',
+          amount: trialStarterCredits,
+          balanceAfter: trialStarterCredits,
+          timestamp: new Date().toISOString(),
+          metadata: { note: '15-day free trial starter credits' }
+        });
+      } catch (txErr) {
+        console.warn('[AuthContext] Could not record starter credits ledger:', txErr);
       }
 
       setProfile(initialProfile);
@@ -263,7 +261,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Sign in with Google OAuth (Strictly non-admin)
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (preferredRole?: UserRole) => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -279,11 +277,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const trialEndsAt = new Date(Date.now() + trialDays * 86400000).toISOString();
         const referralCode = `RQ-${googleUser.uid.slice(0, 6).toUpperCase()}`;
         const referredBy = safeStorage.getItem('rq_ref_code') || null;
+        const targetRole = preferredRole || (safeStorage.getItem('rq_user_role') as UserRole) || 'founder';
 
         const initialProfile: UserProfile = {
           id: googleUser.uid,
           email: googleUser.email || '',
-          role: 'founder',
+          role: targetRole,
           full_name: googleUser.displayName || 'User',
           avatar_url: googleUser.photoURL || null,
           bio: null,
@@ -291,9 +290,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           onboarding_completed: false,
           is_approved: true,
           first_deal_fee_waived: false,
-          subscription_status: 'trial',
+          subscription_status: targetRole === 'investor' ? 'active' : 'trial',
           trial_ends_at: trialEndsAt,
-          has_active_subscription: false,
+          has_active_subscription: targetRole === 'investor',
           credit_balance: trialStarterCredits,
           referral_code: referralCode,
           referred_by: referredBy,
@@ -301,6 +300,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
 
         await setDoc(userRef, initialProfile);
+
+        // Record starter credits transaction
+        try {
+          const txRef = doc(db, 'credit_transactions', `tx_starter_${googleUser.uid}`);
+          await setDoc(txRef, {
+            userId: googleUser.uid,
+            type: 'earn',
+            source: 'trial_starter',
+            amount: trialStarterCredits,
+            balanceAfter: trialStarterCredits,
+            timestamp: new Date().toISOString(),
+            metadata: { note: '15-day starter credits' }
+          });
+        } catch (txErr) {
+          console.warn('[AuthContext] Could not record starter credits ledger:', txErr);
+        }
+
         setProfile(initialProfile);
       }
 

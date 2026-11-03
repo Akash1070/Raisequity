@@ -170,6 +170,7 @@ export default function Feed() {
   const [isMemoOpen, setIsMemoOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [introRequested, setIntroRequested] = useState<Record<string, boolean>>({});
+  const [introNotice, setIntroNotice] = useState<string | null>(null);
 
   const { startups } = useFounderStartups();
   const activeStartup = startups[0] || null;
@@ -194,7 +195,8 @@ export default function Feed() {
 
   const handleRequestIntro = (opp: OpportunityItem) => {
     setIntroRequested((prev) => ({ ...prev, [opp.id]: true }));
-    alert(`Warm intro requested to ${opp.partnerName} (${opp.name})! Fast-Pass memo submitted to thesis queue.`);
+    setIntroNotice(`Warm intro requested to ${opp.partnerName} (${opp.name})! Fast-Pass memo submitted to thesis queue.`);
+    setTimeout(() => setIntroNotice(null), 5000);
   };
 
   const filteredOpportunities = CURATED_OPPORTUNITIES.filter((opp) => {
@@ -214,6 +216,17 @@ export default function Feed() {
 
   return (
     <div className="space-y-5 pb-24 text-slate-900 dark:text-slate-100 font-sans">
+      
+      {/* Warm Intro Confirmation Notification Banner */}
+      {introNotice && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{introNotice}</span>
+          </div>
+          <button onClick={() => setIntroNotice(null)} className="text-emerald-600 hover:text-emerald-800 ml-4">✕</button>
+        </div>
+      )}
       
       {/* ══════════════════════════════════════════════════════════
           1. HIREINCRYPTO TOP HORIZONTAL CATEGORY PILL BAR

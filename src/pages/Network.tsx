@@ -6,6 +6,7 @@ import { db } from "../lib/firebase";
 import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { useFounderProfile } from "../hooks/useFounderProfile";
+import CreditPackageModal from "../components/dashboard/CreditPackageModal";
 
 const defaultNetworks = {
   accelerators: [
@@ -158,6 +159,7 @@ export default function Network() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeModalProgram, setActiveModalProgram] = useState<any | null>(null);
+  const [showCreditModal, setShowCreditModal] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -210,9 +212,7 @@ export default function Network() {
 
     const currentCredits = founderProfile?.credits || 0;
     if (currentCredits < 1) {
-      if (window.confirm("You have 0 credits remaining. Would you like to acquire more credits or upgrade?")) {
-        navigate("/checkout");
-      }
+      setShowCreditModal(true);
       return;
     }
 
@@ -736,6 +736,12 @@ export default function Network() {
           </div>
         )}
       </AnimatePresence>
+
+      <CreditPackageModal
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        role="founder"
+      />
     </div>
   );
 }

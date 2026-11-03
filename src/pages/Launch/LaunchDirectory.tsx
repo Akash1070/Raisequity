@@ -322,7 +322,7 @@ export default function LaunchDirectory() {
           </div>
 
           <button
-            onClick={() => handleProtectedAction('/launch/submit')}
+            onClick={() => handleProtectedAction('/dashboard/launch/submit')}
             className="flex items-center justify-center gap-2 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 px-6 py-2.5 rounded-full font-extrabold text-xs transition-all cursor-pointer font-sans shadow-xs active:scale-95"
           >
             <Rocket size={14} /> Submit Startup →
@@ -359,7 +359,7 @@ export default function LaunchDirectory() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <button
-                      onClick={() => handleProtectedAction('/launch/submit')}
+                      onClick={() => handleProtectedAction('/dashboard/launch/submit')}
                       className="px-6 py-3 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 shadow-xs cursor-pointer"
                     >
                       <span>Submit Your Launch (+50 Credits)</span>

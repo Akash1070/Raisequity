@@ -67,6 +67,7 @@ export default function Bookings() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"sla" | "all">("sla");
   const [refundClaimed, setRefundClaimed] = useState(false);
+  const [memoDownloaded, setMemoDownloaded] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadBookings() {
@@ -93,6 +94,12 @@ export default function Bookings() {
 
   return (
     <div className="space-y-6 pb-24 text-slate-900 dark:text-slate-100 font-sans">
+      {memoDownloaded && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs">
+          <span>✓ {memoDownloaded}</span>
+          <button onClick={() => setMemoDownloaded(null)} className="text-emerald-600 dark:text-emerald-400">✕</button>
+        </div>
+      )}
       {/* ── 1. HEADER BAR ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-[#262626] pb-6">
         <div>
@@ -216,7 +223,10 @@ export default function Bookings() {
                   </button>
                 ) : call.status === "completed" ? (
                   <button
-                    onClick={() => alert(`Meeting Memo for ${companyName} x ${call.partnerName} downloaded.`)}
+                    onClick={() => {
+                      setMemoDownloaded(`Meeting memo for ${companyName} x ${call.partnerName} generated.`);
+                      setTimeout(() => setMemoDownloaded(null), 4000);
+                    }}
                     className="px-2.5 py-1 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-lg font-mono text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                   >
                     <FileText size={11} /> View Memo
@@ -238,9 +248,7 @@ export default function Bookings() {
 
           <button
             onClick={() => {
-              if (confirm("Requesting SLA verification check. If 3 calls are not delivered in 24 days, full refund will be triggered immediately.")) {
-                setRefundClaimed(true);
-              }
+              setRefundClaimed(true);
             }}
             disabled={refundClaimed}
             className={`text-xs font-mono font-bold px-4 py-2 rounded-xl transition-all cursor-pointer ${

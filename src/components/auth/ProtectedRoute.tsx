@@ -70,11 +70,12 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   const onboardingCompleted = (profile?.onboarding_completed ?? false) || isLocallyCompleted;
 
   if ((effectiveRole as string) !== 'scout_admin' && effectiveRole !== 'admin') {
-    if (!onboardingCompleted && !location.pathname.includes('onboarding')) {
-      const onboardingTarget = ROLE_ONBOARDING[effectiveRole] || '/onboarding';
-      return <Navigate to={onboardingTarget} replace />;
-    }
-    if (onboardingCompleted && location.pathname.includes('onboarding')) {
+    const correctOnboarding = ROLE_ONBOARDING[effectiveRole] || '/onboarding';
+    if (!onboardingCompleted) {
+      if (location.pathname !== correctOnboarding) {
+        return <Navigate to={correctOnboarding} replace />;
+      }
+    } else if (location.pathname.includes('onboarding')) {
       const dashboardTarget = ROLE_DASHBOARDS[effectiveRole] || '/dashboard/feed';
       return <Navigate to={dashboardTarget} replace />;
     }

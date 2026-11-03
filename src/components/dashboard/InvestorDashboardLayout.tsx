@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, Compass, Settings, Bell, Menu, X, BarChart3, Users2, Workflow, LogOut, ChevronDown, Terminal, Flame, ShieldCheck, MessageSquare } from "lucide-react";
+import { LayoutGrid, Compass, Settings, Bell, Menu, X, BarChart3, Users2, Workflow, LogOut, ChevronDown, Terminal, Flame, ShieldCheck, MessageSquare, Coins, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { Logo } from "../ui/Logo";
+import CreditPackageModal from "./CreditPackageModal";
 
 interface SidebarItemProps {
   to: string;
@@ -41,6 +42,7 @@ function SidebarItem({ to, icon, label, badge }: SidebarItemProps) {
 export default function InvestorDashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -121,6 +123,25 @@ export default function InvestorDashboardLayout({ children }: { children: React.
           </div>
         </div>
 
+        {/* Credit Balance & Top Up Box */}
+        <div className="mb-2 p-2.5 bg-white dark:bg-[#121316] rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1">
+              <Coins size={11} className="text-amber-500" />
+              Partner Credits
+            </span>
+            <span className="text-xs font-mono font-black text-amber-600 dark:text-amber-300">
+              {profile?.credit_balance ?? 50}
+            </span>
+          </div>
+          <button
+            onClick={() => setCreditModalOpen(true)}
+            className="w-full py-1.5 px-2 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 rounded-lg text-[10px] font-mono font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer"
+          >
+            <Plus size={11} /> Top Up Credits
+          </button>
+        </div>
+
         {/* HireInCrypto-Style Investor Handle Box */}
         <div className="mb-2 p-2.5 bg-white dark:bg-[#121316] rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
           <div className="flex items-center justify-between mb-1">
@@ -159,7 +180,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
         </div>
 
         <div className="pt-4 border-t border-slate-200 dark:border-[#262626] space-y-1">
-          <SidebarItem to="/dashboard/settings" icon={<Settings size={18} />} label="Settings" />
+          <SidebarItem to="/investor-dashboard/settings" icon={<Settings size={18} />} label="Settings" />
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all font-semibold text-xs cursor-pointer"
@@ -275,7 +296,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
 
                       <div className="space-y-0.5">
                         <Link
-                          to="/dashboard/settings"
+                          to="/investor-dashboard/settings"
                           onClick={() => setIsProfileDropdownOpen(false)}
                           className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors text-slate-700 dark:text-slate-300"
                         >
@@ -307,6 +328,13 @@ export default function InvestorDashboardLayout({ children }: { children: React.
           </div>
         )}
       </main>
+
+      <CreditPackageModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+        requiredCredits={25}
+        actionTitle="Partner Credit Top-Up"
+      />
     </div>
   );
 }

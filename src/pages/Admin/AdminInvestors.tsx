@@ -13,11 +13,11 @@ export default function AdminInvestors() {
   const [platformInvestors, setPlatformInvestors] = useState<any[]>([]);
   const [loadingPlatform, setLoadingPlatform] = useState(true);
 
-  // Web3 Investor Directory dataset
+  // Web3 & Web2 Investor Directory dataset
   const [directoryInvestors, setDirectoryInvestors] = useState<Web3Investor[]>([]);
   const [loadingDirectory, setLoadingDirectory] = useState(true);
   const [totalInvestorCount, setTotalInvestorCount] = useState<number | null>(null);
-  const [currentLimit, setCurrentLimit] = useState(1000);
+  const [currentLimit, setCurrentLimit] = useState(5000);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
 
@@ -25,6 +25,8 @@ export default function AdminInvestors() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingInvestor, setEditingInvestor] = useState<Partial<Web3Investor> | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Bulk Import state
   const [importText, setImportText] = useState("");
@@ -80,19 +82,27 @@ export default function AdminInvestors() {
   };
 
   const handleDeleteInvestor = async (id: string) => {
-    if (!window.confirm("Are you sure you want to remove this investor from the directory?")) return;
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      setTimeout(() => setConfirmDeleteId(null), 4000);
+      return;
+    }
+    setConfirmDeleteId(null);
     const res = await deleteWeb3Investor(id);
     if (res.success) {
       setDirectoryInvestors(directoryInvestors.filter(i => i.id !== id));
+      setActionFeedback({ type: 'success', message: 'Investor successfully removed from directory.' });
     } else {
-      alert("Failed to delete: " + res.error);
+      setActionFeedback({ type: 'error', message: 'Failed to delete: ' + (res.error || 'Server error') });
     }
+    setTimeout(() => setActionFeedback(null), 4000);
   };
 
   const handleSaveInvestor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingInvestor?.name || !editingInvestor?.firm) {
-      alert("Name and Firm are required.");
+      setActionFeedback({ type: 'error', message: 'Name and Firm are required.' });
+      setTimeout(() => setActionFeedback(null), 4000);
       return;
     }
 
@@ -103,8 +113,9 @@ export default function AdminInvestors() {
         fetchDirectoryInvestors();
         setShowEditModal(false);
         setEditingInvestor(null);
+        setActionFeedback({ type: 'success', message: 'Investor details updated.' });
       } else {
-        alert("Error updating investor: " + res.error);
+        setActionFeedback({ type: 'error', message: 'Error updating investor: ' + (res.error || 'Failed') });
       }
     } else {
       // Create
@@ -113,15 +124,17 @@ export default function AdminInvestors() {
         fetchDirectoryInvestors();
         setShowEditModal(false);
         setEditingInvestor(null);
+        setActionFeedback({ type: 'success', message: 'New investor created.' });
       } else {
-        alert("Error creating investor: " + res.error);
+        setActionFeedback({ type: 'error', message: 'Error creating investor: ' + (res.error || 'Failed') });
       }
     }
+    setTimeout(() => setActionFeedback(null), 4000);
   };
 
   const handleParseAndImport = async () => {
     if (!importText.trim()) {
-      alert("Please paste CSV or JSON content first.");
+      setImportStatus("Please paste CSV or JSON content first.");
       return;
     }
 
@@ -171,7 +184,7 @@ export default function AdminInvestors() {
         // Parse CSV or TSV (Tab separated Excel copy-paste)
         const lines = importText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
         if (lines.length < 2) {
-          alert("CSV/TSV data must have a header row and at least one data row.");
+          setImportStatus("CSV/TSV data must have a header row and at least one data row.");
           setImporting(false);
           return;
         }
@@ -240,10 +253,10 @@ export default function AdminInvestors() {
           fetchDirectoryInvestors();
         }, 1500);
       } else {
-        alert("Import failed: " + result.error);
+        setImportStatus("Import failed: " + (result.error || 'Server error'));
       }
     } catch (err: any) {
-      alert("Parsing error: " + err.message);
+      setImportStatus("Parsing error: " + err.message);
     } finally {
       setImporting(false);
     }
@@ -308,6 +321,18 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
         )}
       </div>
 
+      {/* Action Feedback Banner */}
+      {actionFeedback && (
+        <div className={`p-4 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between ${
+          actionFeedback.type === 'success'
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            : 'bg-red-50 text-red-800 border-red-200'
+        }`}>
+          <span>{actionFeedback.message}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-slate-700 ml-4">✕</button>
+        </div>
+      )}
+
       {/* Tabs Row */}
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
@@ -339,7 +364,7 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={activeTab === "directory" ? "Search Web3 investor name, firm, email, telegram..." : "Search registered user name, firm, email..."}
+            placeholder={activeTab === "directory" ? "Search verified investor name, firm, email, telegram..." : "Search registered user name, firm, email..."}
             className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900 outline-none shadow-xs"
           />
         </div>
@@ -394,7 +419,7 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
           {loadingDirectory ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Activity size={32} className="animate-spin text-slate-900" />
-              <p className="text-xs font-mono font-bold text-slate-400">Loading Web3 investor database...</p>
+              <p className="text-xs font-mono font-bold text-slate-400">Loading verified investor database...</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -457,10 +482,14 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
                           </button>
                           <button
                             onClick={() => handleDeleteInvestor(inv.id)}
-                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all"
-                            title="Delete Investor"
+                            className={`p-2 rounded-xl transition-all ${
+                              confirmDeleteId === inv.id
+                                ? "bg-red-600 text-white font-mono text-[10px] font-black px-2.5 shadow-xs"
+                                : "text-red-500 hover:text-red-700 hover:bg-red-50"
+                            }`}
+                            title={confirmDeleteId === inv.id ? "Click again to confirm delete" : "Delete Investor"}
                           >
-                            <Trash2 size={16} />
+                            {confirmDeleteId === inv.id ? "Confirm?" : <Trash2 size={16} />}
                           </button>
                         </div>
                       </td>

@@ -24,6 +24,7 @@ import BlurbPreview from "../../components/dashboard/BlurbPreview";
 import InvestorContactForm, { ContactFormData } from "../../components/dashboard/InvestorContactForm";
 import { safeStorage } from "../../lib/storage";
 import { Logo } from "../../components/ui/Logo";
+import OnboardingTrackSwitcher from "../../components/onboarding/OnboardingTrackSwitcher";
 
 const STAGES = ["Pre-Seed", "Seed", "Series A", "Series B", "Series C+", "Pre-IPO", "IPO", "Acquisition", "Other"];
 const SECTORS = ["AI", "SaaS", "Fintech", "Consumer", "B2B Tech", "DeFi", "Web3 Infrastructure", "GameFi", "SocialFi", "RWA", "DeSci", "Other"];
@@ -537,6 +538,8 @@ export default function Onboarding() {
             </button>
           </div>
         </div>
+
+        <OnboardingTrackSwitcher currentTrack="founder" />
 
         {/* Progress Navigation Tracker */}
         <div className="flex items-center gap-2 mb-8 justify-center flex-wrap">

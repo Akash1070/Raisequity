@@ -49,14 +49,22 @@ const DILIGENCE_PARTNERS: DiligenceSession[] = [
 
 export default function InvestorCoaching() {
   const [booked, setBooked] = useState<Record<string, boolean>>({});
+  const [successNote, setSuccessNote] = useState<string | null>(null);
 
   const handleBookSession = (name: string) => {
     setBooked(prev => ({ ...prev, [name]: true }));
-    alert(`Diligence session with ${name} reserved. Cal.com booking link sent to your registered partner email.`);
+    setSuccessNote(`Diligence session with ${name} reserved! Cal.com booking invite dispatched to your partner inbox.`);
+    setTimeout(() => setSuccessNote(null), 5000);
   };
 
   return (
     <div className="w-full space-y-6">
+      {successNote && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs">
+          <span>✓ {successNote}</span>
+          <button onClick={() => setSuccessNote(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-80">✕</button>
+        </div>
+      )}
       
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">

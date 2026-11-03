@@ -60,8 +60,10 @@ export default function Login() {
         navigate("/investor-onboarding", { replace: true });
       } else if (userRole === "service_provider" && !onboardingCompleted) {
         navigate("/agency-onboarding", { replace: true });
-      } else if (userRole === "founder" || userRole === "service_provider") {
+      } else if (userRole === "founder") {
         navigate("/dashboard/feed", { replace: true });
+      } else if (userRole === "service_provider") {
+        navigate("/agency-dashboard/rfps", { replace: true });
       } else if (userRole === "investor") {
         navigate("/investor-dashboard/deals", { replace: true });
       }
@@ -69,7 +71,8 @@ export default function Login() {
     }
 
     if (onboardingCompleted) {
-      if (userRole === "founder" || userRole === "service_provider") navigate("/dashboard/feed", { replace: true });
+      if (userRole === "founder") navigate("/dashboard/feed", { replace: true });
+      else if (userRole === "service_provider") navigate("/agency-dashboard/rfps", { replace: true });
       else if (userRole === "investor") navigate("/investor-dashboard/deals", { replace: true });
     } else {
       if (userRole === "founder") navigate("/onboarding", { replace: true });
@@ -139,7 +142,8 @@ export default function Login() {
     setError(null);
     setIsLoading(true);
     try {
-      const { error } = await signInWithGoogle();
+      const preferredRole = role === "admin" ? "founder" : role;
+      const { error } = await signInWithGoogle(preferredRole);
       if (error) {
         const errorMsg = error.message || "";
         if (errorMsg.includes("configuration-not-found") || (error as any).code === "auth/configuration-not-found") {

@@ -18,12 +18,14 @@ import {
   ExternalLink,
   Layers,
   Award,
-  MessageSquare
+  MessageSquare,
+  Plus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { Logo } from "../ui/Logo";
+import CreditPackageModal from "./CreditPackageModal";
 
 interface AgencySidebarItemProps {
   to: string;
@@ -61,6 +63,7 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [copiedHandle, setCopiedHandle] = useState(false);
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -163,8 +166,8 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
             <AgencySidebarItem
               to="/agency-dashboard/credits"
               icon={<Coins size={16} />}
-              label="Starter Credits"
-              badge="150"
+              label="Agency Credits"
+              badge={credits}
             />
             <AgencySidebarItem
               to="/agency-dashboard/settings"
@@ -312,10 +315,14 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold">
+            <button
+              onClick={() => setCreditModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold transition-all cursor-pointer"
+            >
               <Coins size={12} />
-              <span>{credits} Free Credits</span>
-            </div>
+              <span>{credits} Credits</span>
+              <Plus size={10} className="ml-1" />
+            </button>
             <ThemeToggle />
           </div>
         </header>
@@ -325,6 +332,13 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
           {children}
         </main>
       </div>
+
+      <CreditPackageModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+        requiredCredits={25}
+        actionTitle="Agency Credit Top-Up"
+      />
     </div>
   );
 }

@@ -69,6 +69,7 @@ const DEFAULT_INTROS: IntroItem[] = [
 export default function RequestedIntros() {
   const [intros, setIntros] = useState<IntroItem[]>(DEFAULT_INTROS);
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [acceptedNote, setAcceptedNote] = useState<string | null>(null);
 
   const filtered = intros.filter((i) => {
     if (activeFilter === "all") return true;
@@ -77,6 +78,12 @@ export default function RequestedIntros() {
 
   return (
     <div className="w-full space-y-6">
+      {acceptedNote && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs">
+          <span>✓ {acceptedNote}</span>
+          <button onClick={() => setAcceptedNote(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-80">✕</button>
+        </div>
+      )}
 
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
@@ -157,8 +164,9 @@ export default function RequestedIntros() {
                 <>
                   <button
                     onClick={() => {
-                      alert(`Confirmed intro with ${item.founder} (${item.company}). Meeting details will be synchronized via your partner calendar.`);
+                      setAcceptedNote(`Confirmed intro with ${item.founder} (${item.company}). Meeting details synchronized with your partner calendar.`);
                       setIntros(intros.map(i => i.id === item.id ? { ...i, status: "confirmed" } : i));
+                      setTimeout(() => setAcceptedNote(null), 6000);
                     }}
                     className="px-4 py-2 rounded-xl bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 shadow-xs cursor-pointer"
                   >

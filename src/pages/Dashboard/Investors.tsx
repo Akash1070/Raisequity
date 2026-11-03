@@ -11,6 +11,7 @@ import { createIntroRequest } from "../../lib/intros";
 import { getWeb3Investors, unlockInvestorContact, declarePersonalInvestorBridge, getInvestorAvatarUrl } from "../../lib/investors";
 import { rankInvestorsForStartup } from "../../lib/matching";
 import DeclareConnectionModal from "../../components/dashboard/DeclareConnectionModal";
+import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import type { InvestorConnection } from "../../types";
 import type { Web3Investor } from "../../types/investor";
 
@@ -41,8 +42,8 @@ export default function Investors() {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
   const [showDeclareModal, setShowDeclareModal] = useState(false);
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
   const [introConnection, setIntroConnection] = useState<InvestorConnection | null>(null);
   const [introSending, setIntroSending] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -67,10 +68,10 @@ export default function Investors() {
         }
       }
 
-      const list = await getWeb3Investors(activeUnlockedIds, false);
+      const list = await getWeb3Investors(activeUnlockedIds, false, { limit: 5000 });
       setDirectoryInvestors(list);
     } catch (err: any) {
-      console.error("Error loading Web3 directory:", err);
+      console.error("Error loading investor directory:", err);
     } finally {
       setLoadingDirectory(false);
     }
@@ -103,11 +104,9 @@ export default function Investors() {
       return;
     }
 
-    const currentCredits = founderProfile?.credits || 0;
+    const currentCredits = founderProfile?.credits ?? profile?.credit_balance ?? 0;
     if (currentCredits < 1) {
-      if (window.confirm("You have 0 credits remaining. Would you like to get more credits or upgrade to Premium?")) {
-        navigate("/checkout");
-      }
+      setCreditModalOpen(true);
       return;
     }
 
@@ -675,6 +674,13 @@ export default function Investors() {
           </div>
         )}
       </AnimatePresence>
+
+      <CreditPackageModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+        requiredCredits={1}
+        actionTitle="Unlock Verified Investor Contact"
+      />
     </div>
   );
 }

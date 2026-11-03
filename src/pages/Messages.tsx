@@ -61,6 +61,7 @@ export default function Messages() {
 
   // SAFE Modal from within chat
   const [showSafeModal, setShowSafeModal] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -191,7 +192,8 @@ export default function Messages() {
     setIsSending(false);
     if (res.error && !customContent) {
       setMessageInput(content);
-      alert(`Message error: ${res.error}`);
+      setMessageError(`Message failed: ${res.error}`);
+      setTimeout(() => setMessageError(null), 5000);
     }
   };
 
@@ -541,6 +543,12 @@ export default function Messages() {
               </div>
 
               {/* Bottom Quick-Action Suggestion Pills */}
+              {messageError && (
+                <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-mono font-bold flex items-center justify-between">
+                  <span>{messageError}</span>
+                  <button onClick={() => setMessageError(null)} className="text-rose-500 hover:text-rose-700">✕</button>
+                </div>
+              )}
               <div className="px-4 py-2 bg-slate-50 dark:bg-[#14151a] border-t border-[#e8e6df] dark:border-white/10 flex items-center gap-2 overflow-x-auto text-[11px] font-mono text-neutral-500 shrink-0">
                 <span className="font-bold shrink-0 text-neutral-400 text-[10px] uppercase">Quick replies:</span>
                 <button
@@ -715,3 +723,4 @@ export default function Messages() {
     </div>
   );
 }
+

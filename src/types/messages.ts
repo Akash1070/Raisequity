@@ -47,3 +47,4 @@ export interface DirectMessage {
   created_at: string;
   read: boolean;
 }
+
