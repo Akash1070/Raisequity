@@ -80,6 +80,12 @@ export async function createLaunch(
     github_url: data.github_url || '',
     telegram_url: data.telegram_url || '',
     traction_metric: data.traction_metric || '',
+    problem_solved: data.problem_solved || '',
+    target_audience: data.target_audience || '',
+    ecosystem_chain: data.ecosystem_chain || [],
+    token_status: data.token_status || '',
+    product_stage: data.product_stage || '',
+    deck_url: data.deck_url || '',
   };
 
   try {

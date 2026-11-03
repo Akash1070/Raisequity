@@ -29,6 +29,12 @@ export interface LaunchItem {
   github_url?: string;
   telegram_url?: string;
   traction_metric?: string;
+  problem_solved?: string;
+  target_audience?: string;
+  ecosystem_chain?: string[];
+  token_status?: string;
+  product_stage?: string;
+  deck_url?: string;
 }
 
 export interface LaunchSubmissionData {
@@ -51,6 +57,12 @@ export interface LaunchSubmissionData {
   github_url?: string;
   telegram_url?: string;
   traction_metric?: string;
+  problem_solved?: string;
+  target_audience?: string;
+  ecosystem_chain?: string[];
+  token_status?: string;
+  product_stage?: string;
+  deck_url?: string;
 }
 
 export interface LaunchVote {
@@ -68,5 +80,18 @@ export interface LaunchComment {
   user_avatar?: string;
   comment_text: string;
   is_maker?: boolean;
+  created_at: string;
+}
+
+export interface SponsorItem {
+  id: string;
+  company_name: string;
+  tagline: string;
+  url: string;
+  logo_url?: string;
+  banner_cta?: string;
+  active: boolean;
+  starts_at: string;
+  expires_at: string;
   created_at: string;
 }

@@ -118,34 +118,46 @@ export async function verifyBacklink(url: string): Promise<{ verified: boolean; 
     const res = await fetch(proxyUrl);
     
     if (!res.ok) {
-      // Fallback check
       return { 
-        verified: true, 
-        reason: 'Backlink verified (site responded successfully).' 
+        verified: false, 
+        reason: `Could not reach ${formattedUrl} via verification crawler (HTTP ${res.status}). Ensure the website is live and publicly accessible, or click 'Self-Verify' if protected.` 
       };
     }
 
     const data = await res.json();
     const htmlText = (data.contents || '').toLowerCase();
 
-    // Check if html contains link to raisequity or raisequity.com
+    if (!htmlText || htmlText.length < 50) {
+      return {
+        verified: false,
+        reason: "Received empty page content from your website. Please ensure the page is published publicly, or click 'Self-Verify' to confirm manual placement."
+      };
+    }
+
+    // Check if html strictly contains link to raisequity.com or the badge
     const hasLink = 
       htmlText.includes('raisequity.com') || 
-      htmlText.includes('raisequity') || 
-      htmlText.includes('/launch');
+      htmlText.includes('featured.svg') || 
+      htmlText.includes('featured-dark.svg') ||
+      htmlText.includes('raisequity.com/badges');
 
     if (hasLink) {
-      return { verified: true };
+      return { 
+        verified: true, 
+        reason: 'Raisequity badge detected in website HTML source!' 
+      };
     } else {
       return { 
         verified: false, 
-        reason: "We scanned your website's HTML source, but could not find a link to raisequity.com. Please make sure the badge or link is saved and published." 
+        reason: "We scanned your website's HTML source, but could not find a link to raisequity.com or the badge snippet. Please paste the HTML snippet into your footer or homepage, publish your changes, and scan again." 
       };
     }
-  } catch (err) {
-    // If CORS proxy fails, return verified with notice to ensure good user experience
-    console.warn('[BacklinkVerifier] Proxy check error, defaulting to verified:', err);
-    return { verified: true };
+  } catch (err: any) {
+    console.warn('[BacklinkVerifier] Proxy check error:', err);
+    return { 
+      verified: false, 
+      reason: "Could not scan your website's HTML (your site may be behind Cloudflare or blocking automated crawlers). Please click 'Self-Verify' if the badge is placed, or Upgrade to Premium to skip." 
+    };
   }
 }
 

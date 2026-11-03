@@ -22,9 +22,13 @@ import {
   User,
   Zap,
   Terminal,
+  FileText,
+  Layers,
 } from 'lucide-react';
 import { getLaunchBySlug, voteLaunch, hasUserVoted, getLaunchComments, addLaunchComment } from '../../lib/launches';
-import { LaunchItem, LaunchComment } from '../../types/launch';
+import { LaunchItem, LaunchComment, SponsorItem } from '../../types/launch';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import EmbedBadgeModal from '../../components/launch/EmbedBadgeModal';
 import { BorderBeam } from '../../components/ui/BorderBeam';
@@ -175,6 +179,7 @@ export default function LaunchDetailTeaser() {
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [activeSponsor, setActiveSponsor] = useState<SponsorItem | null>(null);
   const [badgeModalOpen, setBadgeModalOpen] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -258,6 +263,21 @@ export default function LaunchDetailTeaser() {
   useEffect(() => {
     loadData();
   }, [slug, uid]);
+
+  useEffect(() => {
+    async function loadSponsor() {
+      try {
+        const snap = await getDocs(query(collection(db, 'sponsors'), where('active', '==', true), limit(1)));
+        if (!snap.empty) {
+          setActiveSponsor({ id: snap.docs[0].id, ...snap.docs[0].data() } as SponsorItem);
+        }
+      } catch (sErr) {
+        console.warn('Could not fetch active sponsor:', sErr);
+      }
+    }
+    loadSponsor();
+  }, []);
+
 
   const handleVote = async () => {
     if (!uid) {
@@ -359,11 +379,15 @@ export default function LaunchDetailTeaser() {
     },
     {
       q: `Who is ${launch.company_name} for?`,
-      a: `It is designed for indie founders, Web3 builders, operators, and startup teams looking to scale efficiency with institutional backing.`,
+      a: launch.target_audience || `It is designed for indie founders, Web3 builders, operators, and startup teams looking to scale efficiency with institutional backing.`,
     },
     {
-      q: `How does ${launch.company_name} fundraising or pricing work?`,
-      a: `Status: ${launch.launch_tier.toUpperCase()}. Visit the official website (${launch.website_url}) for current rounds, cap table details, and license options.`,
+      q: `What core problem does ${launch.company_name} solve?`,
+      a: launch.problem_solved || `${launch.company_name} eliminates critical friction in the ${launch.category} sector with an institutional, verified solution.`,
+    },
+    {
+      q: `How does ${launch.company_name} fundraising or tokenomics work?`,
+      a: `${launch.token_status ? `Tokenomics: ${launch.token_status.replace(/_/g, ' ').toUpperCase()}. ` : ''}${launch.target_raise ? `Target raise: ${launch.target_raise} (Valuation Cap: ${launch.valuation_cap || 'Open'}). ` : ''}Visit the official website (${launch.website_url}) for verified cap table & allocation terms.`,
     },
     {
       q: `Is ${launch.company_name} verified for VCs & Angels?`,
@@ -478,6 +502,90 @@ export default function LaunchDetailTeaser() {
 
           {/* ════════ MAIN DETAILS COLUMN (COLUMNS 8) ════════ */}
           <div className="lg:col-span-8 space-y-6">
+
+            {/* DEEP PRODUCT & DEAL SPECS CARD */}
+            {(launch.problem_solved || launch.target_audience || launch.token_status || (launch.ecosystem_chain && launch.ecosystem_chain.length > 0) || launch.deck_url) && (
+              <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 sm:p-8 shadow-xs space-y-5 transition-colors duration-150">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#262626] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Layers size={16} className="text-[#0070F3]" />
+                    <h3 className="text-xs font-mono font-extrabold uppercase text-slate-900 dark:text-white tracking-wider">
+                      PRODUCT ARCHITECTURE &amp; DEAL SPECS
+                    </h3>
+                  </div>
+                  {launch.product_stage && (
+                    <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {launch.product_stage.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                </div>
+
+                {launch.problem_solved && (
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] space-y-1">
+                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block">
+                      Problem Solved &amp; Moat
+                    </span>
+                    <p className="text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
+                      {launch.problem_solved}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {launch.target_audience && (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] space-y-1">
+                      <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block">
+                        Target Audience / ICP
+                      </span>
+                      <p className="text-xs text-slate-800 dark:text-slate-200 font-mono font-bold">
+                        {launch.target_audience}
+                      </p>
+                    </div>
+                  )}
+
+                  {launch.token_status && (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] space-y-1">
+                      <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block">
+                        Token &amp; Tokenomics Status
+                      </span>
+                      <p className="text-xs text-slate-800 dark:text-slate-200 font-mono font-bold uppercase">
+                        {launch.token_status.replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {launch.ecosystem_chain && launch.ecosystem_chain.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block mb-2">
+                      Supported Chains &amp; Ecosystem
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {launch.ecosystem_chain.map((c) => (
+                        <span key={c} className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#333333] font-mono text-[11px] font-bold">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {launch.deck_url && (
+                  <div className="pt-2">
+                    <a
+                      href={launch.deck_url.startsWith('http') ? launch.deck_url : `https://${launch.deck_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-mono text-xs font-bold transition-all shadow-xs"
+                    >
+                      <FileText size={14} />
+                      <span>View Verified Pitch Deck / Whitepaper</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* QUICK ANSWERS / FAQ ACCORDION */}
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 sm:p-8 shadow-xs space-y-4 transition-colors duration-150">
@@ -643,20 +751,54 @@ export default function LaunchDetailTeaser() {
           {/* ════════ RIGHT SIDEBAR (COLUMNS 4) ════════ */}
           <div className="lg:col-span-4 space-y-6">
 
-            {/* ADVERTISE HERE WIDGET */}
-            <div className="bg-white dark:bg-[#111111] border border-dashed border-slate-300 dark:border-[#333333] hover:border-[#0070F3]/50 rounded-3xl p-6 text-center space-y-2 shadow-xs transition-all">
-              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#171717] border border-slate-200 dark:border-[#333333] flex items-center justify-center mx-auto text-[#0070F3] font-bold text-xs">
-                +
+            {/* ADVERTISE HERE / 1-WEEK SPONSOR SPOT */}
+            {activeSponsor ? (
+              <div className="bg-gradient-to-b from-blue-50/50 to-white dark:from-[#0F172A]/40 dark:to-[#111111] border border-[#0070F3]/30 rounded-3xl p-6 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#0070F3]/10 text-[#0070F3]">
+                    FEATURED SPONSOR · 1-WEEK SPOT
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">Live</span>
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-sm text-slate-900 dark:text-white">{activeSponsor.company_name}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-normal mt-1 leading-relaxed">{activeSponsor.tagline}</p>
+                </div>
+                <a
+                  href={activeSponsor.url.startsWith('http') ? activeSponsor.url : `https://${activeSponsor.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black rounded-xl text-xs font-mono font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <span>{activeSponsor.banner_cta || 'Explore Platform'}</span>
+                  <ExternalLink size={13} />
+                </a>
+                <a
+                  href="https://t.me/akash_kumar107?text=Hi%20Akash,%20I'm%20interested%20in%20booking%20a%201-week%20sponsor%20spot%20on%20Raisequity"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-center text-slate-500 hover:text-[#0070F3] block transition-colors mt-2"
+                >
+                  Book this sponsor spot on TG (@akash_kumar107) →
+                </a>
               </div>
-              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">Advertise Here</h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Get sitewide exposure to 4,800+ accredited founders &amp; investors</p>
-              <button
-                onClick={() => navigate('/launch/submit')}
-                className="text-xs font-mono font-bold text-[#0070F3] hover:underline cursor-pointer block w-full mt-2"
-              >
-                Book sponsor spot →
-              </button>
-            </div>
+            ) : (
+              <div className="bg-white dark:bg-[#111111] border border-dashed border-slate-300 dark:border-[#333333] hover:border-[#0070F3]/50 rounded-3xl p-6 text-center space-y-2 shadow-xs transition-all">
+                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#171717] border border-slate-200 dark:border-[#333333] flex items-center justify-center mx-auto text-[#0070F3] font-bold text-xs">
+                  +
+                </div>
+                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">Advertise Here</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Get sitewide exposure to 4,800+ accredited founders &amp; investors</p>
+                <a
+                  href="https://t.me/akash_kumar107?text=Hi%20Akash,%20I'm%20interested%20in%20booking%20a%201-week%20sponsor%20spot%20on%20Raisequity"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-mono font-bold text-[#0070F3] hover:underline cursor-pointer block w-full mt-2"
+                >
+                  Book sponsor spot →
+                </a>
+              </div>
+            )}
 
             {/* EMBED BADGE CTA */}
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 space-y-3 shadow-xs">

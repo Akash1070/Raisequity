@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Rocket, DollarSign, Calendar as CalendarIcon, Trophy, Plus, Trash2, 
+  Rocket, Clock, Link as LinkIcon, DollarSign, Calendar as CalendarIcon, Trophy, Plus, Trash2, 
   Activity, X, Save, ExternalLink, Star, Edit, Search, Sparkles, 
   CheckCircle2, AlertCircle, ArrowUpRight, ShieldCheck, Flame, ArrowRight, ArrowLeft
 } from "lucide-react";
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "../../lib/firebase";
-import { LaunchItem } from "../../types/launch";
+import { LaunchItem, SponsorItem } from "../../types/launch";
 import { projects } from "../../data/projects";
 import { SEEDED_LAUNCHES, SEEDED_DEAL_FLOW } from "../../data/dealFlowData";
 
@@ -55,6 +55,91 @@ export default function AdminLaunches() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [activeAdminTab, setActiveAdminTab] = useState<'launches' | 'sponsors'>('launches');
+  const [sponsors, setSponsors] = useState<SponsorItem[]>([]);
+  const [loadingSponsors, setLoadingSponsors] = useState(false);
+  const [showSponsorModal, setShowSponsorModal] = useState(false);
+  const [sponsorForm, setSponsorForm] = useState({
+    company_name: '',
+    tagline: '',
+    url: '',
+    logo_url: '',
+    banner_cta: 'Explore Platform →',
+    duration_days: 7,
+  });
+
+  const fetchSponsors = async () => {
+    setLoadingSponsors(true);
+    try {
+      const snap = await getDocs(collection(db, "sponsors"));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as SponsorItem[];
+      setSponsors(data);
+    } catch (err) {
+      console.warn("Error fetching sponsors:", err);
+    } finally {
+      setLoadingSponsors(false);
+    }
+  };
+
+  const handleCreateSponsor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sponsorForm.company_name || !sponsorForm.url) return;
+    try {
+      const sId = `sponsor_${Date.now()}`;
+      const now = new Date();
+      const expires = new Date(now.getTime() + (sponsorForm.duration_days || 7) * 86400000);
+      const newSponsor: SponsorItem = {
+        id: sId,
+        company_name: sponsorForm.company_name.trim(),
+        tagline: sponsorForm.tagline.trim(),
+        url: sponsorForm.url.trim(),
+        logo_url: sponsorForm.logo_url.trim(),
+        banner_cta: sponsorForm.banner_cta.trim() || 'Explore Platform →',
+        active: true,
+        starts_at: now.toISOString(),
+        expires_at: expires.toISOString(),
+        created_at: now.toISOString(),
+      };
+
+      await setDoc(doc(db, "sponsors", sId), newSponsor);
+      setSponsors(prev => [newSponsor, ...prev]);
+      setShowSponsorModal(false);
+      setSponsorForm({
+        company_name: '',
+        tagline: '',
+        url: '',
+        logo_url: '',
+        banner_cta: 'Explore Platform →',
+        duration_days: 7,
+      });
+      setSyncFeedback({ type: 'success', message: '1-Week Featured Sponsor successfully published sitewide!' });
+      setTimeout(() => setSyncFeedback(null), 4000);
+    } catch (err: any) {
+      setSyncFeedback({ type: 'error', message: 'Failed to create sponsor: ' + err.message });
+    }
+  };
+
+  const handleToggleSponsor = async (sponsor: SponsorItem) => {
+    try {
+      const updated = !sponsor.active;
+      await updateDoc(doc(db, "sponsors", sponsor.id), { active: updated });
+      setSponsors(prev => prev.map(s => s.id === sponsor.id ? { ...s, active: updated } : s));
+    } catch (err: any) {
+      console.error("Error toggling sponsor:", err);
+    }
+  };
+
+  const handleDeleteSponsor = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "sponsors", id));
+      setSponsors(prev => prev.filter(s => s.id !== id));
+      setSyncFeedback({ type: 'success', message: 'Sponsor deleted successfully.' });
+      setTimeout(() => setSyncFeedback(null), 3000);
+    } catch (err: any) {
+      console.error("Error deleting sponsor:", err);
+    }
+  };
+
 
   const [form, setForm] = useState<Partial<LaunchItem>>({
     id: "",
@@ -80,6 +165,7 @@ export default function AdminLaunches() {
 
   useEffect(() => {
     fetchLaunches();
+    fetchSponsors();
   }, []);
 
   const fetchLaunches = async () => {
@@ -285,29 +371,64 @@ export default function AdminLaunches() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-[32px] font-black text-black tracking-tight font-heading">Launch Directory & Daily Queue</h1>
+            <h1 className="text-[32px] font-black text-black tracking-tight font-heading">Launch Directory &amp; Daily Queue</h1>
             <span className="bg-emerald-100 text-emerald-800 text-[10px] font-mono font-black px-2.5 py-1 rounded-full uppercase border border-emerald-200">1 Launch / Day Slot System</span>
           </div>
-          <p className="text-gray-500 font-medium mt-1">Manage project launches, daily slot queues, paid fast-tracks, and revenue monetization.</p>
+          <p className="text-gray-500 font-medium mt-1">Manage project launches, daily slot queues, 1-week sponsor spots, and revenue monetization.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleSync98Deals}
-            disabled={seeding}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer"
-          >
-            <Sparkles size={16} /> {seeding ? "Syncing..." : `⚡ Sync 98 CSV Deals`}
-          </button>
-          <button
-            onClick={() => {
-              if (showForm) resetForm();
-              setShowForm(!showForm);
-            }}
-            className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-2xl font-bold text-sm hover:bg-gray-800 shadow-md transition-all cursor-pointer"
-          >
-            {showForm ? <X size={16} /> : <Plus size={16} />} {showForm ? "Cancel" : "Add Submission"}
-          </button>
+          {activeAdminTab === 'launches' ? (
+            <>
+              <button
+                onClick={handleSync98Deals}
+                disabled={seeding}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <Sparkles size={16} /> {seeding ? "Syncing..." : `⚡ Sync 98 CSV Deals`}
+              </button>
+              <button
+                onClick={() => {
+                  if (showForm) resetForm();
+                  setShowForm(!showForm);
+                }}
+                className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-2xl font-bold text-sm hover:bg-gray-800 shadow-md transition-all cursor-pointer"
+              >
+                {showForm ? <X size={16} /> : <Plus size={16} />} {showForm ? "Cancel" : "Add Submission"}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowSponsorModal(true)}
+              className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-2xl font-bold text-sm hover:bg-gray-800 shadow-md transition-all cursor-pointer"
+            >
+              <Plus size={16} /> Add 1-Week Sponsor Spot
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* Admin Sub-Tabs */}
+      <div className="flex items-center gap-3 border-b border-gray-200 pb-3 font-mono text-xs">
+        <button
+          onClick={() => setActiveAdminTab('launches')}
+          className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
+            activeAdminTab === 'launches'
+              ? 'bg-black text-white shadow-xs'
+              : 'text-gray-500 hover:text-black hover:bg-gray-100'
+          }`}
+        >
+          🚀 All Launches &amp; Directory Queue ({launches.length})
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('sponsors')}
+          className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeAdminTab === 'sponsors'
+              ? 'bg-black text-white shadow-xs'
+              : 'text-gray-500 hover:text-black hover:bg-gray-100'
+          }`}
+        >
+          📢 1-Week Featured Sponsors &amp; Ads ({sponsors.length})
+        </button>
       </div>
 
       {/* Sync Feedback Notification Banner */}
@@ -322,8 +443,11 @@ export default function AdminLaunches() {
         </div>
       )}
 
-      {/* METRICS & REVENUE CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* CONDITIONAL TAB CONTENT */}
+      {activeAdminTab === 'launches' ? (
+        <div className="space-y-8">
+          {/* METRICS & REVENUE CARDS */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white border border-[var(--color-clay-border,#e5e2dc)] p-6 rounded-3xl shadow-xs">
           <div className="flex items-center justify-between text-gray-400 mb-2">
             <span className="text-[10px] font-mono font-black uppercase tracking-wider">Directory Earnings</span>
@@ -652,6 +776,248 @@ export default function AdminLaunches() {
           <div className="text-center py-12 text-gray-400 text-sm font-medium">No launch submissions found</div>
         )}
       </div>
+        </div>
+      ) : (
+        /* SPONSORS MANAGEMENT TAB */
+        <div className="space-y-6">
+          {/* Sponsors Top Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white border border-[var(--color-clay-border,#e5e2dc)] p-6 rounded-3xl shadow-xs">
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-400 block mb-1">
+                Active Sitewide Sponsors
+              </span>
+              <div className="text-3xl font-black text-black font-mono">
+                {sponsors.filter(s => s.active).length} Active
+              </div>
+              <p className="text-[11px] text-gray-500 font-medium mt-1">Displayed on launch detail &amp; directory pages</p>
+            </div>
+
+            <div className="bg-white border border-[var(--color-clay-border,#e5e2dc)] p-6 rounded-3xl shadow-xs">
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-400 block mb-1">
+                1-Week Sponsor Window
+              </span>
+              <div className="text-3xl font-black text-black font-mono">
+                7 Days Duration
+              </div>
+              <p className="text-[11px] text-gray-500 font-medium mt-1">Automatic expiration calculation</p>
+            </div>
+
+            <div className="bg-white border border-[var(--color-clay-border,#e5e2dc)] p-6 rounded-3xl shadow-xs">
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-gray-400 block mb-1">
+                Telegram Lead Inquiries
+              </span>
+              <div className="text-base font-black text-black font-mono flex items-center gap-2 mt-2">
+                <a
+                  href="https://t.me/akash_kumar107"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                >
+                  @akash_kumar107 on TG →
+                </a>
+              </div>
+              <p className="text-[11px] text-gray-500 font-medium mt-2">Where sponsors book their spot</p>
+            </div>
+          </div>
+
+          {/* Sponsors Table */}
+          <div className="bg-white rounded-3xl border border-[var(--color-clay-border,#e5e2dc)] overflow-hidden shadow-xs">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-black font-heading">Active &amp; Past 1-Week Sponsors</h3>
+                <p className="text-xs text-gray-500">Enable or remove sponsor banners appearing sitewide across project profiles.</p>
+              </div>
+              <button
+                onClick={() => setShowSponsorModal(true)}
+                className="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus size={14} /> Add Sponsor
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-4">Sponsor Brand</th>
+                    <th className="px-6 py-4">Promo Copy &amp; URL</th>
+                    <th className="px-6 py-4">1-Week Window</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {sponsors.map(s => {
+                    const expires = new Date(s.expires_at).getTime();
+                    const now = Date.now();
+                    const daysLeft = Math.max(0, Math.ceil((expires - now) / 86400000));
+                    const isExpired = expires < now;
+
+                    return (
+                      <tr key={s.id} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {s.logo_url ? (
+                              <img src={s.logo_url} alt="" className="w-8 h-8 rounded-xl object-cover border border-gray-200" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0070F3] font-black flex items-center justify-center text-xs border border-blue-200">
+                                {s.company_name.charAt(0)}
+                              </div>
+                            )}
+                            <div>
+                              <strong className="text-sm font-black text-black font-sans block">{s.company_name}</strong>
+                              <span className="text-[10px] text-gray-400">{s.banner_cta || 'Explore Platform'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 max-w-sm">
+                          <p className="font-sans text-xs text-gray-700 truncate">{s.tagline}</p>
+                          <a href={s.url} target="_blank" rel="noreferrer" className="text-[11px] text-[#0070F3] hover:underline flex items-center gap-1 mt-0.5 truncate">
+                            {s.url} <ExternalLink size={11} />
+                          </a>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-[11px] text-gray-800 font-bold">
+                            {new Date(s.starts_at).toLocaleDateString()} → {new Date(s.expires_at).toLocaleDateString()}
+                          </div>
+                          <span className={`text-[10px] ${daysLeft > 0 && s.active ? 'text-emerald-600 font-black' : 'text-gray-400'}`}>
+                            {daysLeft > 0 ? `${daysLeft} days remaining` : 'Expired'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleToggleSponsor(s)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border transition-all cursor-pointer ${
+                              s.active && !isExpired
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-gray-100 text-gray-500 border-gray-200'
+                            }`}
+                          >
+                            {s.active && !isExpired ? 'ACTIVE' : 'PAUSED'}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <a href={s.url} target="_blank" rel="noreferrer" className="p-2 rounded-xl text-gray-400 hover:text-black hover:bg-gray-100" title="Visit URL">
+                              <ExternalLink size={16} />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteSponsor(s.id)}
+                              className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              title="Delete Sponsor"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {sponsors.length === 0 && (
+              <div className="text-center py-12 text-gray-400 text-xs font-mono">
+                No sponsors created yet. Click "Add 1-Week Sponsor Spot" to activate a sponsor sitewide!
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CREATE SPONSOR MODAL */}
+      {showSponsorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-gray-200 max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-heading font-black text-lg text-black">Add 1-Week Sponsor Spot</h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">Sitewide sponsor banner running for 7 days</p>
+              </div>
+              <button onClick={() => setShowSponsorModal(false)} className="text-gray-400 hover:text-black font-bold p-1">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateSponsor} className="space-y-4 font-mono text-xs">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Company / Brand Name *</label>
+                <input
+                  required
+                  placeholder="e.g. HireInCrypto"
+                  value={sponsorForm.company_name}
+                  onChange={e => setSponsorForm({ ...sponsorForm, company_name: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-black outline-none focus:ring-2 focus:ring-black"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Promo Tagline / Value Proposition *</label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="e.g. The premier Web3 hiring portal for crypto protocols & developers."
+                  value={sponsorForm.tagline}
+                  onChange={e => setSponsorForm({ ...sponsorForm, tagline: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-black outline-none focus:ring-2 focus:ring-black resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Destination URL (Website / Landing Page) *</label>
+                <input
+                  required
+                  placeholder="https://hireincrypto.com"
+                  value={sponsorForm.url}
+                  onChange={e => setSponsorForm({ ...sponsorForm, url: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-black outline-none focus:ring-2 focus:ring-black"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Button CTA Text</label>
+                  <input
+                    placeholder="e.g. Explore Roles →"
+                    value={sponsorForm.banner_cta}
+                    onChange={e => setSponsorForm({ ...sponsorForm, banner_cta: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-black outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Logo / Banner URL (Optional)</label>
+                  <input
+                    placeholder="https://.../logo.png"
+                    value={sponsorForm.logo_url}
+                    onChange={e => setSponsorForm({ ...sponsorForm, logo_url: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-black outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-800 space-y-1">
+                <span className="font-bold block">1-Week Automatic Schedule:</span>
+                <p>Starts immediately upon creation and runs active for 7 full days across all launch pages &amp; directories.</p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSponsorModal(false)}
+                  className="px-4 py-2.5 text-gray-500 hover:text-black font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-black hover:bg-neutral-800 text-white rounded-xl font-bold shadow-md"
+                >
+                  Publish 1-Week Sponsor Spot →
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

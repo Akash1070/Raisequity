@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -33,7 +34,10 @@ import {
   Send,
   TrendingUp,
   Trash2,
-  Plus
+  Plus,
+  FileText,
+  Layers,
+  Cpu
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { scrapeWebsiteMetadata, verifyBacklink } from '../../lib/metadataScraper';
@@ -56,6 +60,33 @@ const CATEGORIES = [
   'Security & Privacy',
   'Data & Analytics',
   'Open Source',
+];
+
+const ECOSYSTEM_CHAINS = [
+  'Solana',
+  'Ethereum',
+  'Base',
+  'Arbitrum',
+  'Polygon',
+  'Bitcoin / L2',
+  'Sui & Aptos',
+  'AI / LLM Agents',
+  'Cross-Chain / Multi-Chain',
+  'Web2 Cloud / SaaS'
+];
+
+const PRODUCT_STAGES = [
+  { id: 'mainnet_live', label: '🟢 Mainnet Live (Production)' },
+  { id: 'public_beta', label: '🚀 Public Beta / Open App' },
+  { id: 'testnet_alpha', label: '🧪 Testnet / Devnet Alpha' },
+  { id: 'waitlist_open', label: '⏳ Waitlist / Private Access' },
+];
+
+const TOKEN_STATUSES = [
+  { id: 'no_token', label: '🛡️ Equity Only (No Token)' },
+  { id: 'token_live', label: '🪙 Token Live (Tradable)' },
+  { id: 'planning_tge', label: '📅 Planning TGE Soon' },
+  { id: 'saft_open', label: '📝 SAFT / Seed Allocation Open' },
 ];
 
 const RAISING_STAGES = [
@@ -122,6 +153,12 @@ export default function LaunchSubmit() {
     company_name: '',
     tagline: '',
     description: '',
+    problem_solved: '',
+    target_audience: '',
+    ecosystem_chain: ['Solana', 'Ethereum'],
+    token_status: 'no_token',
+    product_stage: 'mainnet_live',
+    deck_url: '',
     logo_url: '',
     screenshots: [] as string[],
     category: 'Web3',
@@ -155,6 +192,18 @@ export default function LaunchSubmit() {
 
   const update = (key: string, value: any) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const toggleEcosystemChain = (chain: string) => {
+    setFormData((prev) => {
+      const exists = prev.ecosystem_chain.includes(chain);
+      return {
+        ...prev,
+        ecosystem_chain: exists
+          ? prev.ecosystem_chain.filter((c) => c !== chain)
+          : [...prev.ecosystem_chain, chain],
+      };
+    });
   };
 
   const handleTaglineChange = (text: string) => {
@@ -250,7 +299,7 @@ export default function LaunchSubmit() {
 
     if (forceAttest) {
       setBacklinkVerified(true);
-      setBacklinkReason("Backlink self-verified! Ready to launch.");
+      setBacklinkReason("Self-attestation confirmed: You declared that the Raisequity badge is added to your website. Verified!");
       setIsVerifyingBacklink(false);
       return;
     }
@@ -259,14 +308,14 @@ export default function LaunchSubmit() {
       const res = await verifyBacklink(formData.website_url);
       if (res.verified) {
         setBacklinkVerified(true);
-        setBacklinkReason("Backlink verified successfully! Ready to launch.");
+        setBacklinkReason(res.reason || "Backlink verified successfully! Ready to launch.");
       } else {
         setBacklinkVerified(false);
         setBacklinkReason(res.reason || "Could not detect a link to raisequity.com on your website.");
       }
     } catch (err: any) {
-      setBacklinkVerified(true);
-      setBacklinkReason("Backlink self-verified! Ready to launch.");
+      setBacklinkVerified(false);
+      setBacklinkReason("Could not scan website HTML source. Click 'Self-Verify' to confirm manual placement, or upgrade to Premium to skip.");
     } finally {
       setIsVerifyingBacklink(false);
     }
@@ -275,7 +324,9 @@ export default function LaunchSubmit() {
   const getBadgeCode = () => {
     const slug = formData.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'my-project';
     const badgeFile = badgeTheme === 'dark' ? 'featured-dark.svg' : 'featured.svg';
-    return `<a href="https://raisequity.com/launch/${slug}" target="_blank" rel="noopener">\n  <img src="https://raisequity.com/badges/${badgeFile}" alt="Featured on Raisequity Directory" width="220" height="54" />\n</a>`;
+    return `<a href="https://raisequity.com/launch/${slug}" target="_blank" rel="noopener">
+  <img src="https://raisequity.com/badges/${badgeFile}" alt="Featured on Raisequity Directory" width="220" height="54" />
+</a>`;
   };
 
   const copyBadgeCode = () => {
@@ -346,18 +397,18 @@ export default function LaunchSubmit() {
   };
 
   const inputCls =
-    'w-full bg-slate-900/60 dark:bg-[#111215] border border-slate-700/60 dark:border-white/10 rounded-2xl px-4 py-3.5 text-xs font-mono font-bold text-white focus:ring-1 focus:ring-emerald-400 focus:border-emerald-400 outline-none transition-all placeholder-slate-500 shadow-xs';
-  const labelCls = 'block text-[11px] font-mono font-bold uppercase text-slate-400 mb-1.5 tracking-wider';
+    'w-full bg-white dark:bg-[#0D0E11] border border-slate-300 dark:border-white/10 rounded-2xl px-4 py-3.5 text-xs font-mono font-bold text-slate-900 dark:text-white focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400 shadow-xs';
+  const labelCls = 'block text-[11px] font-mono font-bold uppercase text-slate-600 dark:text-slate-400 mb-1.5 tracking-wider';
 
   if (!uid) {
     return (
-      <div className="min-h-screen bg-[#0A0B0D] flex items-center justify-center p-4">
-        <div className="bg-[#121316] border border-white/10 rounded-[32px] p-8 max-w-md text-center space-y-4 shadow-2xl text-white">
-          <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto text-amber-400">
+      <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0A0B0D] flex items-center justify-center p-4 transition-colors">
+        <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-[32px] p-8 max-w-md text-center space-y-4 shadow-2xl text-slate-900 dark:text-white">
+          <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto text-amber-500">
             <Lock size={24} />
           </div>
-          <h2 className="text-xl font-extrabold text-white">Founder Login Required</h2>
-          <p className="text-xs text-slate-400 font-normal">
+          <h2 className="text-xl font-extrabold">Founder Login Required</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
             You must be logged in as a founder or creator to submit a product launch.
           </p>
           <Link
@@ -374,34 +425,34 @@ export default function LaunchSubmit() {
   const isCurrentRaising = RAISING_STAGES.find((s) => s.id === formData.raising_status)?.isRaising;
 
   return (
-    <div className="min-h-screen bg-[#0A0B0E] py-8 px-4 sm:px-6 font-sans pb-28 text-slate-100 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0A0B0E] py-8 px-4 sm:px-6 font-sans pb-28 text-slate-900 dark:text-slate-100 relative overflow-hidden transition-colors duration-150">
       {/* Background radial gradient accent */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-emerald-500/10 via-purple-500/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-emerald-500/10 via-blue-500/5 to-transparent blur-3xl pointer-events-none" />
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Top Header */}
         <div className="flex items-center justify-between mb-6">
           <Link
             to="/launch"
-            className="inline-flex items-center gap-2 text-xs font-mono font-bold text-slate-400 hover:text-white transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs font-mono font-bold text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-all cursor-pointer"
           >
             <ArrowLeft size={16} /> Back to Directory
           </Link>
 
-          <div className="flex items-center gap-2 text-xs font-mono font-bold bg-[#141519] text-emerald-400 px-3.5 py-1.5 rounded-full border border-white/10 shadow-md">
-            <Coins size={14} className="text-emerald-400" /> Your Credits: <span className="font-extrabold text-white">{userCredits}</span>
+          <div className="flex items-center gap-2 text-xs font-mono font-bold bg-white dark:bg-[#141519] text-emerald-600 dark:text-emerald-400 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-white/10 shadow-xs">
+            <Coins size={14} className="text-emerald-500" /> Your Credits: <span className="font-extrabold text-slate-900 dark:text-white">{userCredits}</span>
           </div>
         </div>
 
         {/* Header Title & Stepper */}
         <div className="text-center max-w-xl mx-auto mb-8">
-          <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-widest block mb-1">
+          <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-1">
             SUBMIT A PRODUCT &amp; DEALFLOW
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-heading">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-heading">
             Launch your product in two steps
           </h1>
-          <p className="text-xs text-slate-400 font-normal mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 font-normal mt-1">
             Publish on the weekly leaderboard, earn do-follow backlinks, and surface to 180+ verified venture funds.
           </p>
 
@@ -410,7 +461,7 @@ export default function LaunchSubmit() {
               type="button"
               onClick={() => setStep(1)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
-                step === 1 ? 'bg-emerald-400 text-black shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-400 hover:text-white'
+                step === 1 ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white'
               }`}
             >
               <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">1</span>
@@ -420,7 +471,7 @@ export default function LaunchSubmit() {
               type="button"
               onClick={() => handleNextStep()}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
-                step === 2 ? 'bg-emerald-400 text-black shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-400 hover:text-white'
+                step === 2 ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'bg-slate-200 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white'
               }`}
             >
               <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[10px]">2</span>
@@ -430,12 +481,12 @@ export default function LaunchSubmit() {
         </div>
 
         {error && (
-          <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold rounded-2xl mb-6 flex items-center justify-between max-w-2xl mx-auto shadow-lg">
+          <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-mono font-bold rounded-2xl mb-6 flex items-center justify-between max-w-2xl mx-auto shadow-lg">
             <div className="flex items-center gap-2">
-              <AlertCircle size={16} className="text-rose-400 shrink-0" />
+              <AlertCircle size={16} className="text-rose-500 shrink-0" />
               <span>{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="text-rose-200 font-black cursor-pointer hover:text-white">✕</button>
+            <button onClick={() => setError(null)} className="text-rose-600 dark:text-rose-200 font-black cursor-pointer hover:text-black dark:hover:text-white">✕</button>
           </div>
         )}
 
@@ -444,17 +495,17 @@ export default function LaunchSubmit() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#121317] border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl max-w-2xl mx-auto space-y-7 text-white"
+            className="bg-white dark:bg-[#121317] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-10 shadow-xl max-w-2xl mx-auto space-y-7 text-slate-900 dark:text-white transition-colors duration-150"
           >
             {/* Step Subheader */}
-            <div className="border-b border-white/10 pb-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 dark:border-white/10 pb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
+                <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                   STEP 1 OF 2 — PRODUCT &amp; DEAL PROFILE
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Tell investors and users what you built</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tell investors and users what you built</p>
               </div>
-              <span className="text-[11px] font-mono text-slate-500">Live preview active</span>
+              <span className="text-[11px] font-mono text-slate-400">Live preview active</span>
             </div>
 
             {/* Website URL with Autofill */}
@@ -462,7 +513,7 @@ export default function LaunchSubmit() {
               <label className={labelCls}>Website *</label>
               <div className="flex gap-2.5">
                 <div className="relative flex-1">
-                  <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     className={`${inputCls} pl-10`}
                     placeholder="https://yourproject.com"
@@ -474,9 +525,9 @@ export default function LaunchSubmit() {
                   type="button"
                   onClick={handleAutofill}
                   disabled={autofilling}
-                  className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl text-xs font-mono font-bold flex items-center gap-1.5 hover:bg-emerald-500/20 transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-2xl text-xs font-mono font-bold flex items-center gap-1.5 hover:bg-emerald-500/20 transition-all shrink-0 cursor-pointer disabled:opacity-50"
                 >
-                  {autofilling ? <Loader2 size={14} className="animate-spin text-emerald-400" /> : <Sparkles size={14} className="text-emerald-400" />}
+                  {autofilling ? <Loader2 size={14} className="animate-spin text-emerald-500" /> : <Sparkles size={14} className="text-emerald-500" />}
                   <span>{autofilling ? 'Scanning...' : 'Autofill from site'}</span>
                 </button>
               </div>
@@ -497,7 +548,7 @@ export default function LaunchSubmit() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className={labelCls}>Tagline * (One sentence, no full stop)</label>
-                <span className="text-[10px] font-mono text-slate-500">{formData.tagline.length}/70</span>
+                <span className="text-[10px] font-mono text-slate-400">{formData.tagline.length}/70</span>
               </div>
               <input
                 className={inputCls}
@@ -511,7 +562,7 @@ export default function LaunchSubmit() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className={labelCls}>Description * (What it does, who it is for &amp; unique advantage)</label>
-                <span className="text-[10px] font-mono text-slate-500">{formData.description.length}/600</span>
+                <span className="text-[10px] font-mono text-slate-400">{formData.description.length}/600</span>
               </div>
               <textarea
                 className={`${inputCls} h-28 resize-none`}
@@ -521,13 +572,126 @@ export default function LaunchSubmit() {
               />
             </div>
 
-            {/* ── IMAGE SECTION: Real Logo & Screenshot Uploaders (IMAGE 3 FIX) ── */}
-            <div className="p-5 rounded-2xl bg-[#0D0E11] border border-white/5 space-y-5">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                  <ImageIcon size={14} className="text-emerald-400" /> Visual Assets &amp; Media
+            {/* ── EXPANDED PRODUCT INFORMATION SECTION (Fixing user feedback on product info) ── */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0D0E11] border border-slate-200 dark:border-white/5 space-y-5 transition-colors">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-2">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300 flex items-center gap-2">
+                  <Layers size={14} className="text-emerald-500" /> Deep Product Specs &amp; Architecture
                 </span>
-                <span className="text-[10px] font-mono text-slate-500">PNG, JPG, SVG, WebP</span>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">Institutional Deal Info</span>
+              </div>
+
+              {/* Core Problem Solved */}
+              <div>
+                <label className={labelCls}>Core Problem Solved &amp; Competitive Moat *</label>
+                <textarea
+                  className={`${inputCls} h-20 resize-none`}
+                  placeholder="What friction exists in the market today that this product eliminates? (e.g. Eliminates cold outreach spam by requiring 1-credit double-blind intros)"
+                  value={formData.problem_solved}
+                  onChange={(e) => update('problem_solved', e.target.value)}
+                />
+              </div>
+
+              {/* Target Audience / ICP */}
+              <div>
+                <label className={labelCls}>Target Audience / Ideal Customer Profile (ICP)</label>
+                <input
+                  className={inputCls}
+                  placeholder="e.g. Web3 Founders, Angel Syndicates, DeFi Protocols, Seed-stage VCs"
+                  value={formData.target_audience}
+                  onChange={(e) => update('target_audience', e.target.value)}
+                />
+              </div>
+
+              {/* Ecosystem & Supported Chains */}
+              <div>
+                <label className={labelCls}>Supported Chains &amp; Ecosystems</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {ECOSYSTEM_CHAINS.map((chain) => {
+                    const isSelected = formData.ecosystem_chain.includes(chain);
+                    return (
+                      <button
+                        key={chain}
+                        type="button"
+                        onClick={() => toggleEcosystemChain(chain)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border ${
+                          isSelected
+                            ? 'bg-emerald-500 text-black border-emerald-500 shadow-xs'
+                            : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/25'
+                        }`}
+                      >
+                        {chain}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Product Stage & Token Status Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Product Stage</label>
+                  <div className="space-y-1.5">
+                    {PRODUCT_STAGES.map((stg) => (
+                      <button
+                        key={stg.id}
+                        type="button"
+                        onClick={() => update('product_stage', stg.id)}
+                        className={`w-full p-2.5 rounded-xl border text-left text-xs font-mono font-bold transition-all cursor-pointer ${
+                          formData.product_stage === stg.id
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        {stg.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Token / Tokenomics Status</label>
+                  <div className="space-y-1.5">
+                    {TOKEN_STATUSES.map((tok) => (
+                      <button
+                        key={tok.id}
+                        type="button"
+                        onClick={() => update('token_status', tok.id)}
+                        className={`w-full p-2.5 rounded-xl border text-left text-xs font-mono font-bold transition-all cursor-pointer ${
+                          formData.token_status === tok.id
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        {tok.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Pitch Deck / Whitepaper Link */}
+              <div>
+                <label className={labelCls}>Pitch Deck / Whitepaper Link (Optional)</label>
+                <div className="relative">
+                  <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    className={`${inputCls} pl-10`}
+                    placeholder="https://docsend.com/... or Google Drive URL"
+                    value={formData.deck_url}
+                    onChange={(e) => update('deck_url', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ── IMAGE SECTION: Real Logo & Screenshot Uploaders ── */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0D0E11] border border-slate-200 dark:border-white/5 space-y-5 transition-colors">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-2">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300 flex items-center gap-2">
+                  <ImageIcon size={14} className="text-emerald-500" /> Visual Assets &amp; Media
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">PNG, JPG, SVG, WebP</span>
               </div>
 
               {/* Logo Uploader */}
@@ -535,7 +699,7 @@ export default function LaunchSubmit() {
                 <label className={labelCls}>Project Logo (512 × 512 px)</label>
                 <div className="flex items-center gap-4">
                   {formData.logo_url ? (
-                    <div className="relative w-16 h-16 rounded-2xl border border-white/10 overflow-hidden bg-white/5 shrink-0 group">
+                    <div className="relative w-16 h-16 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/5 shrink-0 group">
                       <img src={formData.logo_url} alt="Logo preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -549,7 +713,7 @@ export default function LaunchSubmit() {
                   ) : (
                     <div
                       onClick={() => logoInputRef.current?.click()}
-                      className="w-16 h-16 rounded-2xl border-2 border-dashed border-white/20 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 transition-all cursor-pointer bg-white/5 shrink-0"
+                      className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/20 hover:border-emerald-500 flex flex-col items-center justify-center text-slate-500 hover:text-emerald-500 transition-all cursor-pointer bg-white dark:bg-white/5 shrink-0"
                     >
                       <Upload size={18} />
                       <span className="text-[9px] font-mono mt-1 font-bold">Upload</span>
@@ -568,7 +732,7 @@ export default function LaunchSubmit() {
                       <button
                         type="button"
                         onClick={() => logoInputRef.current?.click()}
-                        className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-mono font-bold text-white transition-all cursor-pointer flex items-center gap-1.5"
+                        className="px-3.5 py-2 rounded-xl bg-slate-200/80 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/15 text-xs font-mono font-bold text-slate-800 dark:text-white transition-all cursor-pointer flex items-center gap-1.5"
                       >
                         <Upload size={13} />
                         <span>Upload File</span>
@@ -580,7 +744,7 @@ export default function LaunchSubmit() {
                         onChange={(e) => update('logo_url', e.target.value)}
                       />
                     </div>
-                    <p className="text-[10px] font-mono text-slate-500">Square 1:1 image displayed on leaderboard &amp; backlinks.</p>
+                    <p className="text-[10px] font-mono text-slate-400">Square 1:1 image displayed on leaderboard &amp; backlinks.</p>
                   </div>
                 </div>
               </div>
@@ -589,7 +753,7 @@ export default function LaunchSubmit() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className={labelCls}>Product Screenshots / Gallery (Up to 4)</label>
-                  <span className="text-[10px] font-mono text-slate-500">{formData.screenshots.length}/4 uploaded</span>
+                  <span className="text-[10px] font-mono text-slate-400">{formData.screenshots.length}/4 uploaded</span>
                 </div>
 
                 <input
@@ -603,7 +767,7 @@ export default function LaunchSubmit() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {formData.screenshots.map((shot, idx) => (
-                    <div key={idx} className="relative aspect-video rounded-xl border border-white/10 overflow-hidden bg-black/40 group">
+                    <div key={idx} className="relative aspect-video rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-black/40 group">
                       <img src={shot} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -619,22 +783,22 @@ export default function LaunchSubmit() {
                   {formData.screenshots.length < 4 && (
                     <div
                       onClick={() => screenshotInputRef.current?.click()}
-                      className="aspect-video rounded-xl border-2 border-dashed border-white/20 hover:border-emerald-400 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 transition-all cursor-pointer bg-white/5 p-2 text-center"
+                      className="aspect-video rounded-xl border-2 border-dashed border-slate-300 dark:border-white/20 hover:border-emerald-500 flex flex-col items-center justify-center text-slate-500 hover:text-emerald-500 transition-all cursor-pointer bg-white dark:bg-white/5 p-2 text-center"
                     >
                       <Plus size={18} />
                       <span className="text-[10px] font-mono font-bold mt-1">Add Image</span>
-                      <span className="text-[9px] font-mono text-slate-500">16:10 or 16:9</span>
+                      <span className="text-[9px] font-mono text-slate-400">16:10 or 16:9</span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* ── EXPANDED CATEGORIES (IMAGE 2 FIX: ADD MORE CATEGORIES) ── */}
+            {/* Category selection */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className={labelCls}>Category *</label>
-                <span className="text-[10px] font-mono text-slate-500">Pick the best fit</span>
+                <span className="text-[10px] font-mono text-slate-400">Pick the best fit</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((cat) => (
@@ -644,8 +808,8 @@ export default function LaunchSubmit() {
                     onClick={() => update('category', cat)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border ${
                       formData.category === cat
-                        ? 'bg-emerald-400 text-black border-emerald-400 shadow-md shadow-emerald-500/20'
-                        : 'bg-white/5 text-slate-300 border-white/10 hover:border-white/25 hover:text-white'
+                        ? 'bg-emerald-500 text-black border-emerald-500 shadow-sm'
+                        : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/25 hover:text-black dark:hover:text-white'
                     }`}
                   >
                     {cat}
@@ -654,13 +818,13 @@ export default function LaunchSubmit() {
               </div>
             </div>
 
-            {/* ── FOUNDER QUESTIONS: STAGE & FUNDING (IMAGE 2 FIX) ── */}
-            <div className="p-5 rounded-2xl bg-[#0D0E11] border border-white/5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                  <TrendingUp size={14} className="text-emerald-400" /> Capital &amp; Stage Intent
+            {/* Founder Stage & Capital Intent */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0D0E11] border border-slate-200 dark:border-white/5 space-y-4 transition-colors">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-2">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300 flex items-center gap-2">
+                  <TrendingUp size={14} className="text-emerald-500" /> Capital &amp; Stage Intent
                 </span>
-                <span className="text-[10px] font-mono text-emerald-400">Surfaced to VCs</span>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">Surfaced to VCs</span>
               </div>
 
               <div>
@@ -673,8 +837,8 @@ export default function LaunchSubmit() {
                       onClick={() => update('raising_status', stg.id)}
                       className={`p-3 rounded-xl border text-left text-xs font-mono font-bold transition-all cursor-pointer ${
                         formData.raising_status === stg.id
-                          ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300 shadow-xs'
-                          : 'border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/20'
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                          : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white hover:border-slate-300 dark:hover:border-white/20'
                       }`}
                     >
                       {stg.label}
@@ -717,12 +881,12 @@ export default function LaunchSubmit() {
               </div>
             </div>
 
-            {/* ── DEMO & COMMUNITY SOCIALS ── */}
+            {/* Socials & Video */}
             <div className="space-y-4">
               <label className={labelCls}>Demo &amp; Community Channels</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">@</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs">@</span>
                   <input
                     className={`${inputCls} pl-8`}
                     placeholder="twitter_handle"
@@ -731,7 +895,7 @@ export default function LaunchSubmit() {
                   />
                 </div>
                 <div className="relative">
-                  <Send className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                  <Send className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                   <input
                     className={`${inputCls} pl-9`}
                     placeholder="Telegram / Discord URL"
@@ -740,7 +904,7 @@ export default function LaunchSubmit() {
                   />
                 </div>
                 <div className="relative">
-                  <Github className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                  <Github className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                   <input
                     className={`${inputCls} pl-9`}
                     placeholder="GitHub Repo URL"
@@ -753,7 +917,7 @@ export default function LaunchSubmit() {
               <div>
                 <label className={labelCls}>Product Demo Video (Optional)</label>
                 <div className="relative">
-                  <Video className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <Video className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     className={`${inputCls} pl-10`}
                     placeholder="https://loom.com/share/... or YouTube link"
@@ -782,7 +946,7 @@ export default function LaunchSubmit() {
             <button
               type="button"
               onClick={handleNextStep}
-              className="w-full py-4 bg-emerald-400 hover:bg-emerald-300 text-black rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-2 active:scale-98 font-mono uppercase tracking-wider"
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-2 active:scale-98 font-mono uppercase tracking-wider"
             >
               <span>Proceed to Launch Plan &amp; Scheduling</span>
               <ArrowRight size={16} />
@@ -790,18 +954,18 @@ export default function LaunchSubmit() {
           </motion.div>
         )}
 
-        {/* ──────────────── STEP 2: Plan & Launch Selection (IMAGE 4 FIX) ──────────────── */}
+        {/* ──────────────── STEP 2: Plan & Launch Selection ──────────────── */}
         {step === 2 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             {/* Payment Method Switcher */}
-            <div className="bg-[#121316] border border-white/10 rounded-2xl p-4 max-w-md mx-auto flex items-center justify-between shadow-2xl">
-              <span className="text-xs font-mono font-bold text-slate-300">Checkout Currency:</span>
-              <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
+            <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-2xl p-4 max-w-md mx-auto flex items-center justify-between shadow-xl">
+              <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">Checkout Currency:</span>
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-black/60 p-1 rounded-xl border border-slate-200 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('cash')}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                    paymentMethod === 'cash' ? 'bg-white/15 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                    paymentMethod === 'cash' ? 'bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white'
                   }`}
                 >
                   💵 Direct Pay
@@ -810,7 +974,7 @@ export default function LaunchSubmit() {
                   type="button"
                   onClick={() => setPaymentMethod('credits')}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                    paymentMethod === 'credits' ? 'bg-emerald-400 text-black font-extrabold shadow-xs' : 'text-slate-400 hover:text-white'
+                    paymentMethod === 'credits' ? 'bg-emerald-500 text-black font-extrabold shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white'
                   }`}
                 >
                   🪙 Platform Credits
@@ -823,42 +987,42 @@ export default function LaunchSubmit() {
               {/* Standard ($0 Free Forever) */}
               <div
                 onClick={() => update('launch_tier', 'standard')}
-                className={`bg-[#121317] rounded-3xl border-2 p-6 flex flex-col justify-between transition-all cursor-pointer shadow-xl relative ${
+                className={`bg-white dark:bg-[#121317] rounded-3xl border-2 p-6 flex flex-col justify-between transition-all cursor-pointer shadow-xl relative ${
                   formData.launch_tier === 'standard'
-                    ? 'border-emerald-400 ring-2 ring-emerald-500/20'
-                    : 'border-white/10 hover:border-white/25'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/25'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-extrabold text-white font-heading">Standard</h3>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/10">
+                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-heading">Standard</h3>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
                       COMMUNITY
                     </span>
                   </div>
                   <div className="flex items-baseline gap-1 my-2">
-                    <span className="text-3xl font-extrabold text-white font-mono">$0</span>
-                    <span className="text-xs text-slate-400 font-mono">free forever</span>
+                    <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono">$0</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">free forever</span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-6 font-normal">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-normal">
                     Join the cohort queue, launch on the weekly board, and compete for community upvotes.
                   </p>
 
-                  <ul className="space-y-3 text-xs text-slate-300 font-normal border-t border-white/10 pt-5 font-mono">
+                  <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300 font-normal border-t border-slate-200 dark:border-white/10 pt-5 font-mono">
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>Launch on weekly cohort board</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>Community upvotes &amp; feedback</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>Eligible for Launch of the Week</span>
                     </li>
-                    <li className="flex items-start gap-2 text-amber-300 font-bold bg-amber-500/10 p-2 rounded-xl border border-amber-500/30">
-                      <ShieldCheck size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                    <li className="flex items-start gap-2 text-amber-700 dark:text-amber-300 font-bold bg-amber-500/10 p-2 rounded-xl border border-amber-500/30">
+                      <ShieldCheck size={16} className="text-amber-500 shrink-0 mt-0.5" />
                       <span>Requires backlink verification</span>
                     </li>
                   </ul>
@@ -870,8 +1034,8 @@ export default function LaunchSubmit() {
                     onClick={() => update('launch_tier', 'standard')}
                     className={`w-full py-3 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer ${
                       formData.launch_tier === 'standard'
-                        ? 'bg-emerald-400 text-black border-emerald-400'
-                        : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+                        ? 'bg-emerald-500 text-black border-emerald-500'
+                        : 'bg-slate-100 dark:bg-white/5 text-slate-800 dark:text-white border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10'
                     }`}
                   >
                     Select Free Cohort →
@@ -882,48 +1046,48 @@ export default function LaunchSubmit() {
               {/* Premium ($11 or 110 Credits) - MOST PICKED */}
               <div
                 onClick={() => update('launch_tier', 'premium')}
-                className={`bg-gradient-to-b from-[#0F1E19] to-[#121317] rounded-3xl border-2 p-6 flex flex-col justify-between transition-all cursor-pointer shadow-xl relative overflow-hidden ${
+                className={`bg-gradient-to-b from-emerald-50/40 to-white dark:from-[#0F1E19] dark:to-[#121317] rounded-3xl border-2 p-6 flex flex-col justify-between transition-all cursor-pointer shadow-xl relative overflow-hidden ${
                   formData.launch_tier === 'premium'
-                    ? 'border-emerald-400 ring-2 ring-emerald-500/30'
-                    : 'border-white/10 hover:border-white/25'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/30'
+                    : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/25'
                 }`}
               >
-                <div className="absolute top-0 right-0 bg-emerald-400 text-black font-mono font-extrabold text-[9px] uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                <div className="absolute top-0 right-0 bg-emerald-500 text-black font-mono font-extrabold text-[9px] uppercase px-3 py-1 rounded-bl-xl tracking-wider">
                   MOST PICKED
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-extrabold text-white font-heading">Premium</h3>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-heading">Premium</h3>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
                       HIGH VISIBILITY
                     </span>
                   </div>
                   <div className="flex items-baseline gap-1.5 my-2">
-                    <span className="text-3xl font-extrabold text-white font-mono">
+                    <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono">
                       {paymentMethod === 'credits' ? '110 Credits' : '$11'}
                     </span>
-                    <span className="text-xs text-slate-400 font-mono">once, per product</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">once, per product</span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-6 font-normal">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-normal">
                     Skip the queue, hold the top of the board, and claim a permanent do-follow authority backlink.
                   </p>
 
-                  <ul className="space-y-3 text-xs text-slate-300 font-normal border-t border-white/10 pt-5 font-mono">
+                  <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300 font-normal border-t border-slate-200 dark:border-white/10 pt-5 font-mono">
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-                      <span className="font-extrabold text-white">Skips queue &amp; backlink check</span>
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <span className="font-extrabold text-slate-900 dark:text-white">Skips queue &amp; backlink check</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>Pinned to top for multiple days</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>High authority do-follow backlink</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>Permanent directory listing &amp; SEO index</span>
                     </li>
                   </ul>
@@ -933,7 +1097,7 @@ export default function LaunchSubmit() {
                   <button
                     type="button"
                     onClick={() => update('launch_tier', 'premium')}
-                    className="w-full py-3 rounded-xl text-xs font-mono font-extrabold transition-all bg-emerald-400 hover:bg-emerald-300 text-black shadow-lg shadow-emerald-500/20 cursor-pointer"
+                    className="w-full py-3 rounded-xl text-xs font-mono font-extrabold transition-all bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20 cursor-pointer"
                   >
                     Select Premium Plan →
                   </button>
@@ -943,44 +1107,44 @@ export default function LaunchSubmit() {
               {/* Spotlight ($39 or 390 Credits) */}
               <div
                 onClick={() => update('launch_tier', 'spotlight')}
-                className={`bg-gradient-to-b from-[#1E122A] to-[#121317] rounded-3xl border-2 p-6 flex flex-col justify-between transition-all cursor-pointer shadow-xl relative ${
+                className={`bg-gradient-to-b from-purple-50/40 to-white dark:from-[#1E122A] dark:to-[#121317] rounded-3xl border-2 p-6 flex flex-col justify-between transition-all cursor-pointer shadow-xl relative ${
                   formData.launch_tier === 'spotlight'
-                    ? 'border-purple-400 ring-2 ring-purple-500/30'
-                    : 'border-white/10 hover:border-white/25'
+                    ? 'border-purple-500 ring-2 ring-purple-500/30'
+                    : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/25'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-extrabold text-white font-heading">Spotlight</h3>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-heading">Spotlight</h3>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30">
                       EDITORIAL + VCs
                     </span>
                   </div>
                   <div className="flex items-baseline gap-1.5 my-2">
-                    <span className="text-3xl font-extrabold text-white font-mono">
+                    <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono">
                       {paymentMethod === 'credits' ? '390 Credits' : '$39'}
                     </span>
-                    <span className="text-xs text-slate-400 font-mono">once, per product</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">once, per product</span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-6 font-normal">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-normal">
                     Everything in Premium, plus a dedicated review written to rank on Google &amp; investor blast.
                   </p>
 
-                  <ul className="space-y-3 text-xs text-slate-300 font-normal border-t border-white/10 pt-5 font-mono">
+                  <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-300 font-normal border-t border-slate-200 dark:border-white/10 pt-5 font-mono">
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-purple-400 shrink-0 mt-0.5" />
-                      <span className="font-extrabold text-white">Everything in Premium</span>
+                      <Check size={16} className="text-purple-500 shrink-0 mt-0.5" />
+                      <span className="font-extrabold text-slate-900 dark:text-white">Everything in Premium</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-purple-500 shrink-0 mt-0.5" />
                       <span>Hand-written SEO review article</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-purple-500 shrink-0 mt-0.5" />
                       <span>Curated blast to 180+ verified VCs</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <Check size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                      <Check size={16} className="text-purple-500 shrink-0 mt-0.5" />
                       <span>Optimized for AI Search &amp; Google GEO</span>
                     </li>
                   </ul>
@@ -1000,7 +1164,7 @@ export default function LaunchSubmit() {
 
             {/* Target keywords input (for spotlight) */}
             {formData.launch_tier === 'spotlight' && (
-              <div className="bg-[#121316] border border-purple-500/40 rounded-3xl p-6 max-w-2xl mx-auto space-y-3 shadow-xl">
+              <div className="bg-white dark:bg-[#121316] border border-purple-500/40 rounded-3xl p-6 max-w-2xl mx-auto space-y-3 shadow-xl">
                 <label className={labelCls}>Target Keywords for SEO Review (Comma separated)</label>
                 <input
                   className={inputCls}
@@ -1011,17 +1175,17 @@ export default function LaunchSubmit() {
               </div>
             )}
 
-            {/* LAUNCH WEEK DATE SELECTOR GRID (DYNAMIC UPCOMING MONDAYS) */}
-            <div className="bg-[#121316] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl mx-auto space-y-4 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                  <CalendarIcon size={14} className="text-emerald-400" /> SCHEDULED LAUNCH COHORT
+            {/* LAUNCH WEEK DATE SELECTOR GRID */}
+            <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 max-w-3xl mx-auto space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-300 flex items-center gap-2">
+                  <CalendarIcon size={14} className="text-emerald-500" /> SCHEDULED LAUNCH COHORT
                 </h4>
                 <span className="text-[11px] font-mono text-slate-400">Next 8 upcoming cohorts</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {launchWeeks.map((w, idx) => {
+                {launchWeeks.map((w) => {
                   const isSelected = formData.scheduled_date === w.label;
                   return (
                     <button
@@ -1030,8 +1194,8 @@ export default function LaunchSubmit() {
                       onClick={() => update('scheduled_date', w.label)}
                       className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer font-mono ${
                         isSelected
-                          ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300 font-bold shadow-md shadow-emerald-500/15'
-                          : 'border-white/10 hover:border-white/20 text-slate-300 bg-white/5'
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
+                          : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-white/5'
                       }`}
                     >
                       <span className="block text-xs font-bold">{w.label}</span>
@@ -1045,13 +1209,13 @@ export default function LaunchSubmit() {
             </div>
 
             {/* Sticky Action Bar */}
-            <div className="bg-[#121316] border border-white/10 rounded-2xl p-5 max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+            <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-2xl p-5 max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
               <div>
                 <span className="text-[11px] font-mono text-slate-400 block">Selected Placement:</span>
                 <div className="flex items-center gap-2">
-                  <strong className="text-sm font-extrabold text-white capitalize">{formData.launch_tier} Tier</strong>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-xs font-mono text-emerald-400 font-bold">{formData.scheduled_date}</span>
+                  <strong className="text-sm font-extrabold text-slate-900 dark:text-white capitalize">{formData.launch_tier} Tier</strong>
+                  <span className="text-slate-400">•</span>
+                  <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">{formData.scheduled_date}</span>
                 </div>
               </div>
 
@@ -1059,7 +1223,7 @@ export default function LaunchSubmit() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
+                  className="px-4 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer"
                 >
                   Back
                 </button>
@@ -1068,7 +1232,7 @@ export default function LaunchSubmit() {
                   type="button"
                   onClick={handleStartSubmit}
                   disabled={isSubmitting}
-                  className="flex-1 sm:flex-none px-6 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs font-mono rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="flex-1 sm:flex-none px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs font-mono rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin text-black" />
@@ -1090,168 +1254,167 @@ export default function LaunchSubmit() {
           </motion.div>
         )}
 
-        {/* ──────────────── BACKLINK VERIFICATION MODAL ──────────────── */}
-        <AnimatePresence>
-          {showBacklinkModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#121316] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-xl w-full my-8 shadow-2xl relative space-y-6 text-white"
+        {/* ──────────────── BACKLINK VERIFICATION MODAL VIA PORTAL ──────────────── */}
+        {showBacklinkModal && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 max-w-xl w-full my-8 shadow-2xl relative space-y-6 text-slate-900 dark:text-white"
+            >
+              <button
+                onClick={() => setShowBacklinkModal(false)}
+                className="absolute top-5 right-5 p-2 text-slate-400 hover:text-black dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
               >
-                <button
-                  onClick={() => setShowBacklinkModal(false)}
-                  className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-full hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
+                <X size={18} />
+              </button>
 
-                <div>
-                  <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30 mb-3">
-                    <ShieldCheck size={14} /> Backlink Verification Required
-                  </div>
-                  <h3 className="text-xl font-extrabold text-white font-heading">
-                    Add a link to Raisequity on your website
-                  </h3>
-                  <p className="text-xs text-slate-400 font-normal mt-1 leading-relaxed">
-                    For free launches, you need to add a link or embed the Raisequity Launch badge on your website before your project can be scheduled.
-                  </p>
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30 mb-3">
+                  <ShieldCheck size={14} /> Backlink Verification Required
                 </div>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white font-heading">
+                  Add a link to Raisequity on your website
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-normal mt-1 leading-relaxed">
+                  For free launches, you need to add a link or embed the Raisequity Launch badge on your website before your project can be scheduled.
+                </p>
+              </div>
 
-                <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-2 text-xs font-normal text-slate-300">
-                  <p className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px] mb-2 font-mono">
-                    Steps:
-                  </p>
-                  <ol className="space-y-2 list-decimal list-inside font-mono">
-                    <li>Copy the badge snippet below (or add any link to raisequity.com)</li>
-                    <li>Add it to your website footer or home page on <span className="font-bold text-white">{formData.website_url || 'your site'}</span></li>
-                    <li>Click <strong className="text-white font-extrabold">"Verify Backlink"</strong> to check if it's detected</li>
-                    <li>Once verified, your launch is instantly scheduled</li>
-                  </ol>
-                </div>
+              <div className="bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 space-y-2 text-xs font-normal text-slate-700 dark:text-slate-300">
+                <p className="font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] mb-2 font-mono">
+                  Steps:
+                </p>
+                <ol className="space-y-2 list-decimal list-inside font-mono text-[11px]">
+                  <li>Copy the badge snippet below (or add any link to raisequity.com)</li>
+                  <li>Add it to your website footer or home page on <span className="font-bold text-slate-900 dark:text-white">{formData.website_url || 'your site'}</span></li>
+                  <li>Click <strong className="text-slate-900 dark:text-white font-extrabold">"Verify Backlink"</strong> to check if it's detected</li>
+                  <li>Once verified, your launch is instantly scheduled</li>
+                </ol>
+              </div>
 
-                {/* Badge Visual Preview */}
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/5 flex flex-col items-center justify-center gap-3">
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase">Preview</span>
-                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl text-[10px] font-mono">
-                      <button
-                        type="button"
-                        onClick={() => setBadgeTheme('light')}
-                        className={`px-2 py-0.5 rounded-lg ${badgeTheme === 'light' ? 'bg-emerald-400 text-black font-bold' : 'text-slate-400'}`}
-                      >
-                        Light
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBadgeTheme('dark')}
-                        className={`px-2 py-0.5 rounded-lg ${badgeTheme === 'dark' ? 'bg-emerald-400 text-black font-bold' : 'text-slate-400'}`}
-                      >
-                        Dark
-                      </button>
-                    </div>
-                  </div>
-                  <img
-                    src={badgeTheme === 'dark' ? '/badges/featured-dark.svg' : '/badges/featured.svg'}
-                    alt="Featured on Raisequity Launch"
-                    width={220}
-                    height={54}
-                    className="rounded-2xl shadow-md border border-white/10"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-white">Badge HTML Snippet</span>
-                  </div>
-
-                  <div className="relative">
-                    <pre className="bg-black/60 text-emerald-300 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed border border-white/10">
-                      {getBadgeCode()}
-                    </pre>
+              {/* Badge Visual Preview */}
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/5 flex flex-col items-center justify-center gap-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase font-bold">Preview (Official Raisequity Brand Badge)</span>
+                  <div className="flex items-center gap-1 bg-white dark:bg-white/5 p-1 rounded-xl text-[10px] font-mono border border-slate-200 dark:border-transparent">
                     <button
                       type="button"
-                      onClick={copyBadgeCode}
-                      className="absolute top-3 right-3 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      onClick={() => setBadgeTheme('light')}
+                      className={`px-2 py-0.5 rounded-lg ${badgeTheme === 'light' ? 'bg-emerald-500 text-black font-bold' : 'text-slate-500 dark:text-slate-400'}`}
                     >
-                      {copiedCode ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                      <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
+                      Light
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBadgeTheme('dark')}
+                      className={`px-2 py-0.5 rounded-lg ${badgeTheme === 'dark' ? 'bg-emerald-500 text-black font-bold' : 'text-slate-500 dark:text-slate-400'}`}
+                    >
+                      Dark
                     </button>
                   </div>
                 </div>
+                <img
+                  src={badgeTheme === 'dark' ? '/badges/featured-dark.svg' : '/badges/featured.svg'}
+                  alt="Featured on Raisequity Launch"
+                  width={220}
+                  height={54}
+                  className="rounded-2xl shadow-md border border-slate-200 dark:border-white/10"
+                />
+              </div>
 
-                <div className="border-t border-white/10 pt-5 space-y-4">
-                  <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span>Website URL:</span>
-                    <span className="text-white underline">{formData.website_url}</span>
-                  </div>
-
-                  {backlinkReason && (
-                    <div className={`p-3.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 ${
-                      backlinkVerified ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                    }`}>
-                      {backlinkVerified ? <CheckCircle2 size={16} className="text-emerald-400 shrink-0" /> : <AlertCircle size={16} className="text-amber-400 shrink-0" />}
-                      <span>{backlinkReason}</span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleVerifyBacklink(false)}
-                      disabled={isVerifyingBacklink}
-                      className="flex-1 py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-xl font-mono font-bold text-xs transition-all shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      {isVerifyingBacklink ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <ShieldCheck size={16} />}
-                      <span>{isVerifyingBacklink ? 'Scanning Website...' : 'Verify Backlink'}</span>
-                    </button>
-
-                    {!backlinkVerified && (
-                      <button
-                        type="button"
-                        onClick={() => handleVerifyBacklink(true)}
-                        disabled={isVerifyingBacklink}
-                        title="Self-attest if testing on localhost or protected by Cloudflare"
-                        className="py-3.5 px-4 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-mono font-bold text-xs transition-all cursor-pointer"
-                      >
-                        Self-Verify
-                      </button>
-                    )}
-
-                    {backlinkVerified && (
-                      <button
-                        type="button"
-                        onClick={executeLaunchSubmission}
-                        disabled={isSubmitting}
-                        className="flex-1 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-black rounded-xl font-extrabold text-xs transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        {isSubmitting ? <Loader2 size={16} className="animate-spin text-black" /> : <Rocket size={16} />}
-                        <span>Complete Launch →</span>
-                      </button>
-                    )}
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-slate-800 dark:text-white">Badge HTML Snippet</span>
                 </div>
 
-                {/* Skip option */}
-                <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl text-center text-xs font-mono text-emerald-300">
-                  <span>Want to skip backlink verification? </span>
+                <div className="relative">
+                  <pre className="bg-slate-900 text-emerald-300 dark:bg-black/60 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed border border-slate-700 dark:border-white/10">
+                    {getBadgeCode()}
+                  </pre>
                   <button
                     type="button"
-                    onClick={() => {
-                      update('launch_tier', 'premium');
-                      setShowBacklinkModal(false);
-                    }}
-                    className="text-emerald-400 font-extrabold underline cursor-pointer ml-1"
+                    onClick={copyBadgeCode}
+                    className="absolute top-3 right-3 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                   >
-                    Upgrade to Premium ($11) →
+                    {copiedCode ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
                   </button>
                 </div>
+              </div>
 
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+              <div className="border-t border-slate-200 dark:border-white/10 pt-5 space-y-4">
+                <div className="flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+                  <span>Target Website:</span>
+                  <span className="text-slate-900 dark:text-white font-bold underline truncate max-w-xs">{formData.website_url}</span>
+                </div>
+
+                {backlinkReason && (
+                  <div className={`p-3.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 ${
+                    backlinkVerified ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {backlinkVerified ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : <AlertCircle size={16} className="text-amber-500 shrink-0" />}
+                    <span>{backlinkReason}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleVerifyBacklink(false)}
+                    disabled={isVerifyingBacklink}
+                    className="flex-1 py-3.5 bg-slate-900 text-white dark:bg-white/10 hover:bg-slate-800 dark:hover:bg-white/15 rounded-xl font-mono font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isVerifyingBacklink ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <ShieldCheck size={16} />}
+                    <span>{isVerifyingBacklink ? 'Scanning Website...' : 'Verify Backlink'}</span>
+                  </button>
+
+                  {!backlinkVerified && (
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyBacklink(true)}
+                      disabled={isVerifyingBacklink}
+                      title="Self-attest if your site is protected by Cloudflare or localhost"
+                      className="py-3.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-xl font-mono font-bold text-xs transition-all cursor-pointer border border-slate-200 dark:border-transparent"
+                    >
+                      Self-Verify
+                    </button>
+                  )}
+
+                  {backlinkVerified && (
+                    <button
+                      type="button"
+                      onClick={executeLaunchSubmission}
+                      disabled={isSubmitting}
+                      className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-extrabold text-xs transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isSubmitting ? <Loader2 size={16} className="animate-spin text-black" /> : <Rocket size={16} />}
+                      <span>Complete Launch →</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Skip option */}
+              <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl text-center text-xs font-mono text-emerald-700 dark:text-emerald-300">
+                <span>Want to skip backlink verification? </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    update('launch_tier', 'premium');
+                    setShowBacklinkModal(false);
+                  }}
+                  className="text-emerald-600 dark:text-emerald-400 font-extrabold underline cursor-pointer ml-1"
+                >
+                  Upgrade to Premium ($11) →
+                </button>
+              </div>
+
+            </motion.div>
+          </div>,
+          document.body
+        )}
 
       </div>
     </div>
