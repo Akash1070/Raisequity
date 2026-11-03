@@ -45,7 +45,7 @@ export default function AdminInvestors() {
 
   const fetchDirectoryInvestors = async () => {
     setLoadingDirectory(true);
-    const list = await getWeb3Investors([], true);
+    const list = await getWeb3Investors([], true, { limit: 1000 });
     setDirectoryInvestors(list);
     setLoadingDirectory(false);
   };
@@ -193,8 +193,8 @@ export default function AdminInvestors() {
             return "";
           };
 
-          const partnerName = getRowVal("partner name", "name", "investor name");
-          const firmName = getRowVal("investor name", "company", "firm", "fund");
+          const partnerName = getRowVal("partner name", "full name", "name");
+          const firmName = getRowVal("investor name", "company", "firm", "fund") || (partnerName ? `${partnerName} Capital` : "");
 
           parsedItems.push({
             name: partnerName || firmName || "Web3 Investor",

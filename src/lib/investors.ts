@@ -8,6 +8,7 @@ import {
   updateDoc,
   addDoc,
   deleteDoc,
+  writeBatch,
   arrayUnion,
   increment,
   query,
@@ -77,7 +78,7 @@ export async function getWeb3Investors(
   options?: { limit?: number; sector?: string }
 ): Promise<Web3Investor[]> {
   try {
-    const maxLimit = options?.limit ?? 150;
+    const maxLimit = options?.limit ?? (isAdmin ? 1000 : 300);
     const colRef = collection(db, COLLECTION_NAME);
     let q = query(colRef, limit(maxLimit));
 
@@ -183,35 +184,65 @@ export async function deleteWeb3Investor(id: string): Promise<{ success: boolean
 }
 
 /**
- * Bulk import an array of investors (batching)
+ * Bulk import an array of investors (high-performance Firestore writeBatch)
+ * Automatically splits public data (masked contacts) and private contacts subcollection.
  */
 export async function bulkImportWeb3Investors(
   investorsList: Omit<Web3Investor, 'id'>[]
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     let imported = 0;
-    const colRef = collection(db, COLLECTION_NAME);
+    const CHUNK_SIZE = 200; // 200 investors = 400 document writes, well below Firestore 500 limit
 
-    for (const item of investorsList) {
-      await addDoc(colRef, {
-        name: item.name || 'Anonymous Investor',
-        firm: item.firm || 'Angel / Independent',
-        category: item.category || 'VC Fund',
-        role: item.role || 'Partner',
-        sectors: Array.isArray(item.sectors) ? item.sectors : ['Web3', 'DeFi'],
-        stage: item.stage || 'Seed',
-        check_size: item.check_size || '$50k - $250k',
-        location: item.location || 'Global',
-        email: item.email || '',
-        telegram: item.telegram || '',
-        twitter: item.twitter || '',
-        linkedin: item.linkedin || '',
-        website: item.website || '',
-        verified: true,
-        know_count: 0,
-        created_at: new Date().toISOString(),
-      });
-      imported++;
+    for (let i = 0; i < investorsList.length; i += CHUNK_SIZE) {
+      const chunk = investorsList.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+
+      for (const item of chunk) {
+        const docRef = doc(collection(db, COLLECTION_NAME));
+        const rawEmail = (item.email || '').trim().toLowerCase();
+        const rawTelegram = (item.telegram || '').trim();
+        const rawLinkedIn = (item.linkedin || '').trim();
+
+        // 1. Public document: Contacts strictly masked for anti-scraping
+        batch.set(docRef, {
+          name: item.name || 'Anonymous Investor',
+          firm: item.firm || 'Angel / Independent',
+          category: item.category || 'VC Fund',
+          role: item.role || 'Partner',
+          sectors: Array.isArray(item.sectors) ? item.sectors : ['Web3', 'DeFi'],
+          stage: item.stage || 'Seed',
+          check_size: item.check_size || '$50k - $250k',
+          location: item.location || 'Global',
+          email: rawEmail ? maskText(rawEmail, 'email') : '',
+          telegram: rawTelegram ? maskText(rawTelegram, 'telegram') : '',
+          twitter: item.twitter || '',
+          linkedin: item.linkedin || '',
+          website: item.website || '',
+          has_contact: Boolean(rawEmail || rawTelegram),
+          contacts_migrated: true,
+          verified: true,
+          know_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        // 2. Private subcollection document: Raw contacts protected behind auth & paid credit unlocks
+        if (rawEmail || rawTelegram || rawLinkedIn) {
+          const privRef = doc(db, COLLECTION_NAME, docRef.id, 'private', 'contact');
+          batch.set(privRef, {
+            investorId: docRef.id,
+            email: rawEmail,
+            telegram: rawTelegram,
+            linkedin: rawLinkedIn,
+            migratedAt: new Date().toISOString(),
+          });
+        }
+
+        imported++;
+      }
+
+      await batch.commit();
     }
 
     return { success: true, count: imported };
