@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
-  Home, Users, Share2, Briefcase, Settings, LogOut, Gift, Coins, Crown, Sparkles, Zap, Flame, Rocket, Clock
+  Home, Users, Share2, Briefcase, Settings, LogOut, Gift, Coins, Crown, Sparkles, Zap, Flame, Rocket, Clock, MessageSquare
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
@@ -122,6 +122,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
         <SidebarItem to="/dashboard/feed" icon={<Home size={16} />} label="Feed & Telemetry" />
+        <SidebarItem to="/dashboard/messages" icon={<MessageSquare size={16} />} label="Direct Messages" />
         <SidebarItem to="/dashboard/matches" icon={<Users size={16} />} label="Double-Blind Matches" badge={3} />
         <SidebarItem to="/dashboard/investors" icon={<Briefcase size={16} />} label="Check-Writers CRM" />
         <SidebarItem to="/dashboard/bookings" icon={<Clock size={16} />} label="30-Day SLA Calls" badge={1} />

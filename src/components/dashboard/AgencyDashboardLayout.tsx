@@ -17,7 +17,8 @@ import {
   Bot,
   ExternalLink,
   Layers,
-  Award
+  Award,
+  MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
@@ -129,6 +130,11 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
               icon={<FileCode2 size={16} />}
               label="Client RFPs & Bounties"
               badge="5"
+            />
+            <AgencySidebarItem
+              to="/agency-dashboard/messages"
+              icon={<MessageSquare size={16} />}
+              label="Client Messages"
             />
             <AgencySidebarItem
               to="/agency-dashboard/escrows"

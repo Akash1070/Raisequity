@@ -39,6 +39,7 @@ const ServicesDirectory = lazy(() => import("./pages/Dashboard/ServicesDirectory
 const Settings = lazy(() => import("./pages/Dashboard/Settings"));
 const Bookings = lazy(() => import("./pages/Dashboard/Bookings"));
 const MyLaunch = lazy(() => import("./pages/Dashboard/MyLaunch"));
+const Messages = lazy(() => import("./pages/Messages"));
 const Grants = lazy(() => import("./pages/Grants"));
 const Credits = lazy(() => import("./pages/Credits"));
 const Network = lazy(() => import("./pages/Network"));
@@ -156,6 +157,7 @@ export default function App() {
             <Route path="my-launch" element={<Navigate to="/dashboard/launches?tab=my-launch" replace />} />
             <Route path="community" element={<Navigate to="/dashboard/feed" replace />} />
             <Route path="matches" element={<Matches />} />
+            <Route path="messages" element={<Messages />} />
             <Route path="network" element={<DashboardNetwork />} />
             <Route path="coaching" element={<Coaching />} />
             <Route path="investors" element={<DashboardInvestors />} />
@@ -180,6 +182,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/investor-dashboard/deals" replace />} />
             <Route path="deals" element={<DealFeed />} />
+            <Route path="messages" element={<Messages />} />
             <Route path="matches" element={<InvestorMatches />} />
             <Route path="intros" element={<RequestedIntros />} />
             <Route path="portfolio" element={<Portfolio />} />
@@ -198,6 +201,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/agency-dashboard/rfps" replace />} />
             <Route path="rfps" element={<AgencyRfpFeed />} />
+            <Route path="messages" element={<Messages />} />
             <Route path="escrows" element={<ActiveEscrows />} />
             <Route path="profile" element={<AgencyProfile />} />
             <Route path="grants" element={<Grants />} />

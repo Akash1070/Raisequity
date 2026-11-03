@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Send, Loader2, ExternalLink } from "lucide-react";
 import { useFounderMessages } from "../../hooks/useFounderMessages";
 import { useAuth } from "../../contexts/AuthContext";
 import type { MatchWithFounder } from "../../hooks/useFounderMatches";
@@ -72,6 +73,13 @@ export default function FounderChatPanel({ match }: FounderChatPanelProps) {
             Founder @ {otherFounder.company_name || "Stealth Startup"}
           </span>
         </div>
+        <Link
+          to={`/dashboard/messages?to=${match.otherFounder?.id || (match.otherFounder as any)?.user_id || 'peer_founder'}&name=${encodeURIComponent(otherFounder.full_name || 'Founder')}&company=${encodeURIComponent(otherFounder.company_name || '')}`}
+          className="ml-auto text-[11px] font-mono font-bold text-[#0070F3] hover:underline flex items-center gap-1 bg-[#0070F3]/10 px-2.5 py-1 rounded-lg border border-[#0070F3]/20"
+        >
+          <span>Full Chat</span>
+          <ExternalLink size={11} />
+        </Link>
       </div>
 
       {/* Messages Scroll Area */}

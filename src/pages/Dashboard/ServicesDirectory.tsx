@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Search, ShieldCheck, Sparkles, ExternalLink, Send, Check, Filter, Briefcase, Zap, Globe, MessageSquare, Tag, ArrowRight, X, Loader2
 } from "lucide-react";
@@ -24,6 +25,7 @@ const CATEGORY_TABS = [
 export default function ServicesDirectory() {
   const { user } = useAuth();
   const { founderProfile } = useFounderProfile();
+  const navigate = useNavigate();
 
   const [agencies, setAgencies] = useState<SeededAgency[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,12 +240,19 @@ export default function ServicesDirectory() {
 
               {/* Bottom Action Footer */}
               <div className="pt-4 border-t border-[#e8e6df] dark:border-white/10 flex items-center justify-between gap-2 mt-2">
-                <span className="font-mono text-[10px] font-bold text-neutral-400">
-                  Milestone Escrow Ready
-                </span>
+                <button
+                  onClick={() => {
+                    navigate(`/dashboard/messages?to=${agency.id}&name=${encodeURIComponent(agency.title)}&role=service_provider&company=${encodeURIComponent(agency.company)}`);
+                  }}
+                  className="px-3 py-1.5 rounded-full border border-neutral-200 dark:border-white/10 hover:border-[#0070F3] hover:text-[#0070F3] font-mono text-[11px] font-bold text-neutral-600 dark:text-neutral-300 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <MessageSquare size={12} className="text-[#0070F3]" />
+                  <span>Chat</span>
+                </button>
+
                 <button
                   onClick={() => setSelectedAgency(agency)}
-                  className="px-4 py-2 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                  className="px-4 py-1.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
                 >
                   <Send size={12} /> Request RFP
                 </button>

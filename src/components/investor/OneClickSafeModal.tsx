@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, ShieldCheck, CheckCircle2, DollarSign, 
-  Sparkles, Loader2, X, ExternalLink, Scale, Check 
+  Sparkles, Loader2, X, ExternalLink, Scale, Check, MessageSquare
 } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { issueStandardSafeAgreement, SafeAgreementPayload } from '../../lib/opensign';
+import { getOrCreateConversation, sendDirectMessage } from '../../lib/messages';
 
 interface OneClickSafeModalProps {
   isOpen: boolean;
@@ -23,6 +27,7 @@ export default function OneClickSafeModal({
   company,
   investor,
 }: OneClickSafeModalProps) {
+  const navigate = useNavigate();
   const [checkAmount, setCheckAmount] = useState<number>(50000);
   const [valCap, setValCap] = useState<number>(company?.valuation_cap || 6000000);
   const [discountPct, setDiscountPct] = useState<number>(20);
@@ -30,8 +35,13 @@ export default function OneClickSafeModal({
   
   const [isExecuting, setIsExecuting] = useState(false);
   const [executedDocUrl, setExecutedDocUrl] = useState<string | null>(null);
+  const [createdConvId, setCreatedConvId] = useState<string | null>(null);
 
   if (!isOpen || !company) return null;
+
+  const founderId = company.founder_id || company.founderId || 'lead_founder_elena';
+  const founderName = company.founder_name || company.founder || 'Founder';
+  const founderEmail = company.founder_email || 'founder@startup.com';
 
   const handleExecute = async () => {
     setIsExecuting(true);
@@ -39,8 +49,8 @@ export default function OneClickSafeModal({
       const payload: SafeAgreementPayload = {
         companyId: company.id,
         companyName: company.name,
-        founderName: company.founder_name || 'Founder',
-        founderEmail: company.founder_email || 'founder@startup.com',
+        founderName,
+        founderEmail,
         investorId: investor.id,
         investorName: investor.name,
         investorEmail: investor.email,
@@ -51,7 +61,106 @@ export default function OneClickSafeModal({
       };
 
       const result = await issueStandardSafeAgreement(payload);
-      setExecutedDocUrl(result.signingUrl || `https://app.opensignlabs.com/sign/${result.documentId}`);
+      const docSigningUrl = result.signingUrl || `https://app.opensignlabs.com/sign/${result.documentId}`;
+      setExecutedDocUrl(docSigningUrl);
+
+      const now = new Date().toISOString();
+
+      // 1. Record allocation in investor_portfolio
+      await addDoc(collection(db, 'investor_portfolio'), {
+        investor_id: investor.id,
+        investor_name: investor.name,
+        company_id: company.id,
+        company_name: company.name,
+        founder_id: founderId,
+        founder_name: founderName,
+        founder_email: founderEmail,
+        sector: company.sector || 'AI & SaaS',
+        stage: company.stage || 'Seed Round',
+        invested_amount: checkAmount,
+        valuation_cap: valCap,
+        instrument_type: instrument,
+        discount_pct: discountPct,
+        status: 'Active',
+        document_url: docSigningUrl,
+        document_id: result.documentId,
+        created_at: now,
+      }).catch((err) => console.warn('[OneClickSafe] investor_portfolio write err:', err));
+
+      // 2. Record standardized SAFE agreement
+      await addDoc(collection(db, 'safes'), {
+        investor_id: investor.id,
+        founder_id: founderId,
+        company_id: company.id,
+        company_name: company.name,
+        amount: checkAmount,
+        val_cap: valCap,
+        instrument,
+        status: 'pending_signatures',
+        doc_id: result.documentId,
+        created_at: now,
+      }).catch((err) => console.warn('[OneClickSafe] safes write err:', err));
+
+      // 3. Deliver real-time notification to the Founder
+      await addDoc(collection(db, 'notifications'), {
+        user_id: founderId,
+        type: 'safe_offer',
+        title: '📜 Standardized SAFE Allocation Issued!',
+        body: `${investor.name} has issued a $${checkAmount.toLocaleString()} ${instrument} ($${(valCap / 1000000).toFixed(1)}M Cap) for ${company.name}!`,
+        link: '/dashboard/messages',
+        read: false,
+        created_at: now,
+      }).catch((err) => console.warn('[OneClickSafe] notification write err:', err));
+
+      // 4. Start direct message thread between investor and founder
+      try {
+        const convId = await getOrCreateConversation(
+          {
+            id: investor.id,
+            name: investor.name,
+            email: investor.email,
+            role: 'investor',
+          },
+          {
+            id: founderId,
+            name: founderName,
+            email: founderEmail,
+            role: 'founder',
+            company_name: company.name,
+          },
+          {
+            deal_id: company.id,
+            deal_name: company.name,
+            target_raise: `$${checkAmount.toLocaleString()}`,
+            valuation_cap: `$${(valCap / 1000000).toFixed(1)}M Cap`,
+          }
+        );
+
+        setCreatedConvId(convId);
+
+        await sendDirectMessage({
+          conversationId: convId,
+          sender: {
+            id: investor.id,
+            name: investor.name,
+            email: investor.email,
+            role: 'investor',
+          },
+          recipientId: founderId,
+          recipientRole: 'founder',
+          content: `📜 Official SAFE Issued: I have committed $${checkAmount.toLocaleString()} via ${instrument} ($${(valCap / 1000000).toFixed(1)}M Valuation Cap). The agreement is pre-vetted. Let's align on countersignature and wire settlement.`,
+          messageType: 'safe_offer',
+          metadata: {
+            checkAmount,
+            valCap,
+            instrument,
+            documentUrl: docSigningUrl,
+          },
+        });
+      } catch (chatErr) {
+        console.warn('[OneClickSafe] Chat thread initiation warning:', chatErr);
+      }
+
     } catch (err) {
       console.error('Error executing SAFE agreement:', err);
     } finally {
@@ -107,16 +216,30 @@ export default function OneClickSafeModal({
                   🎉 Saved $5,000 in early-stage legal drafting fees!
                 </div>
 
-                <div className="pt-2 flex justify-center gap-3">
+                <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
                   <a
                     href={executedDocUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-6 py-3 bg-black hover:bg-slate-800 text-white rounded-xl font-black flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                    className="px-6 py-3 bg-black hover:bg-slate-800 text-white rounded-xl font-black flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                   >
                     <span>Open & Sign on OpenSign</span>
                     <ExternalLink size={14} />
                   </a>
+
+                  <button
+                    onClick={() => {
+                      onClose();
+                      navigate(createdConvId 
+                        ? `/investor-dashboard/messages?convId=${createdConvId}` 
+                        : `/investor-dashboard/messages?to=${founderId}&name=${encodeURIComponent(founderName)}&company=${encodeURIComponent(company.name)}`
+                      );
+                    }}
+                    className="px-6 py-3 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl font-black flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <MessageSquare size={14} />
+                    <span>Open Chat with Founder</span>
+                  </button>
                 </div>
               </div>
             ) : (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   ShieldCheck,
@@ -23,8 +24,11 @@ import {
   Check,
   Copy,
   Terminal,
-  Activity
+  Activity,
+  MessageSquare
 } from "lucide-react";
+import { collection, getDocs, query, limit } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import OneClickSafeModal from "../../components/investor/OneClickSafeModal";
 import CalBookingEmbed from "../../components/investor/CalBookingEmbed";
@@ -32,6 +36,8 @@ import TelegramThesisAlertModal from "../../components/investor/TelegramThesisAl
 
 interface DealItem {
   id: string;
+  founder_id?: string;
+  founder_email?: string;
   name: string;
   founder: string;
   sector: string;
@@ -45,8 +51,8 @@ interface DealItem {
   roundType: string;
   isPreLaunch: boolean;
   preLaunchDaysRemaining: number;
-  githubCommits: number;
-  mrr: string;
+  githubCommits?: number;
+  mrr?: string;
   leadAnchor: string;
   tagline: string;
   description: string;
@@ -197,6 +203,7 @@ const CURATED_HIRE_DEALS: DealItem[] = [
 
 export default function DealFeed() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [deals, setDeals] = useState<DealItem[]>(CURATED_HIRE_DEALS);
   const [selectedDealId, setSelectedDealId] = useState<string>("deal_neurochain");
   const [activeTab, setActiveTab] = useState<string>("All");
@@ -207,6 +214,49 @@ export default function DealFeed() {
   const [safeModalOpen, setSafeModalOpen] = useState(false);
   const [calModalOpen, setCalModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
+
+  // Fetch live startups from Firestore
+  useEffect(() => {
+    async function loadLiveStartups() {
+      try {
+        const startupsSnap = await getDocs(query(collection(db, "startups"), limit(25)));
+        if (!startupsSnap.empty) {
+          const liveItems: DealItem[] = startupsSnap.docs.map(docSnap => {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              founder_id: data.founder_id || '',
+              founder_email: data.founder_email || '',
+              name: data.name || 'Stealth Startup',
+              founder: data.founder_name || 'Founder',
+              sector: data.sector || 'AI & SaaS',
+              industry: [data.sector || 'SaaS'],
+              stage: data.stage || 'Seed Round',
+              targetRaise: data.raise_amount ? `$${Number(data.raise_amount).toLocaleString()}` : '$750,000',
+              valuationCap: data.valuation_cap ? `$${(Number(data.valuation_cap) / 1000000).toFixed(1)}M Cap` : '$6.0M Cap',
+              location: data.location || 'San Francisco, CA',
+              matchScore: 95,
+              matchLevel: 'HIGH CONVICTION',
+              roundType: 'Seed Lead',
+              isPreLaunch: true,
+              preLaunchDaysRemaining: 7,
+              leadAnchor: '$50,000 Reserved by Network Angels',
+              tagline: data.tagline || data.description || 'Verified early-stage startup.',
+              description: data.description || data.problem || 'Institutional seed round candidate on Raisequity.',
+              keywords: [data.sector?.toLowerCase() || 'ai', 'seed_round', 'delaware_c_corp'],
+              authenticityScore: 98,
+            };
+          });
+
+          setDeals([...liveItems, ...CURATED_HIRE_DEALS]);
+        }
+      } catch (err) {
+        console.warn("[DealFeed] Error loading startups:", err);
+      }
+    }
+
+    loadLiveStartups();
+  }, []);
 
   const selectedDeal = deals.find((d) => d.id === selectedDealId) || deals[0];
 
@@ -467,13 +517,19 @@ export default function DealFeed() {
                 <span className="font-mono text-xs font-bold px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-400">
                   {selectedDeal.roundType}
                 </span>
+
+                {/* Direct Message Founder Button */}
                 <button
-                  onClick={() => setTelegramModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-purple-600 text-white font-extrabold text-xs hover:bg-purple-700 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  onClick={() => {
+                    const targetId = selectedDeal.founder_id || 'lead_founder_elena';
+                    navigate(`/investor-dashboard/messages?to=${targetId}&name=${encodeURIComponent(selectedDeal.founder)}&company=${encodeURIComponent(selectedDeal.name)}&deal=${encodeURIComponent(selectedDeal.name)}`);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#0070F3] hover:bg-[#0060DF] text-white font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
                 >
-                  <Sparkles size={13} />
-                  <span>Tailor Dossier</span>
+                  <MessageSquare size={13} />
+                  <span>Message Founder</span>
                 </button>
+
                 <button
                   onClick={() => setCalModalOpen(true)}
                   className="px-4 py-2 rounded-xl bg-white dark:bg-[#1a1b20] border border-purple-500/30 text-purple-600 dark:text-purple-400 font-extrabold text-xs hover:border-purple-600 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -481,6 +537,7 @@ export default function DealFeed() {
                   <Calendar size={13} />
                   <span>Interview Q&amp;A</span>
                 </button>
+
                 <button
                   onClick={() => setSafeModalOpen(true)}
                   className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-extrabold text-xs hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -491,116 +548,117 @@ export default function DealFeed() {
             </div>
           </div>
 
-          {/* Section 1: DEEP JOB FIT & SKILL GAP DIAGNOSIS (Image 3 Exact 4-Box Grid) */}
+          {/* Section 1: EXECUTIVE SUMMARY & VENTURE ROUND STRUCTURE */}
           <div className="p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/5">
               <div className="flex items-center gap-2">
-                <Sparkles size={15} className="text-purple-500" />
+                <Sparkles size={15} className="text-[#0070F3]" />
                 <h3 className="font-mono text-xs font-black uppercase tracking-wider text-black dark:text-white">
-                  DEEP DEAL FIT &amp; CODE TRACTION DIAGNOSIS
+                  EXECUTIVE SUMMARY &amp; ROUND STRUCTURE
                 </h3>
               </div>
-              <span className="font-mono text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full">
-                {selectedDeal.matchScore}% Diligence Match
+              <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                {selectedDeal.matchScore}% Thesis Conviction
               </span>
             </div>
 
-            {/* 4 Horizontal Cards */}
+            {/* 4 Clean Institutional Metric Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
               <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
-                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Thesis Alignment</span>
-                <span className="font-black text-xs text-black dark:text-white">Transferable</span>
+                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Target Raise</span>
+                <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">{selectedDeal.targetRaise}</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
-                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Ecosystem / Sector</span>
-                <span className="font-black text-xs text-black dark:text-white">{selectedDeal.sector}</span>
+                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Valuation Cap</span>
+                <span className="font-black text-xs text-black dark:text-white">{selectedDeal.valuationCap}</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
-                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Legal / Governance</span>
+                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Legal Structure</span>
                 <span className="font-black text-xs text-black dark:text-white">Delaware C-Corp</span>
               </div>
-              <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-purple-500/30 bg-purple-50/20 dark:bg-purple-900/10">
-                <span className="text-[10px] text-purple-500 uppercase font-bold block mb-1">Match Level</span>
-                <span className="font-black text-xs text-purple-600 dark:text-purple-400">{selectedDeal.matchLevel}</span>
+              <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-[#0070F3]/30 bg-[#0070F3]/5">
+                <span className="text-[10px] text-[#0070F3] uppercase font-bold block mb-1">Round Status</span>
+                <span className="font-black text-xs text-[#0070F3]">{selectedDeal.roundType}</span>
               </div>
             </div>
 
-            {/* Verified Skills / Traction You Bring */}
-            <div className="space-y-1.5 pt-2">
-              <span className="font-mono text-xs font-bold text-neutral-500 dark:text-neutral-400 block">
-                Verified Diligence Signals (3):
-              </span>
-              <p className="text-xs text-neutral-600 dark:text-neutral-300 font-mono">
-                {selectedDeal.githubCommits} verified GitHub commits in last 30 days • Delaware 83(b) verified • Audited MRR: {selectedDeal.mrr}.
+            {/* Description & Problem-Solution */}
+            <div className="space-y-2 pt-2 font-mono text-xs">
+              <p className="text-black dark:text-neutral-200 font-bold leading-relaxed">
+                "{selectedDeal.tagline}"
+              </p>
+              <p className="text-neutral-500 dark:text-neutral-400 leading-relaxed font-normal">
+                {selectedDeal.description}
               </p>
             </div>
 
-            {/* Transferable Skill Bridge Advice */}
-            <div className="space-y-1.5 pt-2">
-              <span className="font-mono text-xs font-bold text-purple-600 dark:text-purple-400 block">
-                Thesis Bridge Advice ({selectedDeal.keywords.length} keywords):
-              </span>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono leading-relaxed">
-                <strong className="text-purple-500">{selectedDeal.keywords.join(", ")}:</strong> Highlight transferable portfolio synergies in autonomous agent inference, on-chain execution, or open-source foundation grants.
-              </p>
-            </div>
-
-            {/* Bottom Translation Bar (Image 3 Exact) */}
+            {/* Bottom Actions Bar */}
             <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
               <span className="text-neutral-400">
-                Translate verified traction into 1-page Fast-Pass deal memo &amp; SAFE wire for {selectedDeal.name}.
+                Execute standardized SAFE or message founder directly for cap table access.
               </span>
-              <button
-                onClick={() => setSafeModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-all shrink-0 cursor-pointer shadow-xs"
-              >
-                Tailor Application →
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const targetId = selectedDeal.founder_id || 'lead_founder_elena';
+                    navigate(`/investor-dashboard/messages?to=${targetId}&name=${encodeURIComponent(selectedDeal.founder)}&company=${encodeURIComponent(selectedDeal.name)}`);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-bold text-xs transition-all cursor-pointer"
+                >
+                  Direct Chat →
+                </button>
+                <button
+                  onClick={() => setSafeModalOpen(true)}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shrink-0 cursor-pointer shadow-xs"
+                >
+                  Issue SAFE Terms →
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Section 2: GHOST JOB & AUTHENTICITY SIGNAL (Image 3 Exact) */}
+          {/* Section 2: INSTITUTIONAL SYNDICATE & VERIFIED ALLOCATION */}
           <div className="p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-white/5">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={15} className="text-emerald-500" />
                 <h3 className="font-mono text-xs font-black uppercase tracking-wider text-black dark:text-white">
-                  GHOST ROUND &amp; AUTHENTICITY SIGNAL
+                  INSTITUTIONAL SYNDICATE &amp; DUE DILIGENCE
                 </h3>
               </div>
               <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
-                {selectedDeal.authenticityScore}% Authenticity
+                {selectedDeal.authenticityScore}% Verified Data Room
               </span>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono text-neutral-500">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Active SAFE Round • {selectedDeal.isPreLaunch ? `${selectedDeal.preLaunchDaysRemaining} days remaining in private window` : "Public Cohort Live"}</span>
+              <span>Active Allocation Window • Delaware 83(b) verified • 0% platform fee on primary check</span>
             </div>
 
             {/* 3 Metric Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono">
               <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
-                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">GitHub Velocity Sourcing</span>
-                <span className="font-black text-xs text-black dark:text-white">Direct Repo Sourcing</span>
+                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Lead Syndicate Anchor</span>
+                <span className="font-black text-xs text-black dark:text-white">{selectedDeal.leadAnchor}</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-emerald-500/30">
-                <span className="text-[10px] text-emerald-500 uppercase font-bold block mb-1">Repost Stagnation</span>
-                <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">Zero Stale Repost</span>
+                <span className="text-[10px] text-emerald-500 uppercase font-bold block mb-1">Cap Table Audit</span>
+                <span className="font-black text-xs text-emerald-600 dark:text-emerald-400">100% Verified Founders</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
-                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Lead Anchor Reality</span>
-                <span className="font-black text-xs text-black dark:text-white">{selectedDeal.leadAnchor}</span>
+                <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">Legal Instrument</span>
+                <span className="font-black text-xs text-black dark:text-white">Standard Post-Money SAFE</span>
               </div>
             </div>
           </div>
 
-          {/* Section 3: RECOMMENDATION FIT ANALYSIS (Image 3 Exact) */}
+          {/* Section 3: RECOMMENDATION FIT ANALYSIS */}
           <div className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center justify-between gap-3 text-xs font-mono">
             <div className="flex items-center gap-2">
               <Sparkles size={14} className="text-emerald-500" />
               <span className="font-bold text-neutral-600 dark:text-neutral-300">
-                RECOMMENDATION FIT ANALYSIS: Matches your Web3 &amp; AI infrastructure thesis.
+                RECOMMENDATION FIT ANALYSIS: Verified fit with your sector &amp; check-size parameters.
               </span>
             </div>
             <span className="font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">

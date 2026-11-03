@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
   DollarSign,
@@ -9,16 +10,22 @@ import {
   ExternalLink,
   ChevronRight,
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from "lucide-react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import { NumberTicker } from "../../components/ui/NumberTicker";
 
 interface PortfolioDeal {
   id: string;
+  founder_id?: string;
   name: string;
   sector: string;
   stage: string;
   investedAmount: string;
+  investedAmountNum: number;
   valuationCap: string;
   sharesOrTokens: string;
   currentMultiple: string;
@@ -30,10 +37,12 @@ interface PortfolioDeal {
 const DEFAULT_PORTFOLIO: PortfolioDeal[] = [
   {
     id: "p1",
+    founder_id: "lead_founder_elena",
     name: "NeuroChain AI",
     sector: "AI & Agents",
     stage: "Seed Round",
     investedAmount: "$100,000",
+    investedAmountNum: 100000,
     valuationCap: "$7,500,000",
     sharesOrTokens: "1.33% SAFE",
     currentMultiple: "1.4x",
@@ -43,10 +52,12 @@ const DEFAULT_PORTFOLIO: PortfolioDeal[] = [
   },
   {
     id: "p2",
+    founder_id: "lead_founder_marcus",
     name: "SecantX Protocol",
     sector: "Web3 & ZK",
     stage: "Seed Round",
     investedAmount: "$50,000",
+    investedAmountNum: 50000,
     valuationCap: "$11,000,000",
     sharesOrTokens: "0.45% SAFT",
     currentMultiple: "1.1x",
@@ -56,10 +67,12 @@ const DEFAULT_PORTFOLIO: PortfolioDeal[] = [
   },
   {
     id: "p3",
+    founder_id: "lead_founder_david",
     name: "HyperScale DB",
     sector: "Infrastructure",
     stage: "Series A",
     investedAmount: "$150,000",
+    investedAmountNum: 150000,
     valuationCap: "$15,000,000",
     sharesOrTokens: "1.00% Preferred",
     currentMultiple: "2.2x",
@@ -70,7 +83,55 @@ const DEFAULT_PORTFOLIO: PortfolioDeal[] = [
 ];
 
 export default function Portfolio() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState<PortfolioDeal[]>(DEFAULT_PORTFOLIO);
+
+  // Subscribe live to investor_portfolio in Firestore
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const q = query(
+      collection(db, "investor_portfolio"),
+      where("investor_id", "==", user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const liveDeals: PortfolioDeal[] = snap.docs.map(docSnap => {
+          const data = docSnap.data();
+          const amt = Number(data.invested_amount || 50000);
+          const cap = Number(data.valuation_cap || 6000000);
+          const ownershipPct = ((amt / cap) * 100).toFixed(2);
+
+          return {
+            id: docSnap.id,
+            founder_id: data.founder_id || '',
+            name: data.company_name || 'Portfolio Startup',
+            sector: data.sector || 'AI & SaaS',
+            stage: data.stage || 'Seed Round',
+            investedAmount: `$${amt.toLocaleString()}`,
+            investedAmountNum: amt,
+            valuationCap: `$${cap.toLocaleString()}`,
+            sharesOrTokens: `${ownershipPct}% ${data.instrument_type || 'SAFE'}`,
+            currentMultiple: '1.4x',
+            status: data.status || 'Active',
+            founder: data.founder_name || 'Founder',
+            dateClosed: data.created_at ? new Date(data.created_at).toLocaleDateString() : 'Today',
+          };
+        });
+
+        // Merge live deals ahead of defaults
+        setPortfolio([...liveDeals, ...DEFAULT_PORTFOLIO]);
+      }
+    }, (err) => {
+      console.warn("[Portfolio] Snapshot listener error:", err);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  const totalCapitalDeployed = portfolio.reduce((acc, curr) => acc + (curr.investedAmountNum || 0), 0);
 
   return (
     <div className="w-full space-y-6">
@@ -94,7 +155,7 @@ export default function Portfolio() {
 
         <div className="flex items-center gap-2 font-mono text-xs">
           <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-            3 Active Allocations
+            {portfolio.length} Active Allocations
           </span>
         </div>
       </div>
@@ -106,10 +167,10 @@ export default function Portfolio() {
             TOTAL CAPITAL DEPLOYED
           </span>
           <div className="text-3xl font-heading font-black text-black dark:text-white">
-            $<NumberTicker value={300} />k
+            $<NumberTicker value={Math.round(totalCapitalDeployed / 1000)} />k
           </div>
           <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">
-            Across 3 Seed &amp; Series A SAFEs
+            Across {portfolio.length} Active Checks &amp; SAFEs
           </span>
         </div>
 
@@ -169,7 +230,7 @@ export default function Portfolio() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 text-right">
+              <div className="flex items-center gap-4 sm:gap-6 text-right">
                 <div>
                   <div className="font-black text-black dark:text-white">{item.investedAmount}</div>
                   <div className="text-[10px] text-neutral-400">@ {item.valuationCap}</div>
@@ -183,6 +244,17 @@ export default function Portfolio() {
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   {item.status}
                 </span>
+
+                <button
+                  onClick={() => {
+                    const targetId = item.founder_id || 'lead_founder_elena';
+                    navigate(`/investor-dashboard/messages?to=${targetId}&name=${encodeURIComponent(item.founder)}&deal=${encodeURIComponent(item.name)}&company=${encodeURIComponent(item.name)}`);
+                  }}
+                  className="p-2 rounded-xl border border-neutral-200 dark:border-white/10 hover:border-[#0070F3] hover:text-[#0070F3] text-neutral-400 transition-colors cursor-pointer"
+                  title="Message Founder"
+                >
+                  <MessageSquare size={14} />
+                </button>
               </div>
             </div>
           ))}
