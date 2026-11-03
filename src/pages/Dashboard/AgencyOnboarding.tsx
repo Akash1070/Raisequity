@@ -247,36 +247,12 @@ export default function AgencyOnboarding() {
   return (
     <div className="min-h-screen bg-[#faf9f7] dark:bg-[#000000] text-black dark:text-white font-sans flex flex-col transition-colors duration-150">
       
-      {/* ── TOP HEADER WITH PERSONA SWITCHER ── */}
-      <div className="p-6 md:px-10 md:py-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#dad4c8] dark:border-[#262626] bg-white dark:bg-[#0a0a0a]">
+      {/* ── TOP HEADER ── */}
+      <div className="p-6 md:px-10 md:py-6 flex items-center justify-between gap-4 border-b border-[#dad4c8] dark:border-[#262626] bg-white dark:bg-[#0a0a0a]">
         <Link to="/" className="flex items-center gap-2.5">
           <Logo className="w-8 h-8 rounded-lg shadow-xs" />
           <span className="font-heading font-black text-[20px] tracking-tight">Raisequity</span>
         </Link>
-
-        {/* ── INTERACTIVE 3-WAY ROLE SWITCHER PILL ── */}
-        <div className="flex items-center gap-1 p-1 rounded-full bg-[#faf9f7] dark:bg-[#141414] border border-[#dad4c8] dark:border-[#333] clay-shadow">
-          <button
-            type="button"
-            onClick={() => switchRole('founder')}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white transition-all cursor-pointer"
-          >
-            🚀 Founder
-          </button>
-          <button
-            type="button"
-            onClick={() => switchRole('investor')}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold text-black/60 dark:text-slate-400 hover:text-black dark:hover:text-white transition-all cursor-pointer"
-          >
-            🏛️ Investor
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-mono font-black bg-black text-white shadow-xs cursor-default"
-          >
-            💼 Agency Partner (Active)
-          </button>
-        </div>
 
         {/* Step Indicator & Sign Out */}
         <div className="flex items-center gap-3">

@@ -151,7 +151,7 @@ export default function Feed() {
   const userCredits = profile?.credits || 0;
 
   return (
-    <div className="space-y-6 pb-24 text-slate-100 font-sans">
+    <div className="space-y-6 pb-24 text-slate-900 dark:text-slate-100 font-sans">
       {/* ── 1. HIREINCRYPTO-STYLE TOP HORIZONTAL PILL BAR ── */}
       <div className="border border-neutral-200 dark:border-[#262626] rounded-2xl bg-white dark:bg-[#111111] px-5 py-2.5 flex items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
@@ -195,12 +195,12 @@ export default function Feed() {
       </div>
 
       {/* Welcome & Quota Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
             Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋
           </h1>
-          <p className="text-slate-400 font-medium text-xs sm:text-sm mt-1">
+          <p className="text-slate-600 dark:text-slate-400 font-medium text-xs sm:text-sm mt-1">
             Institutional dealflow feed, warm intro quota, and double-blind ecosystem matchmaking
           </p>
         </div>
@@ -416,8 +416,8 @@ export default function Feed() {
 
                     {/* Post Title & Content */}
                     <div className="space-y-2">
-                      <h3 className="text-base font-bold text-white leading-snug">{post.title}</h3>
-                      <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">{post.title}</h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                         {post.content}
                       </p>
                     </div>

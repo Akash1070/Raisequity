@@ -23,7 +23,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { upsertInvestorProfile, getInvestorProfile, getInvestorPreferences } from "../../lib/investors";
 import { safeStorage } from "../../lib/storage";
 import type { InvestorOnboardingData, InvestorType } from "../../types/investor";
-import OnboardingRoleSwitcher from "../../components/auth/OnboardingRoleSwitcher";
 import { Logo } from "../../components/ui/Logo";
 
 const SECTORS = ["AI", "SaaS", "Fintech", "B2B Tech", "DevTools", "Consumer", "DeFi", "Web3 Infrastructure", "GameFi", "RWA", "Climate"];

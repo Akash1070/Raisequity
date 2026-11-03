@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Search, Activity, ShieldCheck, CheckCircle2, Clock, Upload, Plus, Trash2, Edit, X, Download, FileText, Send, Database } from "lucide-react";
-import { collection, getDocs, doc, updateDoc, query, where, limit } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where, limit, getCountFromServer } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { processInvestorVerificationReferral } from "../../lib/referrals";
 import { getWeb3Investors, createWeb3Investor, updateWeb3Investor, deleteWeb3Investor, bulkImportWeb3Investors } from "../../lib/investors";
@@ -16,6 +16,8 @@ export default function AdminInvestors() {
   // Web3 Investor Directory dataset
   const [directoryInvestors, setDirectoryInvestors] = useState<Web3Investor[]>([]);
   const [loadingDirectory, setLoadingDirectory] = useState(true);
+  const [totalInvestorCount, setTotalInvestorCount] = useState<number | null>(null);
+  const [currentLimit, setCurrentLimit] = useState(1000);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
 
@@ -43,9 +45,16 @@ export default function AdminInvestors() {
     }
   };
 
-  const fetchDirectoryInvestors = async () => {
+  const fetchDirectoryInvestors = async (targetLimit?: number) => {
     setLoadingDirectory(true);
-    const list = await getWeb3Investors([], true, { limit: 1000 });
+    const useLimit = targetLimit ?? currentLimit;
+    try {
+      const countSnap = await getCountFromServer(collection(db, "web3_investors"));
+      setTotalInvestorCount(countSnap.data().count);
+    } catch (e) {
+      console.warn("Could not retrieve server total count:", e);
+    }
+    const list = await getWeb3Investors([], true, { limit: useLimit });
     setDirectoryInvestors(list);
     setLoadingDirectory(false);
   };
@@ -309,7 +318,7 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
               : "border-transparent text-slate-400 hover:text-slate-600"
           }`}
         >
-          <Database size={16} /> Web3 Investor Database ({directoryInvestors.length})
+          <Database size={16} /> Web3 Investor Database ({totalInvestorCount ? totalInvestorCount.toLocaleString() : directoryInvestors.length})
         </button>
         <button
           onClick={() => setActiveTab("platform")}
@@ -351,6 +360,33 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
           </select>
         )}
       </div>
+
+      {/* Live Pipeline Telemetry Bar */}
+      {activeTab === "directory" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs font-mono text-slate-500">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>
+              Loaded <strong className="text-slate-900">{filteredDirectory.length}</strong> of{" "}
+              <strong className="text-slate-900">{totalInvestorCount ? totalInvestorCount.toLocaleString() : directoryInvestors.length}</strong> verified investors
+            </span>
+          </div>
+          {totalInvestorCount && directoryInvestors.length < totalInvestorCount && (
+            <button
+              onClick={() => {
+                const nextLimit = currentLimit + 1000;
+                setCurrentLimit(nextLimit);
+                fetchDirectoryInvestors(nextLimit);
+              }}
+              disabled={loadingDirectory}
+              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto"
+            >
+              {loadingDirectory ? <Activity size={12} className="animate-spin text-white" /> : <Plus size={12} />}
+              Load 1,000 More Records
+            </button>
+          )}
+        </div>
+      )}
 
       {/* VIEW 1: WEB3 INVESTOR DATABASE */}
       {activeTab === "directory" && (

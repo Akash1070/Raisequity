@@ -35,6 +35,7 @@ const Matches = lazy(() => import("./pages/Dashboard/Matches"));
 const DashboardNetwork = lazy(() => import("./pages/Dashboard/Network"));
 const Coaching = lazy(() => import("./pages/Dashboard/Coaching"));
 const DashboardInvestors = lazy(() => import("./pages/Dashboard/Investors"));
+const ServicesDirectory = lazy(() => import("./pages/Dashboard/ServicesDirectory"));
 const Settings = lazy(() => import("./pages/Dashboard/Settings"));
 const Bookings = lazy(() => import("./pages/Dashboard/Bookings"));
 const MyLaunch = lazy(() => import("./pages/Dashboard/MyLaunch"));
@@ -165,7 +166,8 @@ export default function App() {
             <Route path="launches" element={<LaunchDirectory />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="services" element={<Feed />} />
+            <Route path="services" element={<ServicesDirectory />} />
+            <Route path="experts" element={<Navigate to="/dashboard/services" replace />} />
           </Route>
 
           {/* ========== INVESTOR DASHBOARD ========== */}

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, getCountFromServer } from "firebase/firestore";
 import { getInvestorConnections } from "../../lib/connections";
 import { createIntroRequest } from "../../lib/intros";
 import { getWeb3Investors, unlockInvestorContact, declarePersonalInvestorBridge, getInvestorAvatarUrl } from "../../lib/investors";
@@ -26,6 +26,7 @@ export default function Investors() {
 
   // Web3 Investor Directory State
   const [directoryInvestors, setDirectoryInvestors] = useState<Web3Investor[]>([]);
+  const [totalServerCount, setTotalServerCount] = useState<number | null>(null);
   const [loadingDirectory, setLoadingDirectory] = useState(true);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
@@ -51,6 +52,11 @@ export default function Investors() {
     setLoadingDirectory(true);
     try {
       let activeUnlockedIds: string[] = unlockedIds;
+
+      // Fetch true count from server
+      getCountFromServer(collection(db, "web3_investors"))
+        .then((snapshot) => setTotalServerCount(snapshot.data().count))
+        .catch(() => {});
 
       // Fetch unlocked array from user profile
       if (user?.uid) {
@@ -231,19 +237,19 @@ export default function Investors() {
   });
 
   return (
-    <div className="space-y-8 pb-24 text-slate-900">
+    <div className="space-y-8 pb-24 text-slate-900 dark:text-slate-100 font-sans">
       {/* Header & Topbar Action */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-[#262626] pb-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-[32px] font-black tracking-tight text-slate-900 font-heading">
-              Web3 Investor Network & Directory
+            <h1 className="text-[32px] font-black tracking-tight text-slate-900 dark:text-white font-heading">
+              Web3 Investor Network &amp; Directory
             </h1>
-            <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-black border border-purple-200/60 flex items-center gap-1.5 shadow-2xs">
+            <span className="px-3 py-1 bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-black border border-purple-200/60 dark:border-purple-800/40 flex items-center gap-1.5 shadow-2xs">
               <Sparkles size={14} className="text-amber-500" /> {founderProfile?.credits ?? 0} Credits Available
             </span>
           </div>
-          <p className="text-slate-500 font-medium text-xs md:text-sm">
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-xs md:text-sm">
             Access direct verified investor emails, Telegram handles, and crowdsourced warm introduction networks.
           </p>
         </div>
@@ -251,13 +257,13 @@ export default function Investors() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/dashboard/credits")}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs px-4 py-3 rounded-2xl transition-all border border-slate-200 cursor-pointer flex items-center gap-2"
+            className="bg-slate-100 dark:bg-[#171717] hover:bg-slate-200 dark:hover:bg-[#222222] text-slate-800 dark:text-slate-200 font-extrabold text-xs px-4 py-3 rounded-2xl transition-all border border-slate-200 dark:border-[#262626] cursor-pointer flex items-center gap-2"
           >
             <Sparkles size={14} className="text-amber-500" /> Get More Credits
           </button>
           <button
             onClick={() => setShowDeclareModal(true)}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider px-5 py-3 rounded-2xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black font-black text-xs uppercase tracking-wider px-5 py-3 rounded-2xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <Plus size={16} /> Declare Connection
           </button>
@@ -269,7 +275,7 @@ export default function Investors() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-extrabold flex items-center gap-2 shadow-xs"
+          className="p-4 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 text-xs font-extrabold flex items-center gap-2 shadow-xs"
         >
           <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           {successMessage}
@@ -280,7 +286,7 @@ export default function Investors() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-50 text-red-800 rounded-2xl border border-red-200 text-xs font-extrabold flex items-center gap-2 shadow-xs"
+          className="p-4 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300 rounded-2xl border border-red-200 dark:border-red-800/50 text-xs font-extrabold flex items-center gap-2 shadow-xs"
         >
           <AlertCircle size={16} className="text-red-600 shrink-0" />
           {error}
@@ -288,23 +294,23 @@ export default function Investors() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-[#262626]">
         <button
           onClick={() => setActiveTab("directory")}
           className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "directory"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-400 hover:text-slate-600"
+              ? "border-slate-900 dark:border-white text-slate-900 dark:text-white"
+              : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
-          <Database size={16} /> Web3 Investor Database ({directoryInvestors.length})
+          <Database size={16} /> Web3 Investor Database ({totalServerCount ? totalServerCount.toLocaleString() : directoryInvestors.length})
         </button>
         <button
           onClick={() => setActiveTab("graph")}
           className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
             activeTab === "graph"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-400 hover:text-slate-600"
+              ? "border-slate-900 dark:border-white text-slate-900 dark:text-white"
+              : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
           <Users size={16} /> Founder Warm Intro Graph ({declaredConnections.length})
@@ -314,14 +320,14 @@ export default function Investors() {
       {/* Filters Bar */}
       <div className="flex flex-col md:flex-row gap-4">
         {/* Search */}
-        <div className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xs">
+        <div className="flex-1 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xs">
           <Search size={16} className="text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder={activeTab === "directory" ? "Search investor name, VC fund, location..." : "Search warm intro graph..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent border-none text-xs font-semibold text-slate-900 focus:ring-0 outline-none placeholder:text-slate-400"
+            className="w-full bg-transparent border-none text-xs font-semibold text-slate-900 dark:text-white focus:ring-0 outline-none placeholder:text-slate-400"
           />
         </div>
 
@@ -330,10 +336,10 @@ export default function Investors() {
           <select
             value={sectorFilter}
             onChange={(e) => setSectorFilter(e.target.value)}
-            className="appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 outline-none shadow-2xs text-slate-900"
+            className="appearance-none bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none shadow-2xs text-slate-900 dark:text-white"
           >
             {SECTOR_OPTIONS.map((s) => (
-              <option key={s} value={s}>
+              <option key={s} value={s} className="bg-white dark:bg-[#111111] text-slate-900 dark:text-white">
                 Sector: {s}
               </option>
             ))}
@@ -347,10 +353,10 @@ export default function Investors() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 outline-none shadow-2xs text-slate-900"
+              className="appearance-none bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 dark:focus:ring-white outline-none shadow-2xs text-slate-900 dark:text-white"
             >
               {CATEGORY_OPTIONS.map((c) => (
-                <option key={c} value={c}>
+                <option key={c} value={c} className="bg-white dark:bg-[#111111] text-slate-900 dark:text-white">
                   Category: {c}
                 </option>
               ))}
@@ -385,7 +391,7 @@ export default function Investors() {
                 return (
                   <div
                     key={inv.id}
-                    className="bg-white rounded-[28px] border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    className="bg-white dark:bg-[#111111] rounded-[28px] border border-slate-200/80 dark:border-[#262626] p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                   >
                     <div>
                       {/* Card Header */}
@@ -397,20 +403,20 @@ export default function Investors() {
                             onError={(e) => {
                               (e.target as HTMLElement).setAttribute('src', `https://ui-avatars.com/api/?name=${encodeURIComponent(inv.name)}&background=0F172A&color=fff&bold=true`);
                             }}
-                            className="w-11 h-11 rounded-2xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                            className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-neutral-700 shrink-0 shadow-2xs"
                           />
                           <div>
-                            <h3 className="font-black text-base text-slate-900">{inv.name}</h3>
-                            <p className="text-xs font-extrabold text-slate-500">{inv.firm}</p>
+                            <h3 className="font-black text-base text-slate-900 dark:text-white">{inv.name}</h3>
+                            <p className="text-xs font-extrabold text-slate-500 dark:text-slate-400">{inv.firm}</p>
                           </div>
                         </div>
 
                         <div className="flex flex-col items-end gap-1">
-                          <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-slate-200/80">
+                          <span className="px-2.5 py-1 bg-slate-100 dark:bg-[#1a1b20] text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider rounded-lg border border-slate-200/80 dark:border-white/5">
                             {inv.category || "VC Fund"}
                           </span>
                           {(() => { const m = matchById.get(inv.id); return m && (founderProfile?.sector || founderProfile?.stage) ? (
-                            <span title={[...m.reasons, ...m.negatives].join(' · ')} className={`px-2.5 py-1 text-[10px] font-black uppercase rounded-lg ${m.score >= 70 ? "bg-emerald-100 text-emerald-800" : m.score >= 35 ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-400"}`}>
+                            <span title={[...m.reasons, ...m.negatives].join(' · ')} className={`px-2.5 py-1 text-[10px] font-black uppercase rounded-lg ${m.score >= 70 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : m.score >= 35 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-slate-50 text-slate-400 dark:bg-neutral-800"}`}>
                               {m.score >= 50 ? "Best for you · " : ""}{m.score}% fit
                             </span>) : null; })()}
                         </div>
@@ -420,12 +426,12 @@ export default function Investors() {
                       <div className="space-y-2.5 mb-6">
                         <div className="flex items-center justify-between text-xs font-semibold">
                           <span className="text-slate-400 font-medium">Check Size:</span>
-                          <span className="font-black text-slate-900">{inv.check_size || "$100k"}</span>
+                          <span className="font-black text-slate-900 dark:text-white">{inv.check_size || "$100k"}</span>
                         </div>
 
                         <div className="flex items-center justify-between text-xs font-semibold">
                           <span className="text-slate-400 font-medium">Target Stage:</span>
-                          <span className="font-extrabold text-slate-800">{inv.stage || "Pre-seed / Seed"}</span>
+                          <span className="font-extrabold text-slate-800 dark:text-slate-200">{inv.stage || "Pre-seed / Seed"}</span>
                         </div>
 
                         {/* Sectors */}
@@ -433,7 +439,7 @@ export default function Investors() {
                           {inv.sectors?.map((sec) => (
                             <span
                               key={sec}
-                              className="px-2.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-200/60"
+                              className="px-2.5 py-0.5 bg-slate-50 dark:bg-[#18191e] text-slate-700 dark:text-slate-300 rounded-md text-[10px] font-bold border border-slate-200/60 dark:border-white/5"
                             >
                               {sec}
                             </span>
@@ -442,17 +448,17 @@ export default function Investors() {
                       </div>
 
                       {/* Gated / Unlocked Contact Box */}
-                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 mb-6 space-y-2">
+                      <div className="p-4 bg-slate-50 dark:bg-[#18191e] rounded-2xl border border-slate-200/80 dark:border-white/5 mb-6 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider font-mono">
                             Direct Contact Details
                           </span>
                           {isUnlocked ? (
-                            <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                               <Unlock size={12} /> UNLOCKED
                             </span>
                           ) : (
-                            <span className="text-[10px] font-black text-amber-600 flex items-center gap-1">
+                            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
                               <Lock size={12} /> GATED (1 CREDIT)
                             </span>
                           )}
@@ -461,13 +467,13 @@ export default function Investors() {
                         {isUnlocked ? (
                           <div className="space-y-2 pt-1">
                             {inv.email && (
-                              <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 font-bold">
+                              <div className="flex items-center justify-between bg-white dark:bg-[#121316] p-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white font-bold">
                                 <span className="truncate mr-2">✉️ {inv.email}</span>
                                 <button
                                   onClick={() => copyToClipboard(inv.email!, `email-${inv.id}`)}
-                                  className="text-slate-400 hover:text-slate-900 cursor-pointer shrink-0"
+                                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer shrink-0"
                                 >
-                                  {copiedId === `email-${inv.id}` ? <CheckCircle2 size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                                  {copiedId === `email-${inv.id}` ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={14} />}
                                 </button>
                               </div>
                             )}
@@ -477,7 +483,7 @@ export default function Investors() {
                                 href={inv.telegram.startsWith("http") ? inv.telegram : `https://t.me/${inv.telegram.replace("@", "")}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center justify-between bg-sky-50 hover:bg-sky-100 p-2.5 rounded-xl border border-sky-200 text-xs font-mono text-sky-900 font-black transition-colors"
+                                className="flex items-center justify-between bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/40 p-2.5 rounded-xl border border-sky-200 dark:border-sky-800/40 text-xs font-mono text-sky-900 dark:text-sky-300 font-black transition-colors"
                               >
                                 <span>✈️ {inv.telegram}</span>
                                 <ExternalLink size={14} className="text-sky-600" />
@@ -486,11 +492,11 @@ export default function Investors() {
                           </div>
                         ) : (
                           <div className="space-y-2 pt-1 text-xs font-mono text-slate-400">
-                            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                            <div className="bg-white dark:bg-[#121316] p-2.5 rounded-xl border border-slate-200/80 dark:border-white/5 flex items-center justify-between">
                               <span>✉️ e***@vc-fund.com</span>
                               <Lock size={12} />
                             </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                            <div className="bg-white dark:bg-[#121316] p-2.5 rounded-xl border border-slate-200/80 dark:border-white/5 flex items-center justify-between">
                               <span>✈️ @t***_handle</span>
                               <Lock size={12} />
                             </div>

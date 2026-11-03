@@ -93,6 +93,22 @@ const TRENDING_LAUNCHES = [
 export default function Founders() {
   const [matches, setMatches] = useState(DEFAULT_MATCHES);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [launches, setLaunches] = useState(TRENDING_LAUNCHES);
+  const [votedMap, setVotedMap] = useState<Record<number, boolean>>({});
+
+  const handleUpvote = (e: React.MouseEvent, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setVotedMap((prev) => {
+      const isVoted = Boolean(prev[idx]);
+      setLaunches((lList) =>
+        lList.map((item, i) =>
+          i === idx ? { ...item, votes: isVoted ? item.votes - 1 : item.votes + 1 } : item
+        )
+      );
+      return { ...prev, [idx]: !isVoted };
+    });
+  };
 
   useEffect(() => {
     async function fetchContributedContacts() {
@@ -607,37 +623,49 @@ export default function Founders() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {TRENDING_LAUNCHES.map((p, idx) => (
-              <Link
-                key={idx}
-                to={`/launch/${p.slug}`}
-                className="p-4 rounded-[20px] bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 transition-all flex items-start justify-between gap-3 group"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-heading font-black text-base text-black dark:text-white group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors truncate">
-                      {p.name}
-                    </span>
-                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-neutral-200/70 dark:bg-[#25262e] text-neutral-700 dark:text-neutral-300 rounded-md">
-                      {p.category}
-                    </span>
+            {launches.map((p, idx) => {
+              const isVoted = Boolean(votedMap[idx]);
+              return (
+                <Link
+                  key={idx}
+                  to={`/launch/${p.slug}`}
+                  className="p-4 rounded-[20px] bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 transition-all flex items-start justify-between gap-3 group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-heading font-black text-base text-black dark:text-white group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors truncate">
+                        {p.name}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-neutral-200/70 dark:bg-[#25262e] text-neutral-700 dark:text-neutral-300 rounded-md">
+                        {p.category}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mb-2 font-medium">
+                      {p.tagline}
+                    </p>
+
+                    <div className="text-[10px] font-mono text-neutral-400">
+                      By <strong className="text-black dark:text-white">{p.founder}</strong>
+                    </div>
                   </div>
 
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mb-2 font-medium">
-                    {p.tagline}
-                  </p>
-
-                  <div className="text-[10px] font-mono text-neutral-400">
-                    By <strong className="text-black dark:text-white">{p.founder}</strong>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center justify-center min-w-[48px] py-1.5 px-2.5 rounded-xl bg-white dark:bg-[#121316] border border-neutral-200 dark:border-white/10 text-xs font-mono font-black text-black dark:text-white shrink-0 shadow-2xs">
-                  <span className="text-emerald-500 text-[10px]">▲</span>
-                  <span>{p.votes}</span>
-                </div>
-              </Link>
-            ))}
+                  <button
+                    type="button"
+                    onClick={(e) => handleUpvote(e, idx)}
+                    className={`flex flex-col items-center justify-center min-w-[50px] py-1.5 px-2.5 rounded-xl border transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-105 active:scale-95 ${
+                      isVoted
+                        ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white dark:bg-[#121316] border-neutral-200 dark:border-white/10 text-black dark:text-white hover:border-emerald-500/50'
+                    }`}
+                    title={isVoted ? 'Upvoted! Click to remove' : 'Upvote startup'}
+                  >
+                    <span className={`text-[10px] transition-transform ${isVoted ? 'text-white' : 'text-emerald-500'}`}>▲</span>
+                    <span className="text-xs font-mono font-black">{p.votes}</span>
+                  </button>
+                </Link>
+              );
+            })}
           </div>
         </div>
 

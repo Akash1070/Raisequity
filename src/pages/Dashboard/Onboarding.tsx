@@ -23,7 +23,6 @@ import { processReferral } from "../../lib/referrals";
 import BlurbPreview from "../../components/dashboard/BlurbPreview";
 import InvestorContactForm, { ContactFormData } from "../../components/dashboard/InvestorContactForm";
 import { safeStorage } from "../../lib/storage";
-import OnboardingRoleSwitcher from "../../components/auth/OnboardingRoleSwitcher";
 import { Logo } from "../../components/ui/Logo";
 
 const STAGES = ["Pre-Seed", "Seed", "Series A", "Series B", "Series C+", "Pre-IPO", "IPO", "Acquisition", "Other"];

@@ -24,6 +24,7 @@ import {
 import { getPublicLaunches, voteLaunch, hasUserVoted, getVerifiedLaunchCount, getLaunchComments } from '../../lib/launches';
 import { LaunchItem } from '../../types/launch';
 import { useAuth } from '../../contexts/AuthContext';
+import { safeStorage } from '../../lib/storage';
 import MyLaunch from '../Dashboard/MyLaunch';
 import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { NumberTicker } from '../../components/ui/NumberTicker';
@@ -130,7 +131,7 @@ const REAL_CREDITS = [
 
 export default function LaunchDirectory() {
   const { user } = useAuth();
-  const uid = user?.id || '';
+  const uid = user?.uid || (user as any)?.id || '';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -214,26 +215,49 @@ export default function LaunchDirectory() {
 
   const handleVote = async (e: React.MouseEvent, launchId: string) => {
     e.stopPropagation();
+    e.preventDefault();
+
     if (!uid) {
-      navigate(`/login?redirect=${encodeURIComponent('/launch')}`);
+      const guestKey = `rq_guest_voted_${launchId}`;
+      const hasGuestVoted = safeStorage.getItem(guestKey) === 'true';
+      if (hasGuestVoted) {
+        safeStorage.removeItem(guestKey);
+        setVotedMap((prev) => ({ ...prev, [launchId]: false }));
+        setLaunches((prev) =>
+          prev.map((l) => (l.id === launchId ? { ...l, votes_count: Math.max(0, l.votes_count - 1) } : l))
+        );
+      } else {
+        safeStorage.setItem(guestKey, 'true');
+        setVotedMap((prev) => ({ ...prev, [launchId]: true }));
+        setLaunches((prev) =>
+          prev.map((l) => (l.id === launchId ? { ...l, votes_count: l.votes_count + 1 } : l))
+        );
+      }
       return;
     }
 
     try {
+      const currentVoted = votedMap[launchId];
+      // Optimistic update
+      setVotedMap((prev) => ({ ...prev, [launchId]: !currentVoted }));
+      setLaunches((prev) =>
+        prev.map((l) =>
+          l.id === launchId
+            ? { ...l, votes_count: currentVoted ? Math.max(0, l.votes_count - 1) : l.votes_count + 1 }
+            : l
+        )
+      );
+
       const success = await voteLaunch(launchId, uid);
-      if (success) {
-        setVotedMap((prev) => ({ ...prev, [launchId]: !prev[launchId] }));
+      if (!success) {
+        // Rollback if failed
+        setVotedMap((prev) => ({ ...prev, [launchId]: currentVoted }));
         setLaunches((prev) =>
-          prev.map((l) => {
-            if (l.id === launchId) {
-              const currentVoted = votedMap[launchId];
-              return {
-                ...l,
-                votes_count: currentVoted ? Math.max(0, l.votes_count - 1) : l.votes_count + 1,
-              };
-            }
-            return l;
-          })
+          prev.map((l) =>
+            l.id === launchId
+              ? { ...l, votes_count: currentVoted ? l.votes_count + 1 : Math.max(0, l.votes_count - 1) }
+              : l
+          )
         );
       }
     } catch (err) {

@@ -44,6 +44,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fullName = profile?.full_name || user?.email?.split("@")[0] || "Pro Investor";
   const avatarSeed = fullName.split(" ")[0];

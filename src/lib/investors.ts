@@ -469,6 +469,7 @@ export async function upsertInvestorProfile(uid: string, formData: any): Promise
   try {
     const userRef = doc(db, 'users', uid);
     await setDoc(userRef, {
+      role: 'investor',
       full_name: formData.full_name,
       linkedin_url: formData.linkedin_url,
       investor_type: formData.investor_type,
