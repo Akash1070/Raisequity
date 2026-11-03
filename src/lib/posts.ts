@@ -246,3 +246,5 @@ export async function getPostComments(postId: string): Promise<PostComment[]> {
     return [];
   }
 }
+
+export const togglePostLike = toggleLikePost;

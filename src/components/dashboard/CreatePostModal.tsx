@@ -14,12 +14,12 @@ interface CreatePostModalProps {
 }
 
 const TAG_OPTIONS: { value: PostTag; label: string; color: string }[] = [
-  { value: 'raising', label: '#raising', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { value: 'hiring', label: '#hiring', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-  { value: 'grant', label: '#grant', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { value: 'partnership', label: '#partnership', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { value: 'serviceneeded', label: '#serviceneeded', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-  { value: 'update', label: '#update', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { value: 'raising', label: '#raising', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+  { value: 'hiring', label: '#hiring', color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' },
+  { value: 'grant', label: '#grant', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
+  { value: 'partnership', label: '#partnership', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+  { value: 'serviceneeded', label: '#serviceneeded', color: 'bg-rose-500/10 text-rose-400 border-rose-500/30' },
+  { value: 'update', label: '#update', color: 'bg-slate-500/10 text-slate-300 border-slate-500/30' },
 ];
 
 export default function CreatePostModal({
@@ -48,7 +48,7 @@ export default function CreatePostModal({
         setErrorMsg('Only PDF pitch deck files are supported.');
         return;
       }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
         setErrorMsg('Pitch deck file size must be under 10MB.');
         return;
       }
@@ -101,7 +101,6 @@ export default function CreatePostModal({
       if (res.success) {
         onSuccess();
         onClose();
-        // Reset form
         setTitle('');
         setContent('');
         setSelectedTag('update');
@@ -116,25 +115,27 @@ export default function CreatePostModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white border border-slate-200/80 rounded-3xl max-w-xl w-full p-6 sm:p-8 text-slate-900 shadow-2xl relative my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-3xl max-w-xl w-full p-6 sm:p-8 text-slate-900 dark:text-white shadow-2xl relative my-8">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-slate-900 p-2 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+          className="absolute top-5 right-5 text-slate-400 hover:text-slate-900 dark:hover:text-white p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
         >
           <X size={20} />
         </button>
 
         {/* Modal Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-emerald-50 border border-emerald-200/60 rounded-xl flex items-center justify-center text-emerald-600">
+          <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-center text-emerald-500">
             <Sparkles size={22} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900">Create Community Post</h2>
-            <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-              <Coins size={13} className="text-emerald-600" />
+            <h2 className="text-xl font-black text-slate-900 dark:text-white font-heading">
+              New Community Broadcast
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 mt-0.5 font-mono">
+              <Coins size={13} className="text-emerald-500" />
               Friction Cost: 1 Credit (Balance: {userCredits} Credits)
             </p>
           </div>
@@ -144,23 +145,23 @@ export default function CreatePostModal({
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Post Headline / Title <span className="text-emerald-600">*</span>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 font-mono">
+              Post Headline / Title <span className="text-emerald-500">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Raising $500k Seed for AI DePIN Protocol"
+              placeholder="e.g. Raising $1.5M Seed for AI Infrastructure / Offering $50k Audit Credits"
               required
-              className="w-full bg-slate-50 border border-slate-200/80 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none transition-colors"
+              className="w-full bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/10 focus:border-emerald-500 text-slate-900 dark:text-white placeholder:text-slate-400 rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors font-sans"
             />
           </div>
 
           {/* Tag Selector */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Select Tag Category <span className="text-emerald-600">*</span>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 font-mono">
+              Select Tag Category <span className="text-emerald-500">*</span>
             </label>
             <div className="flex flex-wrap gap-2">
               {TAG_OPTIONS.map((tag) => (
@@ -171,7 +172,7 @@ export default function CreatePostModal({
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono border transition-all cursor-pointer ${
                     selectedTag === tag.value
                       ? `${tag.color} ring-2 ring-emerald-500/30`
-                      : 'bg-slate-50 border-slate-200/80 text-slate-500 hover:text-slate-900'
+                      : 'bg-slate-50 dark:bg-[#18191e] border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {tag.label}
@@ -182,35 +183,35 @@ export default function CreatePostModal({
 
           {/* Content */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Post Content & Details <span className="text-emerald-600">*</span>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 font-mono">
+              Broadcast Message &amp; Ask <span className="text-emerald-500">*</span>
             </label>
             <textarea
               rows={4}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Describe your traction, ask, hiring needs, or partnership details..."
+              placeholder="Describe your round, traction, milestone update, or what you are looking for..."
               required
-              className="w-full bg-slate-50 border border-slate-200/80 focus:border-emerald-500 rounded-xl p-4 text-sm text-slate-900 focus:outline-none transition-colors leading-relaxed"
+              className="w-full bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/10 focus:border-emerald-500 rounded-xl p-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none transition-colors leading-relaxed font-sans"
             />
           </div>
 
           {/* Pitch Deck Attachment */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Attach Pitch Deck (Optional PDF)
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 font-mono">
+              Attach Pitch Deck / One-Pager (Optional PDF)
             </label>
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/10 rounded-xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-200/60 flex items-center justify-center text-slate-600">
+                <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300">
                   <FileText size={18} />
                 </div>
-                <div className="text-xs">
-                  <div className="text-slate-900 font-bold">{pdfFile ? pdfFile.name : 'No file selected'}</div>
+                <div className="text-xs font-mono">
+                  <div className="text-slate-900 dark:text-white font-bold">{pdfFile ? pdfFile.name : 'No file selected'}</div>
                   <div className="text-slate-400 text-[11px]">PDF format up to 10MB</div>
                 </div>
               </div>
-              <label className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs">
+              <label className="bg-black hover:bg-neutral-800 dark:bg-white dark:text-black text-white text-xs font-bold px-3 py-2 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs font-mono">
                 <Upload size={14} /> Upload PDF
                 <input type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" />
               </label>
@@ -218,7 +219,7 @@ export default function CreatePostModal({
           </div>
 
           {errorMsg && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 p-3 rounded-xl flex items-center gap-2 font-medium">
+            <div className="text-xs text-rose-500 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl flex items-center gap-2 font-mono">
               <AlertCircle size={16} /> {errorMsg}
             </div>
           )}
@@ -227,13 +228,13 @@ export default function CreatePostModal({
           <button
             type="submit"
             disabled={isSubmitting || userCredits < 1}
-            className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black uppercase tracking-wider py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
+            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold uppercase tracking-wider py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs font-mono"
           >
             {isSubmitting ? (
-              <span className="text-xs">Publishing Post & Deducting 1 Credit...</span>
+              <span className="text-xs">Publishing Broadcast (1 Credit)...</span>
             ) : (
               <>
-                <Coins size={16} className="text-amber-400" /> Post Update (Cost: 1 Credit)
+                <Coins size={16} className="text-black" /> Post Broadcast (1 Credit)
               </>
             )}
           </button>

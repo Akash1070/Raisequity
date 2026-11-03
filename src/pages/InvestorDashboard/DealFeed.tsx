@@ -40,6 +40,7 @@ import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import OneClickSafeModal from "../../components/investor/OneClickSafeModal";
 import CalBookingEmbed from "../../components/investor/CalBookingEmbed";
 import TelegramThesisAlertModal from "../../components/investor/TelegramThesisAlertModal";
+import CommunityBroadcastFeed from "../../components/dashboard/CommunityBroadcastFeed";
 import { SEEDED_DEAL_FLOW } from "../../data/dealFlowData";
 
 interface DealItem {
@@ -388,6 +389,7 @@ export default function DealFeed() {
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {[
             { label: "Deals", count: "180+" },
+            { label: "💬 Community Broadcasts", count: "Live" },
             { label: "AI & Agents", count: "42" },
             { label: "Infrastructure & ZK", count: "38" },
             { label: "RWA & FinTech", count: "24" },
@@ -422,6 +424,14 @@ export default function DealFeed() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Unlimited Deal Flow Active</span>
           </div>
+
+          <button
+            onClick={() => setActiveTab("💬 Community Broadcasts")}
+            className="px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <Coins size={13} />
+            <span>+ Broadcast (1 Cr)</span>
+          </button>
 
           <button
             onClick={() => setTelegramModalOpen(true)}
@@ -481,8 +491,18 @@ export default function DealFeed() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          3. MASTER-DETAIL TWO-COLUMN SPLIT PANE WORKSPACE
+          3. MASTER-DETAIL OR COMMUNITY BROADCAST WORKSPACE
          ══════════════════════════════════════════════════════════ */}
+      {activeTab === "💬 Community Broadcasts" ? (
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#f8f9fa] dark:bg-[#0c0d10]">
+          <div className="max-w-4xl mx-auto space-y-4">
+            <CommunityBroadcastFeed
+              userRole="investor"
+              userCredits={profile?.credit_balance ?? 50}
+            />
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
         
         {/* ── LEFT COLUMN: MASTER DEAL LIST (Exact Image 3 Style) ── */}
@@ -808,6 +828,7 @@ export default function DealFeed() {
         </div>
 
       </div>
+      )}
 
       {/* Modals */}
       {safeModalOpen && (

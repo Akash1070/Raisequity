@@ -17,11 +17,16 @@ import {
   Briefcase,
   Layers,
   Send,
-  Award
+  Award,
+  Coins,
+  Plus
 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import CommunityBroadcastFeed from "../../components/dashboard/CommunityBroadcastFeed";
 import { AGENCY_RFPS, AgencyRfp } from "../../data/agencyRfps";
 
 export default function RfpFeed() {
+  const { user, profile } = useAuth();
   const [selectedRfpId, setSelectedRfpId] = useState<string>(AGENCY_RFPS[0].id);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -44,6 +49,7 @@ export default function RfpFeed() {
 
   const categories = [
     { id: "all", label: "All RFPs", count: AGENCY_RFPS.length },
+    { id: "broadcasts", label: "💬 Community Broadcasts", count: "Live" },
     {
       id: "smart-contracts",
       label: "Smart Contracts & ZK",
@@ -100,6 +106,16 @@ export default function RfpFeed() {
             </button>
           );
         })}
+
+        <div className="ml-auto hidden sm:flex items-center gap-2">
+          <button
+            onClick={() => setCategoryFilter("broadcasts")}
+            className="px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <Coins size={13} />
+            <span>+ Broadcast (1 Cr)</span>
+          </button>
+        </div>
       </div>
 
       {/* ── 2. SECONDARY INSTITUTIONAL BANNER (HIREINCRYPTO ATS STYLE) ── */}
@@ -119,7 +135,17 @@ export default function RfpFeed() {
         </div>
       </div>
 
-      {/* ── 3. SPLIT-PANE WORKSPACE (MASTER LIST + DETAIL COCKPIT) ── */}
+      {/* ── 3. SPLIT-PANE WORKSPACE OR COMMUNITY BROADCAST WORKSPACE ── */}
+      {categoryFilter === "broadcasts" ? (
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAFAFA] dark:bg-[#000000]">
+          <div className="max-w-4xl mx-auto space-y-4">
+            <CommunityBroadcastFeed
+              userRole="service_provider"
+              userCredits={profile?.credit_balance ?? 50}
+            />
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
         {/* ── LEFT PANE: MASTER LIST (Interactive Search & RFP Cards) ── */}
         <div className="w-full md:w-[410px] lg:w-[440px] border-r border-neutral-200 dark:border-[#262626] flex flex-col bg-white dark:bg-[#0A0A0A] shrink-0">
@@ -416,6 +442,7 @@ export default function RfpFeed() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

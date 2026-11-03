@@ -12,6 +12,7 @@ import { useNotifications } from "../../hooks/useNotifications";
 import GuaranteeSLAWidget from "../../components/dashboard/GuaranteeSLAWidget";
 import DueDiligenceMemoModal from "../../components/dashboard/DueDiligenceMemoModal";
 import CreatePostModal from "../../components/dashboard/CreatePostModal";
+import CommunityBroadcastFeed from "../../components/dashboard/CommunityBroadcastFeed";
 import { buildInstitutionalMemo } from "../../lib/institutionalMemo";
 import { useFounderStartups } from "../../hooks/useFounderStartups";
 import { 
@@ -235,8 +236,9 @@ export default function Feed() {
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
           {[
             { id: "all", label: "All Opportunities", count: "180+" },
+            { id: "vcs", label: "Check-Writers CRM", count: "9,126+", path: "/dashboard/investors" },
+            { id: "broadcasts", label: "💬 Community Broadcasts", count: "Live" },
             { id: "matches", label: "Double-Blind Matches", count: 3 },
-            { id: "vcs", label: "Check-Writers", count: "180+" },
             { id: "grants", label: "Ecosystem Grants", count: 35 },
             { id: "vetted", label: "Vetted Agencies", count: 109, path: "/dashboard/services" },
             { id: "sla", label: "30-Day SLA Window", count: "24d left", path: "/dashboard/bookings" },
@@ -272,6 +274,16 @@ export default function Feed() {
         </div>
 
         <div className="hidden lg:flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => {
+              setActiveCategoryPill("broadcasts");
+              setIsCreateModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 text-xs font-mono font-bold transition-all border border-emerald-500/30 cursor-pointer"
+          >
+            <Sparkles size={13} className="text-emerald-500" />
+            <span>+ Broadcast (1 Cr)</span>
+          </button>
           <button
             onClick={() => setIsMemoOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#18191e] hover:bg-slate-200 dark:hover:bg-[#202127] text-slate-800 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-white/5 cursor-pointer"
@@ -324,9 +336,16 @@ export default function Feed() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          3. MASTER-DETAIL SPLIT WORKSPACE (HireInCrypto Layout)
+          3. MASTER-DETAIL SPLIT WORKSPACE OR BROADCAST FEED
          ══════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {activeCategoryPill === "broadcasts" ? (
+        <CommunityBroadcastFeed
+          userRole="founder"
+          userCredits={userCredits}
+          onPostSuccess={() => {}}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* ── LEFT MASTER LIST: OPPORTUNITY CARDS (7 Cols) ── */}
         <div className="lg:col-span-7 space-y-3.5">
@@ -536,6 +555,7 @@ export default function Feed() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Due Diligence Memo Modal */}
       {isMemoOpen && (

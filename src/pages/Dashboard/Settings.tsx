@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { 
   User, CreditCard, Shield, Bell, LogOut, CheckCircle2, Users, Loader2, 
   Trash2, Plus, Save, Sparkles, Sun, Moon, Share2, Terminal, Briefcase, 
-  Coins, ShieldCheck, Globe, ExternalLink, Link2, DollarSign
+  Coins, ShieldCheck, Globe, ExternalLink, Link2, DollarSign, Upload, Camera
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
@@ -36,6 +36,7 @@ export default function Settings() {
 
   // Founder Profile State
   const [profileForm, setProfileForm] = useState({
+    profile_photo_url: "",
     full_name: "",
     linkedin_url: "",
     twitter_url: "",
@@ -51,6 +52,25 @@ export default function Settings() {
     founder_background: "",
     business_model: ""
   });
+
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError(null);
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("Image must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      setProfileForm((prev) => ({ ...prev, profile_photo_url: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Investor Profile State
   const [investorForm, setInvestorForm] = useState({
@@ -154,6 +174,7 @@ export default function Settings() {
     } else {
       if (founderProfile) {
         setProfileForm({
+          profile_photo_url: founderProfile.profile_photo_url || profile?.profile_photo_url || (user as any)?.photoURL || "",
           full_name: founderProfile.full_name || profile?.full_name || user?.displayName || "",
           linkedin_url: founderProfile.linkedin_url || profile?.linkedin_url || "",
           twitter_url: founderProfile.twitter_url || "",
@@ -266,6 +287,24 @@ export default function Settings() {
       } else {
         const res = await updateProfile(profileForm);
         if (res.error) throw new Error(res.error);
+
+        if (uid) {
+          try {
+            await setDoc(doc(db, "users", uid), {
+              profile_photo_url: profileForm.profile_photo_url,
+              photoURL: profileForm.profile_photo_url,
+              full_name: profileForm.full_name,
+              location: profileForm.location,
+              linkedin_url: profileForm.linkedin_url,
+              twitter_url: profileForm.twitter_url,
+              company_name: profileForm.company_name,
+              updated_at: new Date().toISOString()
+            }, { merge: true });
+            await refetchProfile();
+          } catch (uErr) {
+            console.warn("Error updating users doc:", uErr);
+          }
+        }
       }
 
       setSavedProfile(true);
@@ -734,6 +773,71 @@ export default function Settings() {
                 <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
                   Delaware C-Corp Ready
                 </span>
+              </div>
+
+              {/* Profile Avatar Upload Component (Image 2 Fix) */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5 rounded-2xl bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/5">
+                <div className="relative group shrink-0">
+                  <div className="w-20 h-20 rounded-2xl bg-white dark:bg-[#121316] border-2 border-dashed border-slate-300 dark:border-white/20 overflow-hidden flex items-center justify-center shadow-xs">
+                    {profileForm.profile_photo_url ? (
+                      <img
+                        src={profileForm.profile_photo_url}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 font-mono font-black text-2xl bg-gradient-to-br from-[#0070F3]/10 to-purple-500/10 text-[#0070F3]">
+                        {profileForm.full_name?.charAt(0) || "U"}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl shadow-md transition-all cursor-pointer"
+                    title="Change Photo"
+                  >
+                    <Camera size={13} />
+                  </button>
+                </div>
+
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Upload size={13} />
+                      <span>Upload Profile Picture</span>
+                    </button>
+                    {profileForm.profile_photo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setProfileForm((p) => ({ ...p, profile_photo_url: "" }))}
+                        className="px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 text-xs font-mono font-bold transition-all cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] font-mono text-slate-500">
+                    Supports JPG, PNG, WebP up to 2MB. Updates your avatar across peer matching and dashboard.
+                  </p>
+                  {avatarError && (
+                    <p className="text-xs font-mono text-rose-500 font-bold">
+                      {avatarError}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

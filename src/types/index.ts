@@ -22,6 +22,7 @@ export interface UserProfile {
   role: UserRole;
   full_name: string | null;
   avatar_url: string | null;
+  profile_photo_url?: string | null;
   bio: string | null;
   linkedin_url: string | null;
   company_name?: string | null;
