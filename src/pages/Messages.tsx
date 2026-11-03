@@ -549,27 +549,57 @@ export default function Messages() {
                   <button onClick={() => setMessageError(null)} className="text-rose-500 hover:text-rose-700">✕</button>
                 </div>
               )}
-              <div className="px-4 py-2 bg-slate-50 dark:bg-[#14151a] border-t border-[#e8e6df] dark:border-white/10 flex items-center gap-2 overflow-x-auto text-[11px] font-mono text-neutral-500 shrink-0">
-                <span className="font-bold shrink-0 text-neutral-400 text-[10px] uppercase">Quick replies:</span>
-                <button
-                  onClick={() => handleSendMessage(undefined, "📜 We are reviewing your cap table & deck. Let's align on terms.")}
-                  className="px-2.5 py-1 rounded-full bg-white dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 hover:border-black dark:hover:border-white shrink-0 text-black dark:text-white transition-all cursor-pointer"
-                >
-                  "Reviewing cap table &amp; deck..."
-                </button>
-                <button
-                  onClick={() => handleSendMessage(undefined, "📊 Could you please share your latest revenue tear-sheet and metrics?")}
-                  className="px-2.5 py-1 rounded-full bg-white dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 hover:border-black dark:hover:border-white shrink-0 text-black dark:text-white transition-all cursor-pointer"
-                >
-                  "Request tear-sheet &amp; metrics"
-                </button>
-                <button
-                  onClick={() => handleSendMessage(undefined, "🤝 Excited about this opportunity. Let's proceed to SAFE signature.")}
-                  className="px-2.5 py-1 rounded-full bg-white dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 hover:border-black dark:hover:border-white shrink-0 text-black dark:text-white transition-all cursor-pointer"
-                >
-                  "Proceed to SAFE signature"
-                </button>
-              </div>
+              {(() => {
+                const myRole = currentParticipant.role;
+                const counterRole = counterparty?.role;
+
+                let quickReplies: { label: string; text: string }[] = [];
+
+                if (myRole === 'founder') {
+                  if (counterRole === 'service_provider') {
+                    quickReplies = [
+                      { label: "Discuss deliverables & scope", text: "🚀 Hi! I'd like to discuss the scope of deliverables, milestones, and timeline for our project." },
+                      { label: "Request portfolio & pricing", text: "📊 Could you please share your agency portfolio, previous client case studies, and pricing packages?" },
+                      { label: "Book intro call", text: "📅 Let's hop on a 15-min call to discuss alignment and next steps." }
+                    ];
+                  } else {
+                    // Talking to investor or peer
+                    quickReplies = [
+                      { label: "Sharing deck & data room", text: "📊 Here is our latest investor pitch deck and verified data room metrics." },
+                      { label: "Book 15-min partner call", text: "📅 Happy to hop on a quick 15-min call to walk through our traction and round details." },
+                      { label: "Send cap table & SAFE terms", text: "🤝 We're raising on a standard post-money SAFE. Excited to align on terms." }
+                    ];
+                  }
+                } else if (myRole === 'service_provider') {
+                  quickReplies = [
+                    { label: "Share service portfolio", text: "💼 Shared our agency portfolio, verified client outcomes, and service scope." },
+                    { label: "Schedule kickoff call", text: "📅 Let's schedule a 20-min technical kickoff call to finalize milestone deliverables." },
+                    { label: "Escrow milestone terms", text: "⚡ Ready to begin execution once 100% pre-funded milestone escrow is confirmed." }
+                  ];
+                } else {
+                  // Investor
+                  quickReplies = [
+                    { label: "Reviewing cap table & deck", text: "📜 We are reviewing your cap table & deck. Let's align on terms." },
+                    { label: "Request tear-sheet & metrics", text: "📊 Could you please share your latest revenue tear-sheet and metrics?" },
+                    { label: "Proceed to SAFE signature", text: "🤝 Excited about this opportunity. Let's proceed to SAFE signature." }
+                  ];
+                }
+
+                return (
+                  <div className="px-4 py-2 bg-slate-50 dark:bg-[#14151a] border-t border-[#e8e6df] dark:border-white/10 flex items-center gap-2 overflow-x-auto text-[11px] font-mono text-neutral-500 shrink-0">
+                    <span className="font-bold shrink-0 text-neutral-400 text-[10px] uppercase">Quick replies:</span>
+                    {quickReplies.map((qr, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSendMessage(undefined, qr.text)}
+                        className="px-2.5 py-1 rounded-full bg-white dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 hover:border-black dark:hover:border-white shrink-0 text-black dark:text-white transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        "{qr.label}"
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Message Composer */}
               <form

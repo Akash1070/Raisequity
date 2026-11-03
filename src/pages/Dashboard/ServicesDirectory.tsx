@@ -45,18 +45,67 @@ export default function ServicesDirectory() {
     const fetchAgencies = async () => {
       try {
         setLoading(true);
-        // Fetch active expert agencies from Firestore experts collection
-        const snap = await getDocs(collection(db, "experts"));
-        let data: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (data.length === 0) {
-          data = SEEDED_AGENCIES;
-        }
-        setAgencies(data);
+        const userMap: Record<string, any> = {};
 
-        // Fetch registered agency users from "users" collection to know who is live on-platform
+        // 1. Fetch live registered agencies from "service_providers" collection (e.g. Unfold Logic)
+        const spAgencies: SeededAgency[] = [];
+        try {
+          const spSnap = await getDocs(collection(db, "service_providers"));
+          spSnap.docs.forEach(docSnap => {
+            const p = docSnap.data();
+            const uid = docSnap.id;
+            const agencyName = p.agency_name || p.company_name || p.contact_name || "Verified Web3 Agency";
+            const tracks: string[] = p.selected_tracks || [];
+
+            let category = "Blockchain & Technical Advisory";
+            if (tracks.some((t: string) => t.toLowerCase().includes("marketing") || t.toLowerCase().includes("kol"))) {
+              category = "KOL Marketing & PR";
+            } else if (tracks.some((t: string) => t.toLowerCase().includes("tokenomic") || t.toLowerCase().includes("legal"))) {
+              category = "Tokenomics & Governance";
+            } else if (tracks.some((t: string) => t.toLowerCase().includes("audit") || t.toLowerCase().includes("dev") || t.toLowerCase().includes("smart contract"))) {
+              category = "Blockchain & Technical Advisory";
+            } else if (tracks.some((t: string) => t.toLowerCase().includes("design") || t.toLowerCase().includes("media"))) {
+              category = "Design, Creative & Media";
+            } else if (tracks.some((t: string) => t.toLowerCase().includes("pr") || t.toLowerCase().includes("comms"))) {
+              category = "Public Relations & Comms";
+            }
+
+            spAgencies.push({
+              id: uid,
+              title: agencyName,
+              company: agencyName,
+              category,
+              services: tracks.length > 0 ? tracks : ["Full-Stack Dev", "Smart Contracts", "Technical Advisory"],
+              portfolio: p.outcome_metrics?.length ? p.outcome_metrics : ["Solana", "Ethereum", "Web3 Protocols"],
+              vetting_status: "Vetted",
+              bio: p.bio || `${agencyName} is an active accredited Web3 agency suite partner on Raisequity.`,
+              tags: tracks.length > 0 ? [...tracks, "Vetted", "Platform Partner"] : ["Technical Advisory", "Smart Contracts", "Vetted"],
+              discount_code: `Code [${agencyName.split(" ")[0].toUpperCase()}] → Direct Partner Booking`,
+              calendly_url: p.website_url || "https://raisequity.com",
+              rate_per_hour: null,
+              is_active: true,
+              verified: true,
+            });
+
+            userMap[uid] = { id: uid, full_name: agencyName, company_name: agencyName, ...p };
+            userMap[agencyName.toLowerCase()] = { id: uid, full_name: agencyName, company_name: agencyName, ...p };
+          });
+        } catch (spErr) {
+          console.warn("Could not fetch service_providers collection:", spErr);
+        }
+
+        // 2. Fetch from "experts" collection
+        let expertData: any[] = [];
+        try {
+          const snap = await getDocs(collection(db, "experts"));
+          expertData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (expErr) {
+          console.warn("Could not fetch experts collection:", expErr);
+        }
+
+        // 3. Fetch registered agency users from "users" collection to enrich onboarded map
         try {
           const usersSnap = await getDocs(query(collection(db, "users"), where("role", "in", ["service_provider", "agency"])));
-          const userMap: Record<string, any> = {};
           usersSnap.docs.forEach(docSnap => {
             const u = docSnap.data();
             const uid = docSnap.id;
@@ -66,10 +115,26 @@ export default function ServicesDirectory() {
             if (u.full_name) userMap[u.full_name.toLowerCase()] = { id: uid, ...u };
             if (u.email) userMap[u.email.toLowerCase()] = { id: uid, ...u };
           });
-          setOnboardedAgenciesMap(userMap);
         } catch (uErr) {
           console.warn("Could not fetch registered agency users:", uErr);
         }
+
+        setOnboardedAgenciesMap(userMap);
+
+        // 4. Combine all agencies with platform-created agencies first!
+        const combinedAgencies: SeededAgency[] = [...spAgencies];
+        for (const exp of expertData) {
+          if (!combinedAgencies.some(a => a.id === exp.id || a.title.toLowerCase() === exp.title?.toLowerCase())) {
+            combinedAgencies.push(exp);
+          }
+        }
+        for (const seeded of SEEDED_AGENCIES) {
+          if (!combinedAgencies.some(a => a.id === seeded.id || a.title.toLowerCase() === seeded.title.toLowerCase())) {
+            combinedAgencies.push(seeded);
+          }
+        }
+
+        setAgencies(combinedAgencies);
       } catch (err) {
         console.error("Error fetching agencies:", err);
         setAgencies(SEEDED_AGENCIES);

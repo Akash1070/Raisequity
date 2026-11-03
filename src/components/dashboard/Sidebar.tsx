@@ -191,21 +191,6 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      {/* AI Assistant Status Box (HireInCrypto Style) */}
-      <div className="mb-2 p-2 rounded-xl bg-gradient-to-r from-[#0070F3]/5 to-purple-500/5 border border-[#0070F3]/20 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-lg bg-[#0070F3]/10 text-[#0070F3] flex items-center justify-center shrink-0">
-          <Zap size={13} />
-        </div>
-        <div className="min-w-0">
-          <div className="text-[10px] font-bold text-black dark:text-white truncate">
-            Radar AI Active
-          </div>
-          <div className="text-[8px] font-mono text-neutral-400 truncate">
-            180+ VCs indexed
-          </div>
-        </div>
-      </div>
-
       {/* Footer Settings + Logout */}
       <div className="pt-3 border-t border-slate-200 dark:border-[#262626] space-y-1 mt-auto">
         <SidebarItem to="/dashboard/settings" icon={<Settings size={16} />} label="Settings" />

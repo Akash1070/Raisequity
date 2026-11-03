@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Heart,
@@ -12,7 +13,11 @@ import {
   Loader2,
   User,
   Clock,
-  Tag
+  Tag,
+  UserPlus,
+  CheckCircle2,
+  ExternalLink,
+  Building2
 } from 'lucide-react';
 import {
   FeedPost,
@@ -25,6 +30,9 @@ import {
 } from '../../lib/posts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFounderProfile } from '../../hooks/useFounderProfile';
+import { getOrCreateConversation, sendDirectMessage } from '../../lib/messages';
+import { doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import CreatePostModal from './CreatePostModal';
 
 interface CommunityBroadcastFeedProps {
@@ -61,10 +69,85 @@ export default function CommunityBroadcastFeed({
   const [commentInput, setCommentInput] = useState<string>('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [connectingPostId, setConnectingPostId] = useState<string | null>(null);
+  const [connectedPostMap, setConnectedPostMap] = useState<Record<string, boolean>>({});
+  const [viewingProfilePost, setViewingProfilePost] = useState<FeedPost | null>(null);
+  const [notEnoughCredits, setNotEnoughCredits] = useState(false);
 
   const uid = user?.uid || (user as any)?.id || '';
   const currentCredits = profile?.credit_balance ?? userCredits;
   const userAvatar = founderProfile?.profile_photo_url || profile?.profile_photo_url || profile?.avatar_url || (profile as any)?.photoURL || (user as any)?.photoURL || undefined;
+
+  const handleConnectWithAuthor = async (post: FeedPost) => {
+    if (!uid) {
+      navigate('/login');
+      return;
+    }
+    if (post.authorId === uid) return;
+
+    if (currentCredits < 1) {
+      setNotEnoughCredits(true);
+      setTimeout(() => setNotEnoughCredits(false), 4000);
+      return;
+    }
+
+    setConnectingPostId(post.id);
+    try {
+      // 1. Deduct 1 credit in Firestore
+      try {
+        await updateDoc(doc(db, 'users', uid), {
+          credit_balance: increment(-1),
+          credits: increment(-1),
+        });
+        if (founderProfile?.id) {
+          await updateDoc(doc(db, 'founder_profiles', uid), {
+            credits: increment(-1),
+          });
+        }
+      } catch (cErr) {
+        console.warn('Could not update credit balance in Firestore:', cErr);
+      }
+
+      // 2. Start direct message thread
+      const currentPart = {
+        id: uid,
+        name: profile?.full_name || founderProfile?.full_name || user?.displayName || user?.email?.split('@')[0] || 'Member',
+        email: user?.email || '',
+        role: (profile?.role as any) || userRole,
+        avatar_url: userAvatar,
+        company_name: founderProfile?.company_name || profile?.company_name || '',
+      };
+
+      const authorPart = {
+        id: post.authorId,
+        name: post.authorName,
+        email: post.authorEmail || `${post.authorName.toLowerCase().replace(/\s+/g, '')}@raisequity.com`,
+        role: (post.authorRole as any) || 'founder',
+        avatar_url: post.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.authorName}`,
+        company_name: post.title,
+      };
+
+      const convId = await getOrCreateConversation(currentPart, authorPart, { deal_name: post.title });
+      await sendDirectMessage({
+        conversationId: convId,
+        sender: currentPart,
+        recipientId: post.authorId,
+        recipientRole: post.authorRole,
+        content: `Hi ${post.authorName}, I saw your broadcast "${post.title}" on the Community Feed and connected with 1 credit. Let's chat!`,
+        messageType: 'text',
+      });
+
+      setConnectedPostMap((prev) => ({ ...prev, [post.id]: true }));
+      setTimeout(() => {
+        navigate(`/dashboard/messages?convId=${convId}`);
+      }, 400);
+    } catch (err) {
+      console.error('Error connecting with author:', err);
+    } finally {
+      setConnectingPostId(null);
+    }
+  };
 
   const handleSharePost = async (post: FeedPost) => {
     const postUrl = `${window.location.origin}/dashboard/community?post=${post.id}`;
@@ -260,17 +343,21 @@ export default function CommunityBroadcastFeed({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-slate-800 dark:text-white font-mono shrink-0 overflow-hidden">
-                      {(post.authorAvatar || (post.authorId === uid ? userAvatar : undefined)) ? (
-                        <img src={post.authorAvatar || userAvatar} alt={post.authorName} className="w-full h-full object-cover" />
+                      {post.authorAvatar ? (
+                        <img src={post.authorAvatar} alt={post.authorName} className="w-full h-full object-cover" />
                       ) : (
                         post.authorName?.charAt(0) || 'M'
                       )}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        <button
+                          onClick={() => setViewingProfilePost(post)}
+                          className="font-extrabold text-sm text-slate-900 dark:text-white hover:text-[#0070F3] transition-colors cursor-pointer text-left"
+                          title="View Profile Details"
+                        >
                           {post.authorName}
-                        </span>
+                        </button>
                         {getRoleBadge(post.authorRole)}
                       </div>
                       <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
@@ -285,9 +372,37 @@ export default function CommunityBroadcastFeed({
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold uppercase bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10">
-                    #{post.tag}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold uppercase bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10">
+                      #{post.tag}
+                    </span>
+
+                    {post.authorId !== uid ? (
+                      <button
+                        onClick={() => handleConnectWithAuthor(post)}
+                        disabled={connectingPostId === post.id}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-[11px] font-bold transition-all shadow-xs cursor-pointer active:scale-95 ${
+                          connectedPostMap[post.id]
+                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                            : 'bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200'
+                        }`}
+                        title="Connect directly & start chat (costs 1 credit)"
+                      >
+                        {connectingPostId === post.id ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : connectedPostMap[post.id] ? (
+                          <CheckCircle2 size={12} className="text-emerald-500" />
+                        ) : (
+                          <UserPlus size={12} className="text-[#0070F3]" />
+                        )}
+                        <span>{connectedPostMap[post.id] ? 'Connected ✓' : 'Connect (1 Credit)'}</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-mono text-slate-400 px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5">
+                        Your Post
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Title & Body */}
@@ -412,6 +527,83 @@ export default function CommunityBroadcastFeed({
         </div>
       )}
 
+      {/* Insufficient Credits Banner */}
+      {notEnoughCredits && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 bg-amber-500 text-black font-mono font-bold text-xs rounded-2xl shadow-2xl flex items-center gap-3">
+          <span>You need at least 1 credit to connect with this founder. Refill your balance to proceed!</span>
+          <button onClick={() => setNotEnoughCredits(false)} className="text-black/60 hover:text-black">✕</button>
+        </div>
+      )}
+
+      {/* Author Profile Quick View Modal */}
+      {viewingProfilePost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#121316] border border-slate-200 dark:border-white/10 rounded-[28px] max-w-md w-full p-6 shadow-2xl space-y-5 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-base overflow-hidden">
+                  {viewingProfilePost.authorAvatar ? (
+                    <img src={viewingProfilePost.authorAvatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    viewingProfilePost.authorName.charAt(0)
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-heading font-black text-base">{viewingProfilePost.authorName}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {getRoleBadge(viewingProfilePost.authorRole)}
+                    <span className="text-[11px] font-mono text-slate-400">#{viewingProfilePost.tag}</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setViewingProfilePost(null)} className="p-1.5 text-slate-400 hover:text-black dark:hover:text-white rounded-lg">✕</button>
+            </div>
+
+            <div className="space-y-3 font-mono text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-1.5">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Startup / Broadcast Title</span>
+                <p className="font-bold text-sm text-slate-900 dark:text-white">{viewingProfilePost.title}</p>
+                <p className="text-slate-600 dark:text-slate-300 font-sans text-xs leading-relaxed whitespace-pre-line">{viewingProfilePost.content}</p>
+              </div>
+
+              {viewingProfilePost.pitchDeckUrl && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-xs truncate">
+                    <FileText size={15} />
+                    <span className="truncate">{viewingProfilePost.pitchDeckName || 'Pitch Deck'}</span>
+                  </div>
+                  <a href={viewingProfilePost.pitchDeckUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-emerald-500 text-black font-bold">
+                    <Download size={13} />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setViewingProfilePost(null)}
+                className="px-4 py-2.5 rounded-xl font-mono text-xs font-bold text-slate-500 hover:text-black dark:hover:text-white"
+              >
+                Close
+              </button>
+              {viewingProfilePost.authorId !== uid && (
+                <button
+                  onClick={() => {
+                    const post = viewingProfilePost;
+                    setViewingProfilePost(null);
+                    handleConnectWithAuthor(post);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-mono text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  <UserPlus size={13} className="text-[#0070F3]" />
+                  <span>Connect &amp; Chat (1 Credit)</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Broadcast Modal */}
       {uid && (
         <CreatePostModal
@@ -425,7 +617,6 @@ export default function CommunityBroadcastFeed({
           authorName={profile?.full_name || user?.displayName || user?.email?.split('@')[0] || 'Member'}
           authorEmail={profile?.email || user?.email || ''}
           authorRole={profile?.role || userRole}
-          authorAvatar={userAvatar}
           userCredits={currentCredits}
         />
       )}

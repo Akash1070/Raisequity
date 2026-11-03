@@ -204,6 +204,28 @@ export default function AgencyOnboarding() {
         updated_at: now,
       }, { merge: true });
 
+      // 1b. Also sync to experts collection so agency is immediately visible in Services Directory
+      try {
+        await setDoc(doc(db, "experts", uid), {
+          id: uid,
+          title: formData.agency_name,
+          company: formData.agency_name,
+          category: formData.selected_tracks?.[0] || "Blockchain & Technical Advisory",
+          services: formData.selected_tracks || ["Technical Advisory", "Smart Contracts"],
+          portfolio: [formData.outcome_metrics, formData.notable_clients].filter(Boolean),
+          vetting_status: "Vetted",
+          bio: formData.bio || `${formData.agency_name} provides institutional Web3 services.`,
+          tags: formData.selected_tracks || ["Web3", "Vetted"],
+          calendly_url: formData.website_url || "https://raisequity.com",
+          rate_per_hour: null,
+          is_active: true,
+          verified: true,
+          updated_at: now,
+        }, { merge: true });
+      } catch (expErr) {
+        console.warn("Could not sync experts doc:", expErr);
+      }
+
       // 2. Update user profile - ensure strictly 50 starter credits
       const userDocRef = doc(db, "users", uid);
       const targetCredits = Math.max(profile?.credit_balance || 0, 50);

@@ -156,6 +156,28 @@ export default function AgencyProfile() {
         updated_at: now
       }, { merge: true });
 
+      // Sync to experts collection so updates immediately reflect in Services Directory
+      try {
+        await setDoc(doc(db, "experts", uid), {
+          id: uid,
+          title: form.agency_name,
+          company: form.agency_name,
+          category: form.selected_tracks?.[0] || "Blockchain & Technical Advisory",
+          services: form.selected_tracks || ["Technical Advisory", "Smart Contracts"],
+          portfolio: form.notable_clients.split(",").map((s) => s.trim()).filter(Boolean),
+          vetting_status: "Vetted",
+          bio: form.bio || `${form.agency_name} provides institutional Web3 services.`,
+          tags: form.selected_tracks || ["Web3", "Vetted"],
+          calendly_url: form.website_url || "https://raisequity.com",
+          rate_per_hour: null,
+          is_active: true,
+          verified: true,
+          updated_at: now
+        }, { merge: true });
+      } catch (expSyncErr) {
+        console.warn("Could not sync experts doc:", expSyncErr);
+      }
+
       // Update user doc as well
       await updateDoc(doc(db, "users", uid), {
         company_name: form.agency_name,

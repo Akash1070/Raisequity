@@ -79,6 +79,13 @@ export default function Matches() {
           <p className="text-slate-500 dark:text-slate-400 text-xs max-w-sm leading-relaxed font-normal">
             Your founder matches will appear here once the 6-factor deterministic algorithm pairs you with founders in adjacent sectors. Complete your raise profile to unlock high-intent double-blind intros.
           </p>
+          <button
+            onClick={() => refetch()}
+            className="px-5 py-2.5 rounded-xl bg-[#0070F3] hover:bg-[#0060DF] text-white font-mono text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-2"
+          >
+            <RefreshCw size={14} />
+            <span>Find Adjacent Peer Founders Now</span>
+          </button>
         </div>
       </div>
     );
