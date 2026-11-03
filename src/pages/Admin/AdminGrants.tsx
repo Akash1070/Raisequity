@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Activity, X, Save, ExternalLink, Star, Gift, Edit, Search, Sparkles, Upload, Database, FileText } from "lucide-react";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { web3Grants } from "../../data/grants";
 
@@ -35,7 +35,7 @@ export default function AdminGrants() {
   const fetchGrants = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "grants"));
+      const snap = await getDocs(query(collection(db, "grants"), limit(200)));
       const dbData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       const grantMap = new Map<string, any>();

@@ -4,7 +4,7 @@ import {
   Search, ShieldCheck, Sparkles, ExternalLink, Send, Check, Filter, Briefcase, Zap, Globe, MessageSquare, Tag, ArrowRight, X, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { SEEDED_AGENCIES, SeededAgency } from "../../data/seededAgencies";
 import { useAuth } from "../../contexts/AuthContext";
@@ -50,7 +50,7 @@ export default function ServicesDirectory() {
         // 1. Fetch live registered agencies from "service_providers" collection (e.g. Unfold Logic)
         const spAgencies: SeededAgency[] = [];
         try {
-          const spSnap = await getDocs(collection(db, "service_providers"));
+          const spSnap = await getDocs(query(collection(db, "service_providers"), limit(100)));
           spSnap.docs.forEach(docSnap => {
             const p = docSnap.data();
             const uid = docSnap.id;
@@ -97,7 +97,7 @@ export default function ServicesDirectory() {
         // 2. Fetch from "experts" collection
         let expertData: any[] = [];
         try {
-          const snap = await getDocs(collection(db, "experts"));
+          const snap = await getDocs(query(collection(db, "experts"), limit(100)));
           expertData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (expErr) {
           console.warn("Could not fetch experts collection:", expErr);
@@ -105,7 +105,7 @@ export default function ServicesDirectory() {
 
         // 3. Fetch registered agency users from "users" collection to enrich onboarded map
         try {
-          const usersSnap = await getDocs(query(collection(db, "users"), where("role", "in", ["service_provider", "agency"])));
+          const usersSnap = await getDocs(query(collection(db, "users"), where("role", "in", ["service_provider", "agency"]), limit(100)));
           usersSnap.docs.forEach(docSnap => {
             const u = docSnap.data();
             const uid = docSnap.id;

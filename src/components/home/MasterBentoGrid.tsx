@@ -138,7 +138,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
 
           {/* Large Bold Display Heading with Signature Gradient on "Funding Gap." */}
           <h1 className="text-4xl sm:text-5xl md:text-[62px] font-heading font-black tracking-[-1.5px] leading-[1.05] text-black dark:text-white mb-4">
-            Bridging the Web3{" "}
+            Bridging the{" "}
             <span className="bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#3b82f6] bg-clip-text text-transparent inline-block">
               Funding Gap.
             </span>

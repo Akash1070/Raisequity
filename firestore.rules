@@ -97,8 +97,22 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.get('sender_id', '') == request.auth.uid;
       allow update, delete: if isAdmin();
     }
-    match /matches/{id} { allow read, write: if isAdmin() || signedIn(); }
-    match /introductions/{id} { allow read, write: if isAdmin() || signedIn(); }
+    match /matches/{id} { 
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.get('founder_id', '') == request.auth.uid || 
+        resource.data.get('investor_id', '') == request.auth.uid
+      )); 
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && (
+        resource.data.get('founder_id', '') == request.auth.uid || 
+        resource.data.get('investor_id', '') == request.auth.uid
+      ));
+      allow delete: if isAdmin();
+    }
+    match /introductions/{id} { 
+      allow read, create, update: if isAdmin() || signedIn(); 
+      allow delete: if isAdmin();
+    }
 
     // Money / credits: readable by owner, writable by owner flows today
     // (see residual-risk note) but never deletable by non-admins.
@@ -146,18 +160,88 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /deal_outcomes/{id} { allow read, create: if signedIn(); allow update, delete: if isAdmin(); }
-    match /posts/{id} { allow read: if signedIn(); allow create: if signedIn(); allow update, delete: if isAdmin() || (signedIn() && resource.data.get('authorId', '') == request.auth.uid); }
+    match /posts/{id} { 
+      allow read: if signedIn(); 
+      allow create: if signedIn() && request.resource.data.get('authorId', '') == request.auth.uid; 
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('authorId', '') == request.auth.uid); 
+    }
 
-    // Public catalogue / content
-    match /launches/{id} { allow read: if true; allow write: if signedIn(); }
-    match /deal_flow/{id} { allow read: if true; allow write: if signedIn(); }
-    match /network_partners/{id} { allow read: if true; allow write: if signedIn(); }
-    match /launch_comments/{id} { allow read: if true; allow create: if signedIn(); allow update, delete: if isAdmin(); }
+    // Public catalogue / content & Launch Directory
+    match /launches/{id} { 
+      allow read: if true; 
+      allow create: if signedIn() && request.resource.data.get('founder_id', '') == request.auth.uid; 
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('founder_id', '') == request.auth.uid); 
+    }
+    match /sponsors/{id} { 
+      allow read: if true; 
+      allow write: if isAdmin(); 
+    }
+    match /deal_flow/{id} { 
+      allow read: if signedIn(); 
+      allow write: if isAdmin(); 
+    }
+    match /network_partners/{id} { 
+      allow read: if true; 
+      allow write: if isAdmin(); 
+    }
+    match /service_providers/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /launch_comments/{id} { 
+      allow read: if true; 
+      allow create: if signedIn(); 
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('author_id', '') == request.auth.uid); 
+    }
     match /content_posts/{id} { allow read: if true; allow write: if isAdmin(); }
     match /grants/{id} { allow read: if true; allow write: if isAdmin(); }
     match /experts/{id} { allow read: if true; allow write: if isAdmin(); }
-    match /agreements/{id} { allow read, create: if signedIn(); allow update, delete: if isAdmin(); }
     match /config/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+
+    // Confidential facilitation agreements, SAFE execution, and direct admin intros
+    match /agreements/{id} { 
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.get('founderId', '') == request.auth.uid ||
+        resource.data.get('investorId', '') == request.auth.uid ||
+        resource.data.get('userId', '') == request.auth.uid
+      )); 
+      allow create: if signedIn(); 
+      allow update, delete: if isAdmin(); 
+    }
+    match /safes/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.get('investor_id', '') == request.auth.uid ||
+        resource.data.get('founder_id', '') == request.auth.uid
+      ));
+      allow create: if signedIn() && request.resource.data.get('investor_id', '') == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    match /admin_intros/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.get('founder_id', '') == request.auth.uid ||
+        resource.data.get('investor_id', '') == request.auth.uid ||
+        resource.data.get('userId', '') == request.auth.uid ||
+        resource.data.get('actor_id', '') == request.auth.uid
+      ));
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /rfp_proposals/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.get('agency_id', '') == request.auth.uid ||
+        resource.data.get('client_id', '') == request.auth.uid
+      ));
+      allow create: if signedIn() && request.resource.data.get('agency_id', '') == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('agency_id', '') == request.auth.uid);
+    }
+    match /warm_intro_requests/{id} {
+      allow read: if isAdmin() || (signedIn() && (
+        resource.data.get('founder_id', '') == request.auth.uid ||
+        resource.data.get('peer_founder_id', '') == request.auth.uid
+      ));
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
 
     match /{document=**} { allow read, write: if false; }
   }

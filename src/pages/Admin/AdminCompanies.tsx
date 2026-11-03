@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, Trash2, ExternalLink, Activity, Building2, GitCommit, FileText, CheckCircle2, DollarSign, X, MessageSquare } from "lucide-react";
-import { collection, getDocs, doc, deleteDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, query, where, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 export default function AdminCompanies() {
@@ -20,11 +20,11 @@ export default function AdminCompanies() {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const snap = await getDocs(collection(db, "companies"));
+        const snap = await getDocs(query(collection(db, "companies"), limit(200)));
         let data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (data.length === 0) {
           // Fallback check founder_profiles
-          const fSnap = await getDocs(collection(db, "founder_profiles"));
+          const fSnap = await getDocs(query(collection(db, "founder_profiles"), limit(200)));
           data = fSnap.docs.map(d => ({ id: d.id, name: d.data().company_name || 'Founder Startup', ...d.data() }));
         }
         setCompanies(data);

@@ -4,7 +4,7 @@ import {
   Activity, X, Save, ExternalLink, Star, Edit, Search, Sparkles, 
   CheckCircle2, AlertCircle, ArrowUpRight, ShieldCheck, Flame, ArrowRight, ArrowLeft
 } from "lucide-react";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { query, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { LaunchItem, SponsorItem } from "../../types/launch";
 import { projects } from "../../data/projects";
@@ -71,7 +71,7 @@ export default function AdminLaunches() {
   const fetchSponsors = async () => {
     setLoadingSponsors(true);
     try {
-      const snap = await getDocs(collection(db, "sponsors"));
+      const snap = await getDocs(query(collection(db, "sponsors"), limit(200)));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as SponsorItem[];
       setSponsors(data);
     } catch (err) {
@@ -171,7 +171,7 @@ export default function AdminLaunches() {
   const fetchLaunches = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "launches"));
+      const snap = await getDocs(query(collection(db, "launches"), limit(200)));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as LaunchItem[];
       setLaunches(data);
     } catch (err) {

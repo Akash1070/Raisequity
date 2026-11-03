@@ -87,21 +87,6 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
     navigate("/login");
   };
 
-  const handleSwitchToFounder = async () => {
-    const uid = user?.uid || (user as any)?.id;
-    if (uid) {
-      try {
-        await updateDoc(doc(db, "users", uid), {
-          role: "founder",
-          updated_at: new Date().toISOString()
-        });
-      } catch (err) {
-        console.warn("Could not switch role:", err);
-      }
-    }
-    navigate("/dashboard/feed");
-  };
-
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -241,19 +226,6 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
             100% Pre-funded escrow locked
           </div>
         </div>
-      </div>
-
-      {/* Portal Switcher Pill */}
-      <div className="mt-3 p-1.5 bg-slate-100 dark:bg-[#141414] rounded-xl border border-slate-200 dark:border-[#262626] flex items-center justify-between text-[11px] font-mono">
-        <span className="text-slate-500 font-bold px-1.5 text-[10px] uppercase">Portal:</span>
-        <button
-          onClick={handleSwitchToFounder}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0070F3] hover:bg-[#0060DF] text-white font-extrabold text-[10px] shadow-xs cursor-pointer active:scale-95 transition-all"
-          title="Switch to Founder Dashboard"
-        >
-          <Rocket size={11} />
-          <span>Founder Hub →</span>
-        </button>
       </div>
 
       {/* User Account Footer */}

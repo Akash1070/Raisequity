@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Activity, X, Save, Briefcase, Search, Sparkles, CheckCircle2, ShieldCheck, Tag, ExternalLink } from "lucide-react";
-import { collection, getDocs, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { query, collection, getDocs, doc, setDoc, deleteDoc, writeBatch, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { SEEDED_AGENCIES } from "../../data/seededAgencies";
 
@@ -18,7 +18,7 @@ export default function AdminExperts() {
   const fetchExperts = async () => {
     try {
       setLoading(true);
-      const snap = await getDocs(collection(db, "experts"));
+      const snap = await getDocs(query(collection(db, "experts"), limit(200)));
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // If Firestore is empty or has fewer than seeded, auto-merge with seeded catalog

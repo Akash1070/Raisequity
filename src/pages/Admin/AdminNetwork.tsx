@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Activity, X, Save, ExternalLink, Star, Rocket, Edit, Search, Sparkles, Building, Upload, Database, FileText, MessageSquare, Mail, UserCheck, Linkedin } from "lucide-react";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 const defaultNetworkPartners = [
@@ -54,7 +54,7 @@ export default function AdminNetwork() {
   const fetchPartners = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "network_partners"));
+      const snap = await getDocs(query(collection(db, "network_partners"), limit(200)));
       const dbData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       
       const partnerMap = new Map<string, any>();

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Activity, X, Save, ExternalLink, Star, Award, Edit, Search, Sparkles, Upload, Database, FileText } from "lucide-react";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { startupCredits, categoryLabels } from "../../data/credits";
 
@@ -34,7 +34,7 @@ export default function AdminCredits() {
   const fetchCredits = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "credits"));
+      const snap = await getDocs(query(collection(db, "credits"), limit(200)));
       const dbData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       const creditMap = new Map<string, any>();

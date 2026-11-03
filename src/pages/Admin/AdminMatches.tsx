@@ -15,7 +15,7 @@ import {
   Send,
   Sparkles
 } from "lucide-react";
-import { collection, getDocs, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, orderBy, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
 export default function AdminMatches() {
@@ -34,7 +34,7 @@ export default function AdminMatches() {
       setAdminIntros(introsData);
 
       // 2. Fetch algorithm matches
-      const matchesSnap = await getDocs(collection(db, "matches"));
+      const matchesSnap = await getDocs(query(collection(db, "matches"), limit(200)));
       const matchesData = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMatches(matchesData);
     } catch (err) {

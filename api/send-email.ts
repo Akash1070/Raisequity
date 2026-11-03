@@ -4,8 +4,8 @@ import { rateLimit, readBody, isEmail, str, fetchWithTimeout } from './_lib';
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   if (!rateLimit(req, res, 20)) return;
-  const key = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || process.env.VITE_RESEND_FROM_EMAIL;
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
   if (!key || !from) return res.status(503).json({ error: 'email_not_configured' });
   const body = readBody(req);
   if (!body) return res.status(413).json({ error: 'invalid_or_oversized_body' });

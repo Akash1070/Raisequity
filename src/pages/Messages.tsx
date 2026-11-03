@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  Send, 
-  Loader2, 
-  Sparkles, 
-  Plus, 
-  ShieldCheck, 
-  Building2, 
-  Check, 
-  Clock, 
-  ArrowLeft, 
-  Scale, 
-  Calendar, 
+import {
+  Search,
+  Send,
+  Loader2,
+  Sparkles,
+  Plus,
+  ShieldCheck,
+  Building2,
+  Check,
+  Clock,
+  ArrowLeft,
+  Scale,
+  Calendar,
   MessageSquare,
   DollarSign,
   User,
@@ -22,19 +22,19 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFounderProfile } from '../hooks/useFounderProfile';
-import { 
-  subscribeToUserConversations, 
-  subscribeToConversationMessages, 
-  sendDirectMessage, 
-  markConversationRead, 
-  getOrCreateConversation, 
-  fetchDirectoryMembers 
+import {
+  subscribeToUserConversations,
+  subscribeToConversationMessages,
+  sendDirectMessage,
+  markConversationRead,
+  getOrCreateConversation,
+  fetchDirectoryMembers
 } from '../lib/messages';
-import type { 
-  Conversation, 
-  DirectMessage, 
+import type {
+  Conversation,
+  DirectMessage,
   ConversationParticipant,
-  DirectMessageType 
+  DirectMessageType
 } from '../types/messages';
 import OneClickSafeModal from '../components/investor/OneClickSafeModal';
 
@@ -52,7 +52,7 @@ export default function Messages() {
   const [isLoadingConvs, setIsLoadingConvs] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [filterQuery, setFilterQuery] = useState('');
-  
+
   // New Message Modal State
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [directoryMembers, setDirectoryMembers] = useState<ConversationParticipant[]>([]);
@@ -240,7 +240,7 @@ export default function Messages() {
 
   return (
     <div className="flex-1 min-h-[600px] lg:h-[calc(125vh-120px)] flex flex-col font-sans text-[#171717] dark:text-[#EDEDED]">
-      
+
       {/* ── TOP HEADER / SUITE TITLE ── */}
       <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-200 dark:border-white/10 shrink-0">
         <div>
@@ -266,10 +266,10 @@ export default function Messages() {
 
       {/* ── MAIN 2-PANE CHAT CONTAINER ── */}
       <div className="flex-1 flex bg-white dark:bg-[#121316] rounded-[28px] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden min-h-0">
-        
+
         {/* ── LEFT PANE: CONVERSATION LIST (320px) ── */}
         <div className="w-full md:w-[320px] lg:w-[360px] border-r border-[#e8e6df] dark:border-white/10 flex flex-col shrink-0">
-          
+
           {/* Search Bar */}
           <div className="p-3.5 border-b border-[#e8e6df] dark:border-white/10 bg-slate-50/50 dark:bg-[#15161b]">
             <div className="relative">
@@ -325,11 +325,10 @@ export default function Messages() {
                       setSelectedConvId(conv.id);
                       setSearchParams({ convId: conv.id });
                     }}
-                    className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 group relative ${
-                      isSelected
+                    className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 group relative ${isSelected
                         ? 'bg-neutral-100/80 dark:bg-[#18191e] border-l-4 border-l-[#0070F3]'
                         : 'hover:bg-neutral-50 dark:hover:bg-[#15161b]'
-                    }`}
+                      }`}
                   >
                     <div className="relative shrink-0">
                       <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden border border-neutral-300 dark:border-white/10">
@@ -340,9 +339,8 @@ export default function Messages() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className={`text-xs font-heading font-black truncate ${
-                          isSelected ? 'text-[#0070F3] dark:text-[#38bdf8]' : 'text-black dark:text-white'
-                        }`}>
+                        <span className={`text-xs font-heading font-black truncate ${isSelected ? 'text-[#0070F3] dark:text-[#38bdf8]' : 'text-black dark:text-white'
+                          }`}>
                           {other?.name || 'Counterparty'}
                         </span>
                         <span className="font-mono text-[9px] text-neutral-400 shrink-0">
@@ -359,9 +357,8 @@ export default function Messages() {
                         )}
                       </div>
 
-                      <p className={`text-xs font-mono truncate leading-snug ${
-                        unread > 0 ? 'font-bold text-black dark:text-white' : 'text-neutral-500 dark:text-neutral-400'
-                      }`}>
+                      <p className={`text-xs font-mono truncate leading-snug ${unread > 0 ? 'font-bold text-black dark:text-white' : 'text-neutral-500 dark:text-neutral-400'
+                        }`}>
                         {conv.last_message || 'Draft initialized...'}
                       </p>
                     </div>
@@ -493,11 +490,10 @@ export default function Messages() {
 
                         {/* Special Banner Message Cards */}
                         {isSafeOffer ? (
-                          <div className={`p-4 rounded-2xl border max-w-md space-y-2 shadow-xs ${
-                            isMe 
-                              ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-900 dark:text-emerald-200' 
+                          <div className={`p-4 rounded-2xl border max-w-md space-y-2 shadow-xs ${isMe
+                              ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
                               : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/50 text-emerald-950 dark:text-emerald-100'
-                          }`}>
+                            }`}>
                             <div className="flex items-center gap-2 font-mono text-xs font-black uppercase text-emerald-600 dark:text-emerald-400">
                               <Scale size={16} />
                               <span>Standardized SAFE Commitment</span>
@@ -513,11 +509,10 @@ export default function Messages() {
                             </div>
                           </div>
                         ) : isCallReq ? (
-                          <div className={`p-4 rounded-2xl border max-w-md space-y-2 shadow-xs ${
-                            isMe 
-                              ? 'bg-purple-950/20 border-purple-500/40 text-purple-900 dark:text-purple-200' 
+                          <div className={`p-4 rounded-2xl border max-w-md space-y-2 shadow-xs ${isMe
+                              ? 'bg-purple-950/20 border-purple-500/40 text-purple-900 dark:text-purple-200'
                               : 'bg-purple-50 dark:bg-purple-950/40 border-purple-500/50 text-purple-950 dark:text-purple-100'
-                          }`}>
+                            }`}>
                             <div className="flex items-center gap-2 font-mono text-xs font-black uppercase text-purple-600 dark:text-purple-400">
                               <Calendar size={16} />
                               <span>Diligence Meeting Request</span>
@@ -526,11 +521,10 @@ export default function Messages() {
                           </div>
                         ) : (
                           <div
-                            className={`px-4 py-2.5 rounded-2xl max-w-[85%] sm:max-w-md text-xs font-mono leading-relaxed break-words shadow-2xs ${
-                              isMe
+                            className={`px-4 py-2.5 rounded-2xl max-w-[85%] sm:max-w-md text-xs font-mono leading-relaxed break-words shadow-2xs ${isMe
                                 ? 'bg-[#0070F3] text-white rounded-br-xs'
                                 : 'bg-white dark:bg-[#1a1b20] text-black dark:text-white border border-[#e8e6df] dark:border-white/10 rounded-bl-xs'
-                            }`}
+                              }`}
                           >
                             {msg.content}
                           </div>
