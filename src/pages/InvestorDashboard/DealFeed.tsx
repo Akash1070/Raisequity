@@ -506,19 +506,20 @@ export default function DealFeed() {
             { label: "Grants", count: "18" },
           ].map((item) => {
             const isSelected = activeTab === item.label || (item.label === "Deals" && activeTab === "All");
+            const isBroadcast = item.label === "💬 Community Broadcasts";
             return (
               <button
                 key={item.label}
                 onClick={() => setActiveTab(item.label === "Deals" ? "All" : item.label)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  isSelected
-                    ? "bg-black text-white dark:bg-white dark:text-black shadow-xs"
+                  isSelected || isBroadcast
+                    ? "bg-black text-white dark:bg-white dark:text-black shadow-xs border border-neutral-800 dark:border-white/20"
                     : "bg-neutral-100 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
                 }`}
               >
                 <span>{item.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isSelected ? "bg-white/20 text-white dark:bg-black/20 dark:text-black" : "bg-neutral-200/70 dark:bg-white/10 text-neutral-500 dark:text-neutral-300"
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                  isSelected || isBroadcast ? "bg-neutral-800 text-neutral-200 dark:bg-neutral-200 dark:text-black" : "bg-neutral-200/70 dark:bg-white/10 text-neutral-500 dark:text-neutral-300"
                 }`}>
                   {item.count}
                 </span>
@@ -577,7 +578,7 @@ export default function DealFeed() {
               </span>
             </div>
             <p className="text-[11px] font-mono text-neutral-400 truncate max-w-xl">
-              1 of 5 diligence milestones completed • Zero-cold outreach active • 7-day front-run calibrated
+              Algorithmic thesis matching active • 99+ pre-vetted deals • 1-click partner introduction available
             </p>
           </div>
         </div>

@@ -24,42 +24,6 @@ interface SLACallSlot {
   notes?: string;
 }
 
-const DEFAULT_SLA_CALLS: SLACallSlot[] = [
-  {
-    id: "sla-call-1",
-    callNumber: 1,
-    partnerName: "Dr. Sarah Chen",
-    partnerTitle: "General Partner",
-    fundName: "Decasonic Ventures",
-    thesisMatch: 96,
-    status: "completed",
-    dateFormatted: "Friday, Oct 24, 2026",
-    timeFormatted: "10:30 AM EST",
-    notes: "Passed thesis screen. Requested follow-up data room access and cap table overview.",
-  },
-  {
-    id: "sla-call-2",
-    callNumber: 2,
-    partnerName: "Marcus Vance",
-    partnerTitle: "Managing Director",
-    fundName: "Framework & Delphi Digital",
-    thesisMatch: 92,
-    status: "ready_to_schedule",
-    meetingUrl: "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy",
-    notes: "Double-blind match confirmed. Slot available for direct partner pitch.",
-  },
-  {
-    id: "sla-call-3",
-    callNumber: 3,
-    partnerName: "Allocators in Queue",
-    partnerTitle: "Thesis Matching",
-    fundName: "Pantera Syndicate & 180+ VCs",
-    thesisMatch: 88,
-    status: "matching",
-    notes: "Algorithmic matching running against round size and ARR metrics.",
-  },
-];
-
 export default function Bookings() {
   const { user, profile } = useAuth();
   const { founderProfile } = useFounderProfile();
@@ -91,6 +55,56 @@ export default function Bookings() {
 
   const fullName = founderProfile?.full_name || profile?.full_name || "Founder";
   const companyName = founderProfile?.company_name || profile?.company_name || "Your Startup";
+
+  const completedCount = bookings.filter((b) => b.status === "completed").length;
+  const daysRemaining = 30;
+
+  // Dynamic SLA Slots based on live founder bookings - zero fake completed calls
+  const b0 = bookings[0] as any;
+  const b1 = bookings[1] as any;
+  const b2 = bookings[2] as any;
+
+  const slaSlots: SLACallSlot[] = [
+    {
+      id: b0?.id || "sla-slot-1",
+      callNumber: 1,
+      partnerName: b0?.investor_name || "Accredited Check-Writer",
+      partnerTitle: "General Partner",
+      fundName: b0?.investor_firm || "Decasonic, Framework & Institutional Backers",
+      thesisMatch: 96,
+      status: (b0?.status as any) || "ready_to_schedule",
+      dateFormatted: b0?.scheduled_at ? new Date(b0.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+      timeFormatted: b0?.time || undefined,
+      meetingUrl: b0?.calendly_link || b0?.meeting_url || "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy",
+      notes: b0?.message_from_founder || b0?.notes || "30-Day SLA Guarantee active. Click 'Select Slot' to book your 1st partner pitch session.",
+    },
+    {
+      id: b1?.id || "sla-slot-2",
+      callNumber: 2,
+      partnerName: b1?.investor_name || "Lead Allocator",
+      partnerTitle: "Managing Director",
+      fundName: b1?.investor_firm || "Pantera, Delphi & 180+ VCs",
+      thesisMatch: 92,
+      status: (b1?.status as any) || (completedCount >= 1 ? "ready_to_schedule" : "matching"),
+      dateFormatted: b1?.scheduled_at ? new Date(b1.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+      timeFormatted: b1?.time || undefined,
+      meetingUrl: b1?.calendly_link || b1?.meeting_url || "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy",
+      notes: b1?.message_from_founder || b1?.notes || (completedCount >= 1 ? "Slot unlocked! Ready to schedule." : "Matching queued following Call #1 completion."),
+    },
+    {
+      id: b2?.id || "sla-slot-3",
+      callNumber: 3,
+      partnerName: b2?.investor_name || "Syndicate Lead",
+      partnerTitle: "Venture Partner",
+      fundName: b2?.investor_firm || "Institutional Dealflow Syndicate",
+      thesisMatch: 88,
+      status: (b2?.status as any) || (completedCount >= 2 ? "ready_to_schedule" : "matching"),
+      dateFormatted: b2?.scheduled_at ? new Date(b2.scheduled_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+      timeFormatted: b2?.time || undefined,
+      meetingUrl: b2?.calendly_link || b2?.meeting_url || "https://topmate.io/yourweb3guy/1784407?utm_source=public_profile&utm_campaign=yourweb3guy",
+      notes: b2?.message_from_founder || b2?.notes || (completedCount >= 2 ? "Slot unlocked! Ready to schedule." : "Matching active in thesis queue."),
+    },
+  ];
 
   return (
     <div className="space-y-6 pb-24 text-slate-900 dark:text-slate-100 font-sans">
@@ -147,19 +161,19 @@ export default function Bookings() {
           <div className="flex items-center gap-4 shrink-0 bg-white dark:bg-[#18191e] px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xs">
             <div className="text-right">
               <div className="text-[10px] font-mono uppercase text-slate-400 font-bold">Window Status</div>
-              <div className="text-sm font-mono font-black text-emerald-600 dark:text-[#00F5A0]">24 Days Left</div>
+              <div className="text-sm font-mono font-black text-emerald-600 dark:text-[#00F5A0]">{daysRemaining} Days Left</div>
             </div>
             <div className="h-8 w-px bg-slate-200 dark:bg-[#262626]" />
             <div>
               <div className="text-[10px] font-mono uppercase text-slate-400 font-bold">Delivered</div>
-              <div className="text-sm font-mono font-black text-slate-900 dark:text-white">1 / 3 Calls</div>
+              <div className="text-sm font-mono font-black text-slate-900 dark:text-white">{completedCount} / 3 Calls</div>
             </div>
           </div>
         </div>
 
         {/* ── 3-STEP SLA CALL PIPELINE ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {DEFAULT_SLA_CALLS.map((call) => (
+          {slaSlots.map((call) => (
             <div
               key={call.id}
               className={`p-5 rounded-2xl border transition-all ${

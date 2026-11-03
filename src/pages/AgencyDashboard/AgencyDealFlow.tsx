@@ -224,6 +224,15 @@ export default function AgencyDealFlow() {
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => navigate("/agency-dashboard/community")}
+            className="px-3.5 py-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-mono font-bold whitespace-nowrap flex items-center gap-1.5 shadow-xs cursor-pointer hover:opacity-90 transition-all shrink-0"
+          >
+            <span>💬 Community Broadcasts</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-neutral-800 text-neutral-200 dark:bg-neutral-200 dark:text-black">
+              Live
+            </span>
+          </button>
           {sectors.map((sec) => (
             <button
               key={sec}

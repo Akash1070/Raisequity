@@ -58,9 +58,23 @@ export default function CommunityBroadcastFeed({
   const [commentsMap, setCommentsMap] = useState<Record<string, PostComment[]>>({});
   const [commentInput, setCommentInput] = useState<string>('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
 
   const uid = user?.uid || (user as any)?.id || '';
   const currentCredits = profile?.credit_balance ?? userCredits;
+
+  const handleSharePost = async (post: FeedPost) => {
+    const postUrl = `${window.location.origin}/dashboard/community?post=${post.id}`;
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(post.id);
+        setTimeout(() => setCopiedPostId(null), 2500);
+      }
+    } catch (e) {
+      console.warn("Clipboard copy failed:", e);
+    }
+  };
 
   const loadPosts = async () => {
     setLoading(true);
@@ -302,25 +316,46 @@ export default function CommunityBroadcastFeed({
                   </div>
                 )}
 
-                {/* Actions row: Likes & Comments */}
-                <div className="flex items-center gap-4 pt-2 border-t border-slate-100 dark:border-white/5 text-xs font-mono">
+                {/* Actions row: Likes, Comments, Share & X Post */}
+                <div className="flex items-center gap-4 pt-2.5 border-t border-slate-100 dark:border-white/5 text-xs font-mono">
                   <button
                     onClick={() => handleToggleLike(post.id)}
-                    className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    className={`flex items-center gap-1.5 transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 ${
                       isLiked ? 'text-rose-500 font-bold' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
                     }`}
                   >
-                    <Heart size={14} className={isLiked ? 'fill-rose-500' : ''} />
+                    <Heart size={14} className={isLiked ? 'fill-rose-500 text-rose-500' : ''} />
                     <span>{post.likesCount || 0} Likes</span>
                   </button>
 
                   <button
                     onClick={() => handleToggleComments(post.id)}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5"
                   >
                     <MessageSquare size={14} />
                     <span>{post.commentsCount || 0} Comments</span>
                   </button>
+
+                  <button
+                    onClick={() => handleSharePost(post)}
+                    className={`flex items-center gap-1.5 transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 ${
+                      copiedPostId === post.id ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                    }`}
+                    title="Copy direct link to clipboard"
+                  >
+                    <Share2 size={14} />
+                    <span>{copiedPostId === post.id ? 'Link Copied! ✓' : 'Share'}</span>
+                  </button>
+
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this update on Raisequity: "${post.title}"\n\n${post.content.slice(0, 100)}...`)}&url=${encodeURIComponent(`${window.location.origin}/dashboard/community`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-slate-400 hover:text-black dark:hover:text-white transition-colors ml-auto text-[11px] px-2 py-1 rounded-md hover:bg-slate-50 dark:hover:bg-white/5"
+                    title="Share to X / Twitter"
+                  >
+                    <span className="font-bold">𝕏 Post</span>
+                  </a>
                 </div>
 
                 {/* Comments Drawer */}
@@ -360,9 +395,10 @@ export default function CommunityBroadcastFeed({
                       <button
                         onClick={() => handleSendComment(post.id)}
                         disabled={submittingComment || !commentInput.trim()}
-                        className="bg-[#0070F3] hover:bg-[#0060DF] disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0 cursor-pointer font-mono"
+                        className="bg-[#0070F3] hover:bg-[#0060DF] disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer font-mono shadow-xs active:scale-95"
                       >
-                        <Send size={13} />
+                        {submittingComment ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                        <span>Reply</span>
                       </button>
                     </div>
                   </div>

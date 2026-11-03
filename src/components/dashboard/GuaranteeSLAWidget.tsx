@@ -13,8 +13,8 @@ interface GuaranteeSLAWidgetProps {
 }
 
 export default function GuaranteeSLAWidget({
-  completedCallsCount = 1,
-  daysRemaining = 24,
+  completedCallsCount = 0,
+  daysRemaining = 30,
   onViewMeetings,
   onClaimRefund,
 }: GuaranteeSLAWidgetProps) {

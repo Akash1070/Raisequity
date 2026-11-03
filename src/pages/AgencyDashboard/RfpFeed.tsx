@@ -193,21 +193,22 @@ export default function RfpFeed() {
       <div className="border-b border-neutral-200 dark:border-[#262626] bg-white dark:bg-[#0A0A0A] px-5 py-2.5 flex items-center gap-2 overflow-x-auto shrink-0 scrollbar-none">
         {categories.map((c) => {
           const isActive = categoryFilter === c.id;
+          const isBroadcast = c.id === "broadcasts";
           return (
             <button
               key={c.id}
               onClick={() => setCategoryFilter(c.id)}
               className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                isActive
-                  ? "bg-black text-white dark:bg-white dark:text-black shadow-xs"
+                isActive || isBroadcast
+                  ? "bg-black text-white dark:bg-white dark:text-black shadow-xs border border-neutral-800 dark:border-white/20"
                   : "bg-neutral-100 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-[#25262e]"
               }`}
             >
               <span>{c.label}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                  isActive
-                    ? "bg-white/20 text-white dark:bg-black/20 dark:text-black"
+                  isActive || isBroadcast
+                    ? "bg-neutral-800 text-neutral-200 dark:bg-neutral-200 dark:text-black"
                     : "bg-neutral-200 dark:bg-white/10 text-neutral-500 dark:text-neutral-300"
                 }`}
               >

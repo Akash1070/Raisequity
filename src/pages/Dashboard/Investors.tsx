@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, ChevronDown, Loader2, AlertCircle, CheckCircle2, Plus, ShieldCheck, UserCheck, Lock, Unlock, Sparkles, Mail, Send, Copy, ExternalLink, Users, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -15,9 +15,25 @@ import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import type { InvestorConnection } from "../../types";
 import type { Web3Investor } from "../../types/investor";
 
-const SECTOR_OPTIONS = ["All", "AI", "SaaS", "DeFi", "Web3 Infrastructure", "Layer 1", "DePIN", "Fintech", "GameFi", "RWA", "Security", "Consumer"];
+const SECTOR_OPTIONS = [
+  "All",
+  "AI & Agents",
+  "B2B SaaS & Enterprise",
+  "FinTech & Payments",
+  "Consumer Tech & Social",
+  "DeepTech & Robotics",
+  "BioTech & HealthTech",
+  "ClimateTech & Clean Energy",
+  "Web3 Infrastructure & DevTools",
+  "DeFi & Digital Assets",
+  "DePIN & Decentralized Compute",
+  "Layer 1 / Layer 2 Networks",
+  "GameFi & Metaverse",
+  "RWA & Tokenization",
+  "Cybersecurity & ZK Proofs"
+];
 const CATEGORY_OPTIONS = ["All", "VC Fund", "Angel Investor", "Accelerator", "Incubator", "Family Office", "Ecosystem Fund"];
-const STAGE_OPTIONS = ["All", "Pre-seed", "Seed", "Series A", "Series B+", "Growth"];
+const STAGE_OPTIONS = ["All", "Pre-seed", "Seed", "Series A", "Series B+", "Growth", "Non-Dilutive Grant"];
 const CHECK_SIZE_OPTIONS = ["All", "<$50k", "$50k - $250k", "$250k - $1M", "$1M+"];
 
 export default function Investors() {
@@ -33,6 +49,7 @@ export default function Investors() {
   const [loadingDirectory, setLoadingDirectory] = useState(true);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number>(30);
 
   // Warm Intro Connections State
   const [declaredConnections, setDeclaredConnections] = useState<InvestorConnection[]>([]);
@@ -103,7 +120,12 @@ export default function Investors() {
   useEffect(() => {
     loadDirectory();
     loadConnections();
-  }, [sectorFilter, user?.uid]);
+  }, [user?.uid]);
+
+  // Reset pagination slicing when filters change so UI is instantaneous
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [searchTerm, sectorFilter, categoryFilter, stageFilter, checkSizeFilter, warmIntroOnly, unlockedOnly, highConvictionOnly, sortBy]);
 
   // Handle Contact Unlock (1 Credit)
   const handleUnlockContact = async (investorId: string) => {
@@ -206,55 +228,123 @@ export default function Investors() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Rank directory investors against this founder's own startup (sector/stage/raise).
-  // Previously the directory was unsorted — founders saw investors in Firestore order.
-  const myStartup = {
-    sector: founderProfile?.sector || undefined,
-    stage: founderProfile?.stage || undefined,
-    funding_goal: founderProfile?.funding_goal || undefined,
-    location: founderProfile?.location || undefined,
-    description: founderProfile?.what_company_does || founderProfile?.company_blurb || undefined,
-    traction: founderProfile?.traction_signal || undefined,
-  };
-  const rankedDirectory = rankInvestorsForStartup(
-    directoryInvestors.map((inv) => ({ ...inv, sectors: inv.sectors, stage: inv.stage, check_size: inv.check_size, location: inv.location })),
-    myStartup,
-    { minScore: 0, limit: directoryInvestors.length || 1 }
-  ) as (Web3Investor & { match: import("../../lib/matching").MatchResult })[];
-  const matchById = new Map(rankedDirectory.map((r) => [r.id, r.match]));
+  // Memoize ranking against founder's startup profile
+  const { rankedDirectory, matchById } = useMemo(() => {
+    const myStartup = {
+      sector: founderProfile?.sector || undefined,
+      stage: founderProfile?.stage || undefined,
+      funding_goal: founderProfile?.funding_goal || undefined,
+      location: founderProfile?.location || undefined,
+      description: founderProfile?.what_company_does || founderProfile?.company_blurb || undefined,
+      traction: founderProfile?.traction_signal || undefined,
+    };
+    const ranked = rankInvestorsForStartup(
+      directoryInvestors.map((inv) => ({
+        ...inv,
+        sectors: inv.sectors,
+        stage: inv.stage,
+        check_size: inv.check_size,
+        location: inv.location
+      })),
+      myStartup,
+      { minScore: 0, limit: directoryInvestors.length || 1 }
+    ) as (Web3Investor & { match: import("../../lib/matching").MatchResult })[];
 
-  // Filtering Web3 Directory (best fit first with advanced multi-filters)
-  let filteredDirectory = rankedDirectory.filter((inv) => {
-    const matchesSearch =
-      !searchTerm ||
-      inv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.firm.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "All" || inv.category === categoryFilter;
-    const matchesSector =
-      sectorFilter === "All" || (inv.sectors && inv.sectors.some((s) => s.toLowerCase().includes(sectorFilter.toLowerCase())));
-    const matchesStage =
-      stageFilter === "All" || (inv.stage && inv.stage.toLowerCase().includes(stageFilter.toLowerCase()));
+    const map = new Map(ranked.map((r) => [r.id, r.match]));
+    return { rankedDirectory: ranked, matchById: map };
+  }, [directoryInvestors, founderProfile]);
 
-    let matchesCheck = true;
-    if (checkSizeFilter === "<$50k") matchesCheck = inv.check_size?.includes("25k") || inv.check_size?.includes("50k");
-    else if (checkSizeFilter === "$50k - $250k") matchesCheck = inv.check_size?.includes("50k") || inv.check_size?.includes("100k") || inv.check_size?.includes("250k");
-    else if (checkSizeFilter === "$250k - $1M") matchesCheck = inv.check_size?.includes("500k") || inv.check_size?.includes("1M") || inv.check_size?.includes("750k");
-    else if (checkSizeFilter === "$1M+") matchesCheck = inv.check_size?.includes("1M") || inv.check_size?.includes("2M") || inv.check_size?.includes("5M");
+  // Memoize filtering so dropdown toggles are instantaneous (<5ms)
+  const filteredDirectory = useMemo(() => {
+    const searchLower = searchTerm.trim().toLowerCase();
+    const filterSectorLower = sectorFilter.toLowerCase();
+    const filterCategoryLower = categoryFilter.toLowerCase();
+    const filterStageLower = stageFilter.toLowerCase();
 
-    const matchesWarm = !warmIntroOnly || Boolean(inv.warm_intro_founder || (inv.know_count && inv.know_count > 0));
-    const matchesUnlocked = !unlockedOnly || unlockedIds.includes(inv.id);
-    const m = matchById.get(inv.id);
-    const matchesConviction = !highConvictionOnly || (m && m.score >= 70);
+    const list = rankedDirectory.filter((inv) => {
+      if (searchLower) {
+        const matchesSearch =
+          inv.name.toLowerCase().includes(searchLower) ||
+          inv.firm.toLowerCase().includes(searchLower) ||
+          (inv.location && inv.location.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
 
-    return matchesSearch && matchesCategory && matchesSector && matchesStage && matchesCheck && matchesWarm && matchesUnlocked && matchesConviction;
-  });
+      if (categoryFilter !== "All") {
+        if (!inv.category || !inv.category.toLowerCase().includes(filterCategoryLower)) return false;
+      }
 
-  if (sortBy === "intros") {
-    filteredDirectory.sort((a, b) => (b.know_count || 0) - (a.know_count || 0));
-  } else if (sortBy === "name") {
-    filteredDirectory.sort((a, b) => a.name.localeCompare(b.name));
-  }
+      if (sectorFilter !== "All") {
+        const hasMatchingSector = inv.sectors && inv.sectors.some((s) => {
+          const sLower = s.toLowerCase();
+          if (sLower.includes(filterSectorLower) || filterSectorLower.includes(sLower)) return true;
+          if (filterSectorLower.includes("ai") && (sLower.includes("ai") || sLower.includes("agent") || sLower.includes("machine learning"))) return true;
+          if (filterSectorLower.includes("saas") && (sLower.includes("saas") || sLower.includes("b2b") || sLower.includes("enterprise") || sLower.includes("software"))) return true;
+          if (filterSectorLower.includes("fintech") && (sLower.includes("fintech") || sLower.includes("payment") || sLower.includes("banking"))) return true;
+          if (filterSectorLower.includes("consumer") && (sLower.includes("consumer") || sLower.includes("social") || sLower.includes("mobile") || sLower.includes("app"))) return true;
+          if (filterSectorLower.includes("deeptech") && (sLower.includes("deeptech") || sLower.includes("hardware") || sLower.includes("robotics") || sLower.includes("semiconductor"))) return true;
+          if (filterSectorLower.includes("climate") && (sLower.includes("climate") || sLower.includes("energy") || sLower.includes("sustainability") || sLower.includes("cleantech"))) return true;
+          if (filterSectorLower.includes("web3") && (sLower.includes("web3") || sLower.includes("crypto") || sLower.includes("infrastructure") || sLower.includes("infra"))) return true;
+          if (filterSectorLower.includes("defi") && (sLower.includes("defi") || sLower.includes("dex") || sLower.includes("lending") || sLower.includes("yield"))) return true;
+          if (filterSectorLower.includes("depin") && (sLower.includes("depin") || sLower.includes("hardware") || sLower.includes("wireless") || sLower.includes("compute"))) return true;
+          if (filterSectorLower.includes("layer") && (sLower.includes("layer") || sLower.includes("l1") || sLower.includes("l2") || sLower.includes("rollup"))) return true;
+          if (filterSectorLower.includes("game") && (sLower.includes("game") || sLower.includes("gaming") || sLower.includes("gamefi") || sLower.includes("metaverse"))) return true;
+          if (filterSectorLower.includes("rwa") && (sLower.includes("rwa") || sLower.includes("real world") || sLower.includes("asset") || sLower.includes("tokenization"))) return true;
+          if (filterSectorLower.includes("security") && (sLower.includes("security") || sLower.includes("zk") || sLower.includes("audit") || sLower.includes("privacy"))) return true;
+          return false;
+        });
+        if (!hasMatchingSector) return false;
+      }
+
+      if (stageFilter !== "All") {
+        if (!inv.stage || !inv.stage.toLowerCase().includes(filterStageLower)) return false;
+      }
+
+      if (checkSizeFilter !== "All") {
+        const cs = (inv.check_size || "").toLowerCase();
+        let matchesCheck = true;
+        if (checkSizeFilter === "<$50k") matchesCheck = cs.includes("25k") || cs.includes("50k") || cs.includes("10k") || cs.includes("15k") || cs.includes("30k");
+        else if (checkSizeFilter === "$50k - $250k") matchesCheck = cs.includes("50k") || cs.includes("100k") || cs.includes("150k") || cs.includes("200k") || cs.includes("250k");
+        else if (checkSizeFilter === "$250k - $1M") matchesCheck = cs.includes("250k") || cs.includes("300k") || cs.includes("500k") || cs.includes("750k") || cs.includes("1m");
+        else if (checkSizeFilter === "$1M+") matchesCheck = cs.includes("1m") || cs.includes("2m") || cs.includes("3m") || cs.includes("5m") || cs.includes("10m");
+        if (!matchesCheck) return false;
+      }
+
+      if (warmIntroOnly && !Boolean(inv.warm_intro_founder || (inv.know_count && inv.know_count > 0))) return false;
+      if (unlockedOnly && !unlockedIds.includes(inv.id)) return false;
+      if (highConvictionOnly) {
+        const m = matchById.get(inv.id);
+        if (!m || m.score < 70) return false;
+      }
+
+      return true;
+    });
+
+    if (sortBy === "intros") {
+      list.sort((a, b) => (b.know_count || 0) - (a.know_count || 0));
+    } else if (sortBy === "name") {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return list;
+  }, [
+    rankedDirectory,
+    searchTerm,
+    categoryFilter,
+    sectorFilter,
+    stageFilter,
+    checkSizeFilter,
+    warmIntroOnly,
+    unlockedOnly,
+    highConvictionOnly,
+    sortBy,
+    unlockedIds,
+    matchById
+  ]);
+
+  // Windowed slicing: Render top `visibleCount` investors to keep the DOM blazing fast
+  const displayedInvestors = useMemo(() => {
+    return filteredDirectory.slice(0, visibleCount);
+  }, [filteredDirectory, visibleCount]);
 
   // Filtering Connections Graph
   const filteredConnections = declaredConnections.filter((conn) => {
@@ -513,10 +603,11 @@ export default function Investors() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDirectory.map((inv) => {
-                const isUnlocked = unlockedIds.includes(inv.id);
-                const avatarSrc = getInvestorAvatarUrl(inv);
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedInvestors.map((inv) => {
+                  const isUnlocked = unlockedIds.includes(inv.id);
+                  const avatarSrc = getInvestorAvatarUrl(inv);
 
                 return (
                   <div
@@ -708,6 +799,26 @@ export default function Investors() {
                 );
               })}
             </div>
+
+            {/* Pagination / Load More Slicing Control */}
+            {visibleCount < filteredDirectory.length && (
+              <div className="flex flex-col items-center justify-center pt-8 pb-4 gap-2">
+                <button
+                  onClick={() => setVisibleCount((prev) => prev + 30)}
+                  className="px-6 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black font-extrabold text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+                >
+                  <Sparkles size={14} className="text-amber-400" />
+                  <span>Load More Check-Writers</span>
+                  <span className="font-mono text-[11px] opacity-75">
+                    (Showing {displayedInvestors.length} of {filteredDirectory.length})
+                  </span>
+                </button>
+                <p className="text-[11px] font-mono text-slate-400">
+                  Showing top thesis-matched investors with instant contact unlocking
+                </p>
+              </div>
+            )}
+          </>
           )}
         </div>
       )}

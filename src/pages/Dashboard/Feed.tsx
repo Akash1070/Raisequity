@@ -23,6 +23,8 @@ import {
   FeedPost 
 } from "../../lib/posts";
 import { getMonthlyIntroRequestUsage, MonthlyIntroQuotaStatus } from "../../lib/quota";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 interface OpportunityItem {
   id: string;
@@ -185,10 +187,17 @@ export default function Feed() {
     isOverCap: false,
     extraIntroCreditCost: 5,
   });
+  const [completedCallsCount, setCompletedCallsCount] = useState<number>(0);
 
   useEffect(() => {
     if (user?.uid) {
       getMonthlyIntroRequestUsage(user.uid).then(setQuotaStatus);
+      getDocs(query(collection(db, "call_bookings"), where("founder_id", "==", user.uid)))
+        .then((snap) => {
+          const completed = snap.docs.filter((d) => d.data().status === "completed").length;
+          setCompletedCallsCount(completed);
+        })
+        .catch(() => {});
     }
   }, [user?.uid]);
 
@@ -244,6 +253,7 @@ export default function Feed() {
             { id: "sla", label: "30-Day SLA Window", count: "24d left", path: "/dashboard/bookings" },
           ].map((pill) => {
             const isSelected = activeCategoryPill === pill.id;
+            const isBroadcast = pill.id === "broadcasts";
             return (
               <button
                 key={pill.id}
@@ -255,15 +265,15 @@ export default function Feed() {
                   }
                 }}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  isSelected
-                    ? "bg-black text-white dark:bg-white dark:text-black shadow-xs"
+                  isSelected || isBroadcast
+                    ? "bg-black text-white dark:bg-white dark:text-black shadow-xs border border-neutral-800 dark:border-white/20"
                     : "bg-slate-100 dark:bg-[#18191e] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white"
                 }`}
               >
                 <span>{pill.label}</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                  isSelected
-                    ? "bg-white/20 text-white dark:bg-black/20 dark:text-black"
+                  isSelected || isBroadcast
+                    ? "bg-neutral-800 text-neutral-200 dark:bg-neutral-200 dark:text-black"
                     : "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-300"
                 }`}>
                   {pill.count}
@@ -319,7 +329,7 @@ export default function Feed() {
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-              1 of 3 partner calls completed • 24 days remaining in delivery window • 5 free monthly intro quota active
+              {completedCallsCount} of 3 partner calls completed • 30-Day SLA Window Active • 5 free monthly intro quota active
             </p>
           </div>
         </div>
@@ -330,7 +340,7 @@ export default function Feed() {
             className="px-4 py-2 rounded-xl bg-[#0070F3] hover:bg-[#0060DF] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Calendar size={13} />
-            <span>Manage Partner Calls (1/3)</span>
+            <span>Manage Partner Calls ({completedCallsCount}/3)</span>
           </button>
         </div>
       </div>
