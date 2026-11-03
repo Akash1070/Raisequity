@@ -1,0 +1,162 @@
+rules_version = '2';
+// Raisequity Firestore rules — Firestore is the ONLY backend; these rules are
+// the server-side authorization layer (the React route guards are UX only).
+// Admin = users/{uid}.role in ['admin','scout_admin'] (set by an admin, never
+// self-service: role/is_approved are immutable for non-admins below).
+// KNOWN RESIDUAL RISK (needs Cloud Functions / API): credit balances are
+// written by client flows today, so a technical user can inflate their own
+// credits. Move credit mutations server-side before paid launch.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'founder');
+    }
+    function isAdmin() { return signedIn() && myRole() in ['admin', 'scout_admin']; }
+    function unchanged(field) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([field])
+        || request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.get('role', 'founder') in ['founder', 'investor', 'service_provider', 'scout']
+        && request.resource.data.get('is_approved', false) == (request.resource.data.get('role', 'founder') != 'investor');
+      // Self may edit profile, but never own role / approval / subscription state.
+      allow update: if isAdmin()
+        || (isSelf(uid) && unchanged('role') && unchanged('is_approved')
+            && unchanged('has_active_subscription') && unchanged('subscription_status'));
+      allow delete: if isAdmin();
+    }
+
+    match /founder_profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /investor_preferences/{uid} {
+      allow read, create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /companies/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.get('founder_id', '') == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('founder_id', '') == request.auth.uid);
+    }
+    match /startups/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('founder_id', '') == request.auth.uid);
+    }
+
+    // Public investor directory: public docs must NOT contain email/telegram
+    // (see scripts/migrate-investor-contacts.mjs). Real contacts live in the
+    // private subcollection, readable only after unlock (or by admins).
+    match /web3_investors/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /private/{doc} {
+        allow read: if isAdmin() || (signedIn()
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('unlocked_investors', []).hasAny([id]));
+        allow write: if isAdmin();
+      }
+    }
+    match /investor_connections/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.get('founderId', '') == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('founderId', '') == request.auth.uid);
+    }
+    match /founder_investor_contacts/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.get('founder_id', '') == request.auth.uid);
+    }
+
+    match /intro_requests/{id} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid in [
+        resource.data.get('requestingFounderId', ''), resource.data.get('connectingFounderId', ''), resource.data.get('investorRef', '')]);
+      allow create: if signedIn();
+      allow update: if isAdmin() || (signedIn() && request.auth.uid in [
+        resource.data.get('requestingFounderId', ''), resource.data.get('connectingFounderId', ''), resource.data.get('investorRef', '')]);
+      allow delete: if isAdmin();
+      match /messages/{mid} {
+        allow read, create: if signedIn();
+        allow update, delete: if isAdmin();
+      }
+    }
+    match /founder_matches/{id} {
+      allow read, update: if isAdmin() || (signedIn() && request.auth.uid in [
+        resource.data.get('founder_a_id', ''), resource.data.get('founder_b_id', '')]);
+      allow create: if signedIn();
+      allow delete: if isAdmin();
+    }
+    match /founder_messages/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.get('sender_id', '') == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    match /matches/{id} { allow read, write: if isAdmin() || signedIn(); }
+    match /introductions/{id} { allow read, write: if isAdmin() || signedIn(); }
+
+    // Money / credits: readable by owner, writable by owner flows today
+    // (see residual-risk note) but never deletable by non-admins.
+    match /credit_transactions/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.get('userId', '') == request.auth.uid);
+      allow create: if signedIn();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+    match /transactions/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.get('userId', '') == request.auth.uid);
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /referrals/{id} {
+      allow read: if isAdmin() || signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+    match /notifications/{id} {
+      allow read, update: if isAdmin() || (signedIn() && resource.data.get('userId', '') == request.auth.uid);
+      allow create: if signedIn();
+      allow delete: if isAdmin();
+    }
+    match /recommendation_events/{id} {
+      allow create: if signedIn() && request.resource.data.get('actorId', '') == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+    match /investor_passes/{id} {
+      allow create: if signedIn() && request.resource.data.get('investorId', '') == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && resource.data.get('investorId', '') == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+    match /investor_notes/{id} {
+      allow read, create, update: if isAdmin() || (signedIn() && resource.data.get('investor_id', '') == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /investor_portfolio/{id} {
+      allow read, create, update: if isAdmin() || (signedIn() && resource.data.get('investor_id', '') == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /call_bookings/{id} { allow read, create, update: if signedIn(); allow delete: if isAdmin(); }
+    match /pipeline_entries/{id} {
+      allow read, create, update: if isAdmin() || (signedIn() && resource.data.get('founderId', '') == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /deal_outcomes/{id} { allow read, create: if signedIn(); allow update, delete: if isAdmin(); }
+    match /posts/{id} { allow read: if signedIn(); allow create: if signedIn(); allow update, delete: if isAdmin() || (signedIn() && resource.data.get('authorId', '') == request.auth.uid); }
+
+    // Public catalogue / content
+    match /launches/{id} { allow read: if true; allow write: if signedIn(); }
+    match /launch_comments/{id} { allow read: if true; allow create: if signedIn(); allow update, delete: if isAdmin(); }
+    match /content_posts/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /grants/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /experts/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /agreements/{id} { allow read, create: if signedIn(); allow update, delete: if isAdmin(); }
+    match /config/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

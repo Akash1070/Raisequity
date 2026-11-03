@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://raisequity.com/</loc>
+    <image:image>
+      <image:loc>https://raisequity.com/logo.png</image:loc>
+      <image:title>Raisequity - Institutional Deal Flow Platform</image:title>
+    </image:image>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://raisequity.com/launch</loc>
+    <image:image>
+      <image:loc>https://raisequity.com/logo.png</image:loc>
+      <image:title>Raisequity Launchpad &amp; Startup Directory</image:title>
+    </image:image>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://raisequity.com/founders</loc>
+    <image:image>
+      <image:loc>https://raisequity.com/logo.png</image:loc>
+      <image:title>Raisequity for Founders - Guaranteed Partner Meeting SLA</image:title>
+    </image:image>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://raisequity.com/investors</loc>
+    <image:image>
+      <image:loc>https://raisequity.com/logo.png</image:loc>
+      <image:title>Raisequity for Investors - Proprietary Front-Run Dealflow</image:title>
+    </image:image>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://raisequity.com/service-providers</loc>
+    <image:image>
+      <image:loc>https://raisequity.com/logo.png</image:loc>
+      <image:title>Raisequity Service Partner Directory</image:title>
+    </image:image>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://raisequity.com/blog</loc>
+    <image:image>
+      <image:loc>https://raisequity.com/logo.png</image:loc>
+      <image:title>Raisequity Venture Insights &amp; Ecosystem Blog</image:title>
+    </image:image>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>

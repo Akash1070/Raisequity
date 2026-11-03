@@ -1,0 +1,27 @@
+# Comprehensive Raisequity Platform Documentation for AI Crawlers
+
+Raisequity is an end-to-end Web3 capital & product launch ecosystem built for founders, investors, and service partners.
+
+## 1. Product Launch Directory ("Raisequity Launch")
+- URL: https://raisequity.com/launch
+- Purpose: Provides an SEO-indexed launch pad for early-stage Web3 products, DeFi protocols, AI agents, and developer tooling.
+- Public Teaser Pattern: Anonymous search traffic and AI crawlers can inspect product name, tagline, description, logo, screenshots, category, maker introduction, community upvote tally, and embed badge status.
+- Gated Detail: Accessing deep financial metrics, cap table allocation, pitch deck access, and direct founder outreach requires creating a free account.
+- Two-Step Launch Submission:
+  - Step 1: Product info URL input with automated metadata scraper, tagline formatting (<=70 chars, no trailing period), description (<=600 chars), logo upload, and pinned maker comment.
+  - Step 2: Launch tier selection (Standard Free queue, Premium $29/20 credits queue-skip and top-of-board pinning, Spotlight $79/50 credits target keyword optimization).
+- Verification Badge: Founders receive an HTML/SVG embed code. An automated background crawler regularly verifies badge presence on the founder's site, granting `badgeVerified: true` status. Live counts only tally verified listings.
+
+## 2. Investor Mentorship & Dealflow Network
+- URL: https://raisequity.com/investors
+- Features: Verified investor profiles with preferred sectors, check size ranges ($25k-$250k+), and calendar call booking links.
+- Quiet Mode: Investors can toggle `quiet_mode: true` to conceal their profile from public directory search while maintaining active connection feeds.
+- Private CRM: Investors maintain private notes on founder companies accessible only to themselves.
+
+## 3. Verified Service Provider Network
+- URL: https://raisequity.com/service-providers
+- Features: Directory of Web3 smart contract auditors, legal tokenomics advisors, and growth agencies with escrow-protected quote requests.
+
+## 4. Crawling & Indexing Policy
+- Public URLs (`/launch`, `/launch/*`, `/founders`, `/investors`, `/service-providers`, `/investors/teaser/*`, `/services/teaser/*`) are fully indexable.
+- Protected app dashboards (`/founder/*`, `/investor/*`, `/services/*`, `/admin/*`, `/dashboard/*`) require user authentication.

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raisequity - Institutional Platform for Web2 &amp; Web3 Founders &amp; Investors</title>
+    <meta name="description" content="The curated deal flow intermediary bridging the Web2 &amp; Web3 funding gap. Connecting pre-seed and seed founders with verified capital, cloud credits, and ecosystem scouts." />
+    <meta name="ai-summary" content="Raisequity is an institutional deal flow platform bridging the Web2 &amp; Web3 funding gap for pre-seed and seed startups (AI, SaaS, FinTech, Crypto), connecting vetted founders with active investors, $125k+ in infrastructure credits, and community scouts." />
+
+    <!-- Favicon & Brand Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=5" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=5" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=5" />
+    <link rel="shortcut icon" href="/favicon.ico?v=5" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=5" />
+
+    <!-- Instant Zero-Flash Theme Initializer -->
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('theme') || 'light';
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Open Graph & Social Cards -->
+    <meta property="og:title" content="Raisequity - Institutional Deal Flow Platform" />
+    <meta property="og:description" content="Bridging the Web2 &amp; Web3 funding gap with guaranteed partner meetings and institutional due diligence memos." />
+    <meta property="og:image" content="https://raisequity.com/logo.png" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://raisequity.com/logo.png" />
+
+    <!-- AI & Machine-Readable Manifests -->
+    <link rel="alternate" type="text/markdown" href="https://raisequity.com/index.md" />
+    <link rel="describedby" href="https://raisequity.com/llms.txt" />
+    <link rel="describedby" href="https://raisequity.com/ai.txt" />
+
+    <!-- Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://raisequity.com/#organization",
+          "name": "Raisequity",
+          "legalName": "Raisequity Foundation",
+          "url": "https://raisequity.com",
+          "logo": "https://raisequity.com/favicon.ico",
+          "description": "Curated Web3 deal flow intermediary and institutional foundation connecting pre-seed and seed founders with verified capital, cloud credits, and ecosystem scouts.",
+          "founder": {
+            "@type": "Person",
+            "name": "Akash Kumar",
+            "email": "akashkumar107@gmail.com"
+          },
+          "sameAs": [
+            "https://x.com/yourweb3guys",
+            "https://t.me/akash_kumar107"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "support@raisequity.com"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://raisequity.com/#website",
+          "url": "https://raisequity.com",
+          "name": "Raisequity",
+          "publisher": {
+            "@id": "https://raisequity.com/#organization"
+          }
+        }
+      ]
+    }
+    </script>
+
+    <script>
+      window.addEventListener('error', function(e) {
+        var errBox = document.getElementById('debug-error-box');
+        if (!errBox) {
+          errBox = document.createElement('div');
+          errBox.id = 'debug-error-box';
+          errBox.style = 'position:fixed;top:0;left:0;right:0;background:#ff0033;color:#fff;padding:16px;z-index:999999;font-family:monospace;font-size:14px;word-break:break-all;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+          document.body.appendChild(errBox);
+        }
+        errBox.innerHTML = '<strong>[Runtime Error]</strong> ' + (e.message || e.reason || 'Unknown script error') + '<br/><small>' + (e.filename || '') + ':' + (e.lineno || '') + '</small>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        var errBox = document.getElementById('debug-error-box');
+        if (!errBox) {
+          errBox = document.createElement('div');
+          errBox.id = 'debug-error-box';
+          errBox.style = 'position:fixed;top:0;left:0;right:0;background:#ff0033;color:#fff;padding:16px;z-index:999999;font-family:monospace;font-size:14px;word-break:break-all;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+          document.body.appendChild(errBox);
+        }
+        errBox.innerHTML = '<strong>[Unhandled Rejection]</strong> ' + (e.reason ? (e.reason.stack || e.reason.message || e.reason) : 'Promise rejection');
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

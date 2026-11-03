@@ -1,0 +1,76 @@
+{
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Link",
+          "value": "<https://raisequity.com/llms.txt>; rel=\"describedby\", <https://raisequity.com/llms-full.txt>; rel=\"describedby\", <https://raisequity.com/ai.txt>; rel=\"describedby\""
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/llms.txt",
+      "destination": "/api/llms-txt"
+    },
+    {
+      "source": "/llms-full.txt",
+      "destination": "/api/llms-full-txt"
+    },
+    {
+      "source": "/ai.txt",
+      "destination": "/api/ai-txt"
+    },
+    {
+      "source": "/api/md/_catalog",
+      "destination": "/api/catalog"
+    },
+    {
+      "source": "/api/md/(.*)",
+      "destination": "/api/md?path=$1"
+    },
+    {
+      "source": "/api/md",
+      "destination": "/api/md"
+    },
+    {
+      "source": "/:path*.md",
+      "destination": "/api/md?path=$path*"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

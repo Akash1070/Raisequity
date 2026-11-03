@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (.dark, .dark &, [data-theme="dark"], [data-theme="dark"] &);
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Organic Clay Sand & Pastel Palette */
+  --color-clay-bg: #faf9f7;           /* Warm soft paper canvas */
+  --color-clay-border: #dad4c8;       /* Refined organic border */
+  --color-clay-text: #000000;         /* Pure pitch black for high contrast */
+  --color-clay-text-muted: #9f9b93;   /* Soft slate-tan for secondary text */
+
+  /* Pastel Clay Accents */
+  --color-clay-matcha: #84e7a5;       /* Soft sage green */
+  --color-clay-matcha-dark: #078a52;  /* Deep green for text on Matcha */
+  --color-clay-slushie: #3bd3fd;      /* Liquid energetic cyan */
+  --color-clay-lemon: #fbbd41;        /* Warm saturated mustard/sun yellow */
+  --color-clay-ube: #c1b0ff;          /* Sweet potato pastel lavender */
+  --color-clay-ube-dark: #43089f;     /* Royal purple for text on Ube */
+  --color-clay-pomegranate: #fc7981;  /* Energetic warm strawberry pink */
+
+  /* Backward-compatible semantic fallbacks */
+  --color-primary: #000000;
+  --color-primary-accent: #43089f;
+}
+
+:root {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Organic Clay Light Design System (Primary & Default) */
+  --bg-main: #faf9f7;
+  --bg-subtle: #ffffff;
+  --card-bg: #ffffff;
+  --card-subtle: #faf9f7;
+  --color-primary: #000000;
+  --color-primary-accent: #43089f;
+  --color-accent: #3bd3fd;
+  --color-accent-subtle: rgba(59, 211, 253, 0.12);
+  --text-main: #000000;
+  --text-muted: #9f9b93;
+  --text-dim: #b8b3a9;
+  --border-light: #dad4c8;
+  --border-subtle: #eae5db;
+  --border-focus: #000000;
+
+  --color-clay-bg: #faf9f7;
+  --color-clay-border: #dad4c8;
+  --color-clay-text: #000000;
+  --color-clay-text-muted: #9f9b93;
+  --color-clay-matcha: #84e7a5;
+  --color-clay-matcha-dark: #078a52;
+  --color-clay-slushie: #3bd3fd;
+  --color-clay-lemon: #fbbd41;
+  --color-clay-ube: #c1b0ff;
+  --color-clay-ube-dark: #43089f;
+  --color-clay-pomegranate: #fc7981;
+}
+
+html.dark {
+  /* Dark Mode Adaptation */
+  --bg-main: #000000;
+  --bg-subtle: #0A0A0A;
+  --card-bg: #0F0F0F;
+  --card-subtle: #171717;
+  --color-primary: #3bd3fd;
+  --color-primary-accent: #84e7a5;
+  --color-accent: #fbbd41;
+  --color-accent-subtle: rgba(59, 211, 253, 0.15);
+  --text-main: #FFFFFF;
+  --text-muted: #9f9b93;
+  --text-dim: #737373;
+  --border-light: #262626;
+  --border-subtle: #1F1F1F;
+  --border-focus: #3bd3fd;
+
+  --color-clay-bg: #0A0A0A;
+  --color-clay-border: #262626;
+  --color-clay-text: #FFFFFF;
+  --color-clay-text-muted: #A1A1A1;
+}
+
+body {
+  background-color: var(--color-clay-bg, #faf9f7);
+  color: var(--color-clay-text, #000000);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+html.dark body {
+  background-color: #000000;
+  color: #EDEDED;
+}
+
+@layer utilities {
+  /* Subtle default elevation */
+  .clay-shadow {
+    box-shadow: 0px 1px 1px rgba(0,0,0,0.1), inset 0px -1px 1px rgba(0,0,0,0.04), 0px -0.5px 1px rgba(0,0,0,0.05);
+  }
+  
+  /* Hard Neo-Brutalist offset shadow on hover */
+  .clay-shadow-hover {
+    box-shadow: -7px 7px 0px rgba(0,0,0,1);
+  }
+
+  /* Frosted Clay Card */
+  .glass-card {
+    background-color: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--color-clay-border, #dad4c8);
+    box-shadow: 0px 1px 1px rgba(0,0,0,0.1), inset 0px -1px 1px rgba(0,0,0,0.04), 0px -0.5px 1px rgba(0,0,0,0.05);
+  }
+
+  html.dark .glass-card {
+    background-color: rgba(15, 15, 15, 0.85);
+    border: 1px solid #262626;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  color: inherit;
+}
+
+.font-mono-data {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* Vercel & Hallmark Responsive Elevations */
+.institutional-card {
+  background-color: #FFFFFF;
+  border: 1px solid #EAEAEA;
+  border-radius: 20px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.dark .institutional-card {
+  background-color: #0F0F0F;
+  border: 1px solid #262626;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.institutional-card:hover {
+  border-color: #0070F3;
+  box-shadow: 0 4px 14px 0 rgba(0, 112, 243, 0.12);
+}
+
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid #EAEAEA;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.dark .glass-card {
+  background-color: rgba(15, 15, 15, 0.9);
+  border: 1px solid #262626;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.terminal-window {
+  background-color: #FAFAFA;
+  border: 1px solid #EAEAEA;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.06);
+}
+
+html.dark .terminal-window {
+  background-color: #0A0A0A;
+  border: 1px solid #262626;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-main, #FFFFFF);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border-light, #EAEAEA);
+  border-radius: 9999px;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes shimmer-text {
+  0% { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+
+@keyframes border-beam {
+  100% { offset-distance: 100%; }
+}
+
+.animate-marquee {
+  animation: marquee 35s linear infinite;
+}
+
+.animate-border-beam {
+  animation: border-beam calc(var(--duration)*1s) infinite linear;
+}
+
+.animate-shimmer-text {
+  animation: shimmer-text calc(var(--duration, 4s)) linear infinite;
+}

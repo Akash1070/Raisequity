@@ -1,0 +1,667 @@
+import React, { useState, useEffect } from "react";
+import { Search, ChevronDown, Loader2, AlertCircle, CheckCircle2, Plus, ShieldCheck, UserCheck, Lock, Unlock, Sparkles, Mail, Send, Copy, ExternalLink, Users, Database } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useFounderProfile } from "../../hooks/useFounderProfile";
+import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../lib/firebase";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { getInvestorConnections } from "../../lib/connections";
+import { createIntroRequest } from "../../lib/intros";
+import { getWeb3Investors, unlockInvestorContact, declarePersonalInvestorBridge, getInvestorAvatarUrl } from "../../lib/investors";
+import { rankInvestorsForStartup } from "../../lib/matching";
+import DeclareConnectionModal from "../../components/dashboard/DeclareConnectionModal";
+import type { InvestorConnection } from "../../types";
+import type { Web3Investor } from "../../types/investor";
+
+const SECTOR_OPTIONS = ["All", "DeFi", "Layer 1", "DePIN", "Web3 Infrastructure", "AI", "SaaS", "GameFi", "NFT"];
+const CATEGORY_OPTIONS = ["All", "VC Fund", "Angel Investor", "Accelerator", "Incubator", "Family Office", "Ecosystem Fund"];
+
+export default function Investors() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { founderProfile, refetch: refetchProfile } = useFounderProfile();
+
+  const [activeTab, setActiveTab] = useState<"directory" | "graph">("directory");
+
+  // Web3 Investor Directory State
+  const [directoryInvestors, setDirectoryInvestors] = useState<Web3Investor[]>([]);
+  const [loadingDirectory, setLoadingDirectory] = useState(true);
+  const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+
+  // Warm Intro Connections State
+  const [declaredConnections, setDeclaredConnections] = useState<InvestorConnection[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(true);
+
+  // Global Filters & Modals
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sectorFilter, setSectorFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [showDeclareModal, setShowDeclareModal] = useState(false);
+  const [introConnection, setIntroConnection] = useState<InvestorConnection | null>(null);
+  const [introSending, setIntroSending] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Fetch Web3 Investor Dataset & User Unlocked IDs
+  const loadDirectory = async () => {
+    setLoadingDirectory(true);
+    try {
+      let activeUnlockedIds: string[] = unlockedIds;
+
+      // Fetch unlocked array from user profile
+      if (user?.uid) {
+        const uSnap = await getDoc(doc(db, "users", user.uid));
+        if (uSnap.exists()) {
+          activeUnlockedIds = uSnap.data().unlocked_investors || [];
+          setUnlockedIds(activeUnlockedIds);
+        }
+      }
+
+      const list = await getWeb3Investors(activeUnlockedIds, false);
+      setDirectoryInvestors(list);
+    } catch (err: any) {
+      console.error("Error loading Web3 directory:", err);
+    } finally {
+      setLoadingDirectory(false);
+    }
+  };
+
+  // Fetch Warm Intro Graph
+  const loadConnections = async () => {
+    setLoadingConnections(true);
+    try {
+      const firestoreConns = await getInvestorConnections(
+        sectorFilter !== "All" ? sectorFilter : undefined
+      );
+      setDeclaredConnections(firestoreConns);
+    } catch (err: any) {
+      console.error("Error loading connections:", err);
+    } finally {
+      setLoadingConnections(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDirectory();
+    loadConnections();
+  }, [sectorFilter, user?.uid]);
+
+  // Handle Contact Unlock (1 Credit)
+  const handleUnlockContact = async (investorId: string) => {
+    if (!user) {
+      setError("Please sign in to unlock contact details.");
+      return;
+    }
+
+    const currentCredits = founderProfile?.credits || 0;
+    if (currentCredits < 1) {
+      if (window.confirm("You have 0 credits remaining. Would you like to get more credits or upgrade to Premium?")) {
+        navigate("/checkout");
+      }
+      return;
+    }
+
+    setUnlockingId(investorId);
+    setError(null);
+
+    const res = await unlockInvestorContact(user.uid, investorId, currentCredits);
+    if (res.success) {
+      setUnlockedIds((prev) => [...prev, investorId]);
+      if (res.unlockedData) {
+        setDirectoryInvestors((prev) =>
+          prev.map((inv) =>
+            inv.id === investorId
+              ? { ...inv, email: res.unlockedData!.email, telegram: res.unlockedData!.telegram }
+              : inv
+          )
+        );
+      }
+      await refetchProfile();
+      setSuccessMessage("Contact details unlocked successfully! (1 Credit used)");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } else {
+      setError(res.error || "Failed to unlock contact details.");
+    }
+    setUnlockingId(null);
+  };
+
+  // Handle "I Know Them Personally"
+  const handleDeclarePersonal = async (investor: Web3Investor) => {
+    if (!user) return;
+    try {
+      const res = await declarePersonalInvestorBridge(
+        user.uid,
+        founderProfile?.full_name || user.email || "Founder",
+        founderProfile?.company_name || "My Startup",
+        investor
+      );
+
+      if (res.success) {
+        setSuccessMessage(`You marked that you personally know ${investor.name}! Other founders can now request warm intros from you.`);
+        loadDirectory();
+        loadConnections();
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        setError(res.error || "Error declaring connection.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to declare connection.");
+    }
+  };
+
+  // Handle Warm Intro Request
+  const handleRequestWarmIntro = async () => {
+    if (!introConnection || !user) return;
+    setIntroSending(true);
+    setError(null);
+
+    try {
+      const res = await createIntroRequest(
+        user.uid,
+        founderProfile?.full_name || user.email || "Founder",
+        user.email || "",
+        introConnection.founderId,
+        introConnection.founderName,
+        "connector@raisequity.com",
+        introConnection.id,
+        introConnection.investorName,
+        introConnection.investorFirm
+      );
+
+      if (res.success) {
+        await refetchProfile();
+        setSuccessMessage(`Successfully requested introduction to ${introConnection.investorName}!`);
+        setTimeout(() => setSuccessMessage(null), 4000);
+      } else {
+        setError(res.error || "Failed to send intro request.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Error sending intro request.");
+    } finally {
+      setIntroSending(false);
+      setIntroConnection(null);
+    }
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Rank directory investors against this founder's own startup (sector/stage/raise).
+  // Previously the directory was unsorted — founders saw investors in Firestore order.
+  const myStartup = {
+    sector: founderProfile?.sector || undefined,
+    stage: founderProfile?.stage || undefined,
+    funding_goal: founderProfile?.funding_goal || undefined,
+    location: founderProfile?.location || undefined,
+    description: founderProfile?.what_company_does || founderProfile?.company_blurb || undefined,
+    traction: founderProfile?.traction_signal || undefined,
+  };
+  const rankedDirectory = rankInvestorsForStartup(
+    directoryInvestors.map((inv) => ({ ...inv, sectors: inv.sectors, stage: inv.stage, check_size: inv.check_size, location: inv.location })),
+    myStartup,
+    { minScore: 0, limit: directoryInvestors.length || 1 }
+  ) as (Web3Investor & { match: import("../../lib/matching").MatchResult })[];
+  const matchById = new Map(rankedDirectory.map((r) => [r.id, r.match]));
+
+  // Filtering Web3 Directory (best fit first)
+  const filteredDirectory = rankedDirectory.filter((inv) => {
+    const matchesSearch =
+      !searchTerm ||
+      inv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inv.firm.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inv.location?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "All" || inv.category === categoryFilter;
+    const matchesSector =
+      sectorFilter === "All" || (inv.sectors && inv.sectors.some((s) => s.toLowerCase().includes(sectorFilter.toLowerCase())));
+    return matchesSearch && matchesCategory && matchesSector;
+  });
+
+  // Filtering Connections Graph
+  const filteredConnections = declaredConnections.filter((conn) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return conn.investorName.toLowerCase().includes(term) || conn.investorFirm.toLowerCase().includes(term);
+  });
+
+  return (
+    <div className="space-y-8 pb-24 text-slate-900">
+      {/* Header & Topbar Action */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-[32px] font-black tracking-tight text-slate-900 font-heading">
+              Web3 Investor Network & Directory
+            </h1>
+            <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-black border border-purple-200/60 flex items-center gap-1.5 shadow-2xs">
+              <Sparkles size={14} className="text-amber-500" /> {founderProfile?.credits ?? 0} Credits Available
+            </span>
+          </div>
+          <p className="text-slate-500 font-medium text-xs md:text-sm">
+            Access direct verified investor emails, Telegram handles, and crowdsourced warm introduction networks.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/dashboard/credits")}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs px-4 py-3 rounded-2xl transition-all border border-slate-200 cursor-pointer flex items-center gap-2"
+          >
+            <Sparkles size={14} className="text-amber-500" /> Get More Credits
+          </button>
+          <button
+            onClick={() => setShowDeclareModal(true)}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider px-5 py-3 rounded-2xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Plus size={16} /> Declare Connection
+          </button>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-extrabold flex items-center gap-2 shadow-xs"
+        >
+          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+          {successMessage}
+        </motion.div>
+      )}
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-red-50 text-red-800 rounded-2xl border border-red-200 text-xs font-extrabold flex items-center gap-2 shadow-xs"
+        >
+          <AlertCircle size={16} className="text-red-600 shrink-0" />
+          {error}
+        </motion.div>
+      )}
+
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab("directory")}
+          className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "directory"
+              ? "border-slate-900 text-slate-900"
+              : "border-transparent text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Database size={16} /> Web3 Investor Database ({directoryInvestors.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("graph")}
+          className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === "graph"
+              ? "border-slate-900 text-slate-900"
+              : "border-transparent text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Users size={16} /> Founder Warm Intro Graph ({declaredConnections.length})
+        </button>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Search */}
+        <div className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xs">
+          <Search size={16} className="text-slate-400 shrink-0" />
+          <input
+            type="text"
+            placeholder={activeTab === "directory" ? "Search investor name, VC fund, location..." : "Search warm intro graph..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-transparent border-none text-xs font-semibold text-slate-900 focus:ring-0 outline-none placeholder:text-slate-400"
+          />
+        </div>
+
+        {/* Sector Filter */}
+        <div className="relative">
+          <select
+            value={sectorFilter}
+            onChange={(e) => setSectorFilter(e.target.value)}
+            className="appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 outline-none shadow-2xs text-slate-900"
+          >
+            {SECTOR_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                Sector: {s}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        </div>
+
+        {/* Category Filter (Directory Only) */}
+        {activeTab === "directory" && (
+          <div className="relative">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-3 pr-10 text-xs font-black cursor-pointer focus:ring-2 focus:ring-slate-900 outline-none shadow-2xs text-slate-900"
+            >
+              {CATEGORY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  Category: {c}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        )}
+      </div>
+
+      {/* TAB 1: WEB3 INVESTOR DATABASE */}
+      {activeTab === "directory" && (
+        <div>
+          {loadingDirectory ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-3">
+              <Loader2 size={32} className="animate-spin text-slate-900" />
+              <p className="text-xs font-mono font-bold text-slate-400">Loading Web3 investor database...</p>
+            </div>
+          ) : filteredDirectory.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center shadow-xs">
+              <Database size={32} className="mx-auto text-slate-300 mb-3" />
+              <h3 className="font-black text-base text-slate-900">No Web3 Investors Found</h3>
+              <p className="text-slate-500 font-medium text-xs max-w-sm mx-auto mt-1">
+                Try adjusting your search query or filters to browse active crypto funds and angels.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDirectory.map((inv) => {
+                const isUnlocked = unlockedIds.includes(inv.id);
+                const avatarSrc = getInvestorAvatarUrl(inv);
+
+                return (
+                  <div
+                    key={inv.id}
+                    className="bg-white rounded-[28px] border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={avatarSrc}
+                            alt={inv.name}
+                            onError={(e) => {
+                              (e.target as HTMLElement).setAttribute('src', `https://ui-avatars.com/api/?name=${encodeURIComponent(inv.name)}&background=0F172A&color=fff&bold=true`);
+                            }}
+                            className="w-11 h-11 rounded-2xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                          />
+                          <div>
+                            <h3 className="font-black text-base text-slate-900">{inv.name}</h3>
+                            <p className="text-xs font-extrabold text-slate-500">{inv.firm}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-wider rounded-lg border border-slate-200/80">
+                            {inv.category || "VC Fund"}
+                          </span>
+                          {(() => { const m = matchById.get(inv.id); return m && (founderProfile?.sector || founderProfile?.stage) ? (
+                            <span title={[...m.reasons, ...m.negatives].join(' · ')} className={`px-2.5 py-1 text-[10px] font-black uppercase rounded-lg ${m.score >= 70 ? "bg-emerald-100 text-emerald-800" : m.score >= 35 ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-400"}`}>
+                              {m.score >= 50 ? "Best for you · " : ""}{m.score}% fit
+                            </span>) : null; })()}
+                        </div>
+                      </div>
+
+                      {/* Details & Badges */}
+                      <div className="space-y-2.5 mb-6">
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <span className="text-slate-400 font-medium">Check Size:</span>
+                          <span className="font-black text-slate-900">{inv.check_size || "$100k"}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <span className="text-slate-400 font-medium">Target Stage:</span>
+                          <span className="font-extrabold text-slate-800">{inv.stage || "Pre-seed / Seed"}</span>
+                        </div>
+
+                        {/* Sectors */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {inv.sectors?.map((sec) => (
+                            <span
+                              key={sec}
+                              className="px-2.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-200/60"
+                            >
+                              {sec}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Gated / Unlocked Contact Box */}
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 mb-6 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider font-mono">
+                            Direct Contact Details
+                          </span>
+                          {isUnlocked ? (
+                            <span className="text-[10px] font-black text-emerald-600 flex items-center gap-1">
+                              <Unlock size={12} /> UNLOCKED
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black text-amber-600 flex items-center gap-1">
+                              <Lock size={12} /> GATED (1 CREDIT)
+                            </span>
+                          )}
+                        </div>
+
+                        {isUnlocked ? (
+                          <div className="space-y-2 pt-1">
+                            {inv.email && (
+                              <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 text-xs font-mono text-slate-900 font-bold">
+                                <span className="truncate mr-2">✉️ {inv.email}</span>
+                                <button
+                                  onClick={() => copyToClipboard(inv.email!, `email-${inv.id}`)}
+                                  className="text-slate-400 hover:text-slate-900 cursor-pointer shrink-0"
+                                >
+                                  {copiedId === `email-${inv.id}` ? <CheckCircle2 size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                                </button>
+                              </div>
+                            )}
+
+                            {inv.telegram && (
+                              <a
+                                href={inv.telegram.startsWith("http") ? inv.telegram : `https://t.me/${inv.telegram.replace("@", "")}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center justify-between bg-sky-50 hover:bg-sky-100 p-2.5 rounded-xl border border-sky-200 text-xs font-mono text-sky-900 font-black transition-colors"
+                              >
+                                <span>✈️ {inv.telegram}</span>
+                                <ExternalLink size={14} className="text-sky-600" />
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-2 pt-1 text-xs font-mono text-slate-400">
+                            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                              <span>✉️ e***@vc-fund.com</span>
+                              <Lock size={12} />
+                            </div>
+                            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                              <span>✈️ @t***_handle</span>
+                              <Lock size={12} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="space-y-2 pt-2">
+                      {!isUnlocked ? (
+                        <button
+                          onClick={() => handleUnlockContact(inv.id)}
+                          disabled={unlockingId === inv.id}
+                          className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                        >
+                          {unlockingId === inv.id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <>
+                              <Sparkles size={14} className="text-amber-400" />
+                              <span>Unlock Contacts (1 Credit)</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDeclarePersonal(inv)}
+                          className="w-full py-3 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <ShieldCheck size={16} className="text-purple-600" />
+                          <span>I Know Them Personally</span>
+                        </button>
+                      )}
+
+                      {!isUnlocked && (
+                        <button
+                          onClick={() => handleDeclarePersonal(inv)}
+                          className="w-full py-2.5 text-slate-500 hover:text-slate-900 text-[11px] font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>I know them personally (Bridge Intro)</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: FOUNDER WARM INTRO GRAPH */}
+      {activeTab === "graph" && (
+        <div>
+          {loadingConnections ? (
+            <div className="flex justify-center py-24">
+              <Loader2 size={32} className="animate-spin text-slate-900" />
+            </div>
+          ) : filteredConnections.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center shadow-xs">
+              <Users size={32} className="mx-auto text-slate-300 mb-3" />
+              <h3 className="font-black text-base text-slate-900">No Warm Connections Declared</h3>
+              <p className="text-slate-500 font-medium text-xs max-w-sm mx-auto mt-1">
+                Be the first to declare an investor connection or mark an investor you know to build our peer-to-peer network!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredConnections.map((conn) => (
+                <div
+                  key={conn.id}
+                  className="bg-white rounded-[28px] border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-black text-lg text-slate-900">{conn.investorName}</h3>
+                        <p className="text-xs font-extrabold text-slate-500">{conn.investorFirm}</p>
+                      </div>
+                      <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-[10px] font-black uppercase rounded-lg flex items-center gap-1 border border-purple-200/60">
+                        <ShieldCheck size={12} /> Connected via {conn.founderName.split(" ")[0]}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mb-6">
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-slate-400">Target Check:</span>
+                        <span className="font-black text-slate-900">{conn.ticketSize}</span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {conn.sectors?.map((sec) => (
+                          <span key={sec} className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[10px] font-bold">
+                            {sec}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setIntroConnection(conn)}
+                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <UserCheck size={14} /> Request Warm Intro
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Declare Connection Modal */}
+      <DeclareConnectionModal
+        isOpen={showDeclareModal}
+        onClose={() => setShowDeclareModal(false)}
+        founderId={user?.uid || "guest"}
+        founderName={founderProfile?.full_name || user?.email || "Founder"}
+        founderCompany={founderProfile?.company_name || "My Startup"}
+        onSuccess={() => {
+          loadDirectory();
+          loadConnections();
+        }}
+      />
+
+      {/* Confirm Intro Request Modal */}
+      <AnimatePresence>
+        {introConnection && (
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            onClick={() => setIntroConnection(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-[32px] p-8 max-w-md w-full relative overflow-hidden border border-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-black text-slate-900 mb-1">Request Warm Intro</h3>
+              <p className="text-xs text-slate-500 leading-normal mb-6">
+                Request <span className="font-bold text-slate-900">{introConnection.founderName}</span> for a warm intro to{" "}
+                <span className="font-bold text-slate-900">{introConnection.investorName}</span> ({introConnection.investorFirm}).
+              </p>
+
+              <div className="flex justify-between items-center text-xs font-bold mb-6 bg-purple-50 text-purple-700 p-4 rounded-2xl border border-purple-200/60">
+                <span>Monthly Quota:</span>
+                <span>First 5 Intros Free / Month</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setIntroConnection(null)}
+                  className="py-3 bg-slate-100 text-slate-600 rounded-2xl text-xs font-bold hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRequestWarmIntro}
+                  disabled={introSending}
+                  className="py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                >
+                  {introSending ? <Loader2 size={16} className="animate-spin" /> : "Send Request"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

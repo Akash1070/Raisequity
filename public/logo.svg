@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Upper Purple Arc/Hook -->
+  <path d="M160 172C160 145.49 181.49 124 208 124H320C355.346 124 384 152.654 384 188C384 223.346 355.346 252 320 252H256" 
+        stroke="url(#purpleGrad)" 
+        stroke-width="50" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+        
+  <!-- Lower Dark Curve & Stem -->
+  <path d="M160 400V320C160 275.817 195.817 240 240 240" 
+        stroke="#111827" 
+        stroke-width="50" 
+        stroke-linecap="round"/>
+        
+  <!-- Diagonal Leg -->
+  <path d="M246 298L360 400" 
+        stroke="#111827" 
+        stroke-width="54" 
+        stroke-linecap="round"/>
+        
+  <!-- Cyan/Teal Center Accent -->
+  <circle cx="230" cy="278" r="28" fill="url(#cyanGrad)" />
+
+  <defs>
+    <linearGradient id="purpleGrad" x1="160" y1="124" x2="384" y2="252" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#9333EA"/>
+      <stop offset="100%" stop-color="#7928CA"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="204" y1="252" x2="256" y2="304" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F5A0"/>
+      <stop offset="100%" stop-color="#00DFD8"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,81 @@
+# ==============================================================================
+# Raisequity robots.txt
+# Keep in sync with /llms.txt and /ai.txt
+# ==============================================================================
+
+# Search and Answer / Citation Bots (Explicitly Allowed for Grounded Answers)
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /investor-dashboard/
+Disallow: /onboarding
+Disallow: /investor-onboarding
+Disallow: /checkout
+Disallow: /login
+Disallow: /api/
+
+# Leading AI Research & Foundation Model Crawlers (Allowed on Public Paths)
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /investor-dashboard/
+Disallow: /onboarding
+Disallow: /investor-onboarding
+Disallow: /checkout
+Disallow: /login
+Disallow: /api/
+
+# Aggressive Bulk Training Scrapers (Blocked)
+User-agent: CCBot
+User-agent: Bytespider
+Disallow: /
+
+# General Search Engines & Standard Crawlers
+User-agent: *
+Allow: /
+Allow: /founders
+Allow: /investors
+Allow: /service-providers
+Allow: /launch
+Allow: /launch/*
+Allow: /blog
+Allow: /blog/*
+Allow: /terms
+Allow: /privacy
+Allow: /expert/*
+Allow: /experts/category/*
+Allow: /investors/teaser/*
+Allow: /services/teaser/*
+
+# Private & Authenticated Dashboards (Disallow for All)
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /dashboard/
+Disallow: /dashboard/*
+Disallow: /investor-dashboard/
+Disallow: /investor-dashboard/*
+Disallow: /onboarding
+Disallow: /investor-onboarding
+Disallow: /checkout
+Disallow: /login
+Disallow: /api/
+Disallow: /founder/
+Disallow: /investor/
+Disallow: /services/
+
+# Machine-Readable AI & LLM Manifests
+# LLMs Text Manifest: https://raisequity.com/llms.txt
+# Full Documentation: https://raisequity.com/llms-full.txt
+# AI Usage Policy: https://raisequity.com/ai.txt
+
+Sitemap: https://raisequity.com/sitemap.xml
