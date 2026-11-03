@@ -24,6 +24,7 @@ import {
   PostComment
 } from '../../lib/posts';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFounderProfile } from '../../hooks/useFounderProfile';
 import CreatePostModal from './CreatePostModal';
 
 interface CommunityBroadcastFeedProps {
@@ -48,6 +49,7 @@ export default function CommunityBroadcastFeed({
   onPostSuccess,
 }: CommunityBroadcastFeedProps) {
   const { user, profile } = useAuth();
+  const { founderProfile } = useFounderProfile();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTag, setActiveTag] = useState<string>('all');
@@ -62,6 +64,7 @@ export default function CommunityBroadcastFeed({
 
   const uid = user?.uid || (user as any)?.id || '';
   const currentCredits = profile?.credit_balance ?? userCredits;
+  const userAvatar = founderProfile?.profile_photo_url || profile?.profile_photo_url || profile?.avatar_url || (profile as any)?.photoURL || (user as any)?.photoURL || undefined;
 
   const handleSharePost = async (post: FeedPost) => {
     const postUrl = `${window.location.origin}/dashboard/community?post=${post.id}`;
@@ -257,8 +260,8 @@ export default function CommunityBroadcastFeed({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center font-bold text-slate-800 dark:text-white font-mono shrink-0 overflow-hidden">
-                      {post.authorAvatar ? (
-                        <img src={post.authorAvatar} alt={post.authorName} className="w-full h-full object-cover" />
+                      {(post.authorAvatar || (post.authorId === uid ? userAvatar : undefined)) ? (
+                        <img src={post.authorAvatar || userAvatar} alt={post.authorName} className="w-full h-full object-cover" />
                       ) : (
                         post.authorName?.charAt(0) || 'M'
                       )}
@@ -422,6 +425,7 @@ export default function CommunityBroadcastFeed({
           authorName={profile?.full_name || user?.displayName || user?.email?.split('@')[0] || 'Member'}
           authorEmail={profile?.email || user?.email || ''}
           authorRole={profile?.role || userRole}
+          authorAvatar={userAvatar}
           userCredits={currentCredits}
         />
       )}

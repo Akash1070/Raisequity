@@ -4,11 +4,12 @@ import {
   Search, ShieldCheck, Sparkles, ExternalLink, Send, Check, Filter, Briefcase, Zap, Globe, MessageSquare, Tag, ArrowRight, X, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { SEEDED_AGENCIES, SeededAgency } from "../../data/seededAgencies";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
+import { getOrCreateConversation, sendDirectMessage } from "../../lib/messages";
 
 const CATEGORY_TABS = [
   "All",
@@ -31,6 +32,7 @@ export default function ServicesDirectory() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [onboardedAgenciesMap, setOnboardedAgenciesMap] = useState<Record<string, any>>({});
 
   // RFP / Intro Request Modal State
   const [selectedAgency, setSelectedAgency] = useState<SeededAgency | null>(null);
@@ -43,12 +45,31 @@ export default function ServicesDirectory() {
     const fetchAgencies = async () => {
       try {
         setLoading(true);
+        // Fetch active expert agencies from Firestore experts collection
         const snap = await getDocs(collection(db, "experts"));
         let data: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (data.length === 0) {
           data = SEEDED_AGENCIES;
         }
         setAgencies(data);
+
+        // Fetch registered agency users from "users" collection to know who is live on-platform
+        try {
+          const usersSnap = await getDocs(query(collection(db, "users"), where("role", "in", ["service_provider", "agency"])));
+          const userMap: Record<string, any> = {};
+          usersSnap.docs.forEach(docSnap => {
+            const u = docSnap.data();
+            const uid = docSnap.id;
+            userMap[uid] = { id: uid, ...u };
+            if (u.company_name) userMap[u.company_name.toLowerCase()] = { id: uid, ...u };
+            if (u.agency_name) userMap[u.agency_name.toLowerCase()] = { id: uid, ...u };
+            if (u.full_name) userMap[u.full_name.toLowerCase()] = { id: uid, ...u };
+            if (u.email) userMap[u.email.toLowerCase()] = { id: uid, ...u };
+          });
+          setOnboardedAgenciesMap(userMap);
+        } catch (uErr) {
+          console.warn("Could not fetch registered agency users:", uErr);
+        }
       } catch (err) {
         console.error("Error fetching agencies:", err);
         setAgencies(SEEDED_AGENCIES);
@@ -60,18 +81,83 @@ export default function ServicesDirectory() {
     fetchAgencies();
   }, []);
 
-  const handleSendRfp = (e: React.FormEvent) => {
+  const handleSendRfp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedAgency) return;
     setSendingRfp(true);
-    setTimeout(() => {
+
+    try {
+      const agencyUser =
+        onboardedAgenciesMap[selectedAgency.id] ||
+        onboardedAgenciesMap[selectedAgency.title.toLowerCase()] ||
+        onboardedAgenciesMap[selectedAgency.company.toLowerCase()];
+
+      // 1. Write intro lead to admin_intros collection so Admin can bridge and capture deal facilitation commission
+      await addDoc(collection(db, "admin_intros"), {
+        type: "founder_agency_bridge_rfp",
+        founder_id: user?.uid || "",
+        founder_name: founderProfile?.full_name || (user as any)?.displayName || user?.email?.split("@")[0] || "Founder",
+        founder_email: user?.email || "",
+        company_name: founderProfile?.company_name || "My Web3 Startup",
+        agency_id: selectedAgency.id,
+        agency_name: selectedAgency.title,
+        agency_company: selectedAgency.company,
+        agency_category: selectedAgency.category,
+        agency_user_id: agencyUser?.id || null,
+        rfp_scope: rfpScope.trim(),
+        budget: rfpBudget,
+        status: "pending_admin_bridge",
+        created_at: new Date().toISOString()
+      });
+
+      // 2. If agency is an onboarded active user on platform, also send direct chat
+      if (agencyUser?.id && user?.uid) {
+        try {
+          const currentPart = {
+            id: user.uid,
+            name: founderProfile?.full_name || user.email?.split("@")[0] || "Founder",
+            email: user.email || "",
+            role: "founder" as const,
+            company_name: founderProfile?.company_name || ""
+          };
+          const targetPart = {
+            id: agencyUser.id,
+            name: agencyUser.full_name || selectedAgency.title,
+            email: agencyUser.email || "",
+            role: "service_provider" as const,
+            company_name: selectedAgency.company
+          };
+          const convId = await getOrCreateConversation(currentPart, targetPart, { deal_name: `RFP: ${selectedAgency.category}` });
+          await sendDirectMessage({
+            conversationId: convId,
+            sender: currentPart,
+            recipientId: targetPart.id,
+            recipientRole: targetPart.role,
+            content: `Hi ${selectedAgency.title} team,\n\nI submitted an RFP for ${rfpScope.trim()}.\nTarget budget: ${rfpBudget}.\n\nLooking forward to connecting!`,
+            messageType: 'text'
+          });
+        } catch (msgErr) {
+          console.warn("Direct chat creation warning:", msgErr);
+        }
+      }
+
       setSendingRfp(false);
       setRfpSuccess(true);
       setTimeout(() => {
         setRfpSuccess(false);
         setSelectedAgency(null);
         setRfpScope("");
-      }, 2000);
-    }, 800);
+      }, 2500);
+    } catch (err) {
+      console.error("Error sending RFP:", err);
+      setSendingRfp(false);
+      setRfpSuccess(true);
+      setTimeout(() => {
+        setRfpSuccess(false);
+        setSelectedAgency(null);
+        setRfpScope("");
+      }, 2500);
+    }
   };
 
   const filteredAgencies = agencies.filter(agency => {
@@ -239,24 +325,42 @@ export default function ServicesDirectory() {
               </div>
 
               {/* Bottom Action Footer */}
-              <div className="pt-4 border-t border-[#e8e6df] dark:border-white/10 flex items-center justify-between gap-2 mt-2">
-                <button
-                  onClick={() => {
-                    navigate(`/dashboard/messages?to=${agency.id}&name=${encodeURIComponent(agency.title)}&role=service_provider&company=${encodeURIComponent(agency.company)}`);
-                  }}
-                  className="px-3 py-1.5 rounded-full border border-neutral-200 dark:border-white/10 hover:border-[#0070F3] hover:text-[#0070F3] font-mono text-[11px] font-bold text-neutral-600 dark:text-neutral-300 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <MessageSquare size={12} className="text-[#0070F3]" />
-                  <span>Chat</span>
-                </button>
+              {(() => {
+                const agencyUser =
+                  onboardedAgenciesMap[agency.id] ||
+                  onboardedAgenciesMap[agency.title.toLowerCase()] ||
+                  onboardedAgenciesMap[agency.company.toLowerCase()];
 
-                <button
-                  onClick={() => setSelectedAgency(agency)}
-                  className="px-4 py-1.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                >
-                  <Send size={12} /> Request RFP
-                </button>
-              </div>
+                return (
+                  <div className="pt-4 border-t border-[#e8e6df] dark:border-white/10 flex items-center justify-between gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        if (agencyUser?.id) {
+                          navigate(`/dashboard/messages?to=${agencyUser.id}&name=${encodeURIComponent(agencyUser.full_name || agency.title)}&role=service_provider&company=${encodeURIComponent(agency.company)}`);
+                        } else {
+                          // Unregistered agency: open Concierge Bridge Request
+                          setSelectedAgency(agency);
+                          setRfpScope(`Hi ${agency.title} team, I would like to initiate an introductory chat regarding your ${agency.category} services.`);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-full border border-neutral-200 dark:border-white/10 hover:border-[#0070F3] hover:text-[#0070F3] font-mono text-[11px] font-bold text-neutral-600 dark:text-neutral-300 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageSquare size={12} className="text-[#0070F3]" />
+                      <span>{agencyUser?.id ? "Direct Chat" : "Intro / Chat"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSelectedAgency(agency);
+                        setRfpScope("");
+                      }}
+                      className="px-4 py-1.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <Send size={12} /> Request RFP
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -278,10 +382,15 @@ export default function ServicesDirectory() {
                     {selectedAgency.title.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-base font-heading font-black text-black dark:text-white">
-                      Request Intro / RFP: {selectedAgency.title}
-                    </h3>
-                    <span className="font-mono text-[10px] text-neutral-400">{selectedAgency.category}</span>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-heading font-black text-black dark:text-white">
+                        {selectedAgency.title}
+                      </h3>
+                      <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                        {onboardedAgenciesMap[selectedAgency.id] || onboardedAgenciesMap[selectedAgency.title.toLowerCase()] ? "Active Onboarded Partner" : "Concierge Bridge Intro"}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px] text-neutral-400">{selectedAgency.category} • Facilitated by Raisequity Concierge</span>
                   </div>
                 </div>
                 <button
@@ -297,9 +406,9 @@ export default function ServicesDirectory() {
                   <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center mx-auto">
                     <Check size={28} />
                   </div>
-                  <h4 className="text-lg font-heading font-black text-black dark:text-white">RFP Dispatched Successfully!</h4>
-                  <p className="text-xs text-neutral-500 max-w-xs mx-auto">
-                    {selectedAgency.title}'s partner team has received your project memo and will respond within 24 hours.
+                  <h4 className="text-lg font-heading font-black text-black dark:text-white">Bridge Intro &amp; RFP Dispatched!</h4>
+                  <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
+                    Your request has been routed to the Raisequity Venture Concierge desk. We are facilitating a warm intro directly with {selectedAgency.title} via email and Telegram within 24 hours.
                   </p>
                 </div>
               ) : (

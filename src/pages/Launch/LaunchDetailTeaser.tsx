@@ -28,6 +28,7 @@ import { LaunchItem, LaunchComment } from '../../types/launch';
 import { useAuth } from '../../contexts/AuthContext';
 import EmbedBadgeModal from '../../components/launch/EmbedBadgeModal';
 import { BorderBeam } from '../../components/ui/BorderBeam';
+import { SEEDED_DEAL_FLOW } from '../../data/dealFlowData';
 
 const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
   'neurochain-ai': {
@@ -48,7 +49,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 142,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
     target_keywords: ['AI', 'Agents', 'Infrastructure'],
   },
@@ -70,7 +71,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 118,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
     target_keywords: ['Web3', 'ZK', 'Settlement'],
   },
@@ -136,7 +137,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 76,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 36).toISOString(),
     target_keywords: ['DePIN', 'GPU', 'Compute'],
   },
@@ -158,7 +159,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 63,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
     target_keywords: ['Sequencer', 'Rollup', 'DeFi'],
   }
@@ -190,6 +191,42 @@ export default function LaunchDetailTeaser() {
       let item = await getLaunchBySlug(slug);
       if (!item && CURATED_INSTITUTIONAL_LAUNCHES[slug]) {
         item = CURATED_INSTITUTIONAL_LAUNCHES[slug];
+      }
+
+      // Fallback: If slug matches a startup deal in SEEDED_DEAL_FLOW, synthesize launch profile so 404 never occurs
+      if (!item) {
+        const slugLower = slug.toLowerCase();
+        const matched = SEEDED_DEAL_FLOW.find(d => 
+          d.name.toLowerCase().replace(/[^a-z0-9]/g, '-') === slugLower ||
+          d.name.toLowerCase().replace(/\s+/g, '-') === slugLower ||
+          d.name.toLowerCase() === slugLower ||
+          d.id.toLowerCase() === slugLower ||
+          ((d as any).slug && (d as any).slug.toLowerCase() === slugLower)
+        );
+        if (matched) {
+          item = {
+            id: matched.id,
+            slug: slug,
+            founder_id: 'deal_founder_' + matched.id,
+            founder_name: matched.founder || 'Founder',
+            company_name: matched.name,
+            tagline: matched.tagline || (matched.name + ' — Institutional Web3 & AI Protocol'),
+            description: matched.description || (matched.name + ' is building next-generation technology.'),
+            website_url: (matched as any).website_url || 'https://raisequity.com',
+            logo_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(matched.name),
+            screenshots: [],
+            category: matched.sector || 'Web3',
+            twitter_handle: '',
+            maker_comment: matched.mrr ? (matched.mrr + ' MRR. Verified startup on Raisequity.') : 'Active dealflow on Raisequity.',
+            launch_tier: 'standard',
+            scheduled_date: new Date().toISOString(),
+            status: 'launched',
+            badgeVerified: true,
+            votes_count: 0,
+            created_at: new Date().toISOString(),
+            target_keywords: matched.keywords?.length ? matched.keywords : [matched.sector || 'Web3'],
+          };
+        }
       }
 
       if (item) {

@@ -231,7 +231,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <div className="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-neutral-700 shadow-xs shrink-0">
                   <img
-                    src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`}
+                    src={profile?.profile_photo_url || profile?.avatar_url || (profile as any)?.photoURL || (user as any)?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`}
                     alt="Admin"
                     className="w-full h-full object-cover"
                   />

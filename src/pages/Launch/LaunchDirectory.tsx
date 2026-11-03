@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Rocket,
   Search,
@@ -28,7 +28,6 @@ import { safeStorage } from '../../lib/storage';
 import MyLaunch from '../Dashboard/MyLaunch';
 import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { NumberTicker } from '../../components/ui/NumberTicker';
-import { SEEDED_LAUNCHES } from '../../data/dealFlowData';
 
 const CORE_NARRATIVES = ['All', 'AI', 'Web3', 'SaaS', 'Infrastructure'];
 
@@ -51,7 +50,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 142,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
     target_keywords: ['AI', 'Agents', 'Infrastructure'],
   },
@@ -73,7 +72,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 118,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
     target_keywords: ['Web3', 'ZK', 'Settlement'],
   },
@@ -95,7 +94,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 96,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 20).toISOString(),
     target_keywords: ['Database', 'Vector', 'Latency'],
   },
@@ -117,7 +116,7 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 84,
+    votes_count: 0,
     created_at: new Date(Date.now() - 3600000 * 28).toISOString(),
     target_keywords: ['SaaS', 'DevTools', 'Testing'],
   },
@@ -134,6 +133,8 @@ export default function LaunchDirectory() {
   const { user } = useAuth();
   const uid = user?.uid || (user as any)?.id || '';
   const navigate = useNavigate();
+  const location = useLocation();
+  const isDashboard = location.pathname.startsWith('/dashboard');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [mainTab, setMainTab] = useState<'browse' | 'my-launch'>(
@@ -182,11 +183,7 @@ export default function LaunchDirectory() {
         }
       }
 
-      for (const seeded of SEEDED_LAUNCHES) {
-        if (!combined.some((item) => item.id === seeded.id || item.slug === seeded.slug)) {
-          combined.push(seeded);
-        }
-      }
+
 
       if (sortBy === 'votes') {
         combined.sort((a, b) => b.votes_count - a.votes_count);
@@ -298,7 +295,7 @@ export default function LaunchDirectory() {
     <div className="min-h-screen bg-[#faf9f7] dark:bg-[#090a0d] text-black dark:text-white font-sans flex flex-col justify-start transition-colors duration-150 selection:bg-[#3bd3fd]">
       
       {/* ── LIVE ACTIVITY TICKER ── */}
-      <LiveActivityMarquee />
+      {!isDashboard && <LiveActivityMarquee />}
 
       {/* ── MAIN BENTO CONTAINER (Spacious, Neo-Organic, Zero-Wasted Space) ── */}
       <main className="w-full max-w-5xl mx-auto px-4 py-6 sm:py-10 flex-1 flex flex-col justify-start space-y-4 sm:space-y-5">
@@ -341,80 +338,108 @@ export default function LaunchDirectory() {
         ) : (
           <>
             {/* ══════════════════════════════════════════════════════════
-                1. HERO BENTO CARD (Weekly Product Launchpad Cohort #42)
+                1. HEADER / HERO (DASHBOARD COMPACT VS PUBLIC HERO)
                ══════════════════════════════════════════════════════════ */}
-            <div className="relative rounded-[32px] sm:rounded-[36px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-7 sm:p-10 md:p-12 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-none transition-all">
-              <div className="absolute top-0 right-0 w-80 sm:w-96 h-80 sm:h-96 bg-gradient-to-bl from-purple-200/50 via-cyan-200/30 dark:from-purple-900/20 dark:via-cyan-900/15 to-transparent rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-amber-100/60 dark:bg-amber-900/10 rounded-full blur-2xl pointer-events-none" />
-
-              <div className="grid lg:grid-cols-12 gap-8 items-center relative z-10">
-                <div className="lg:col-span-7 flex flex-col items-start text-left">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] sm:text-[11px] font-black uppercase tracking-[1.5px] mb-6 shadow-xs">
-                    <span>WEEKLY PRODUCT LAUNCHPAD • COHORT #42</span>
+            {isDashboard ? (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e8e6df] dark:border-white/10">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] font-black uppercase tracking-wider mb-2">
+                    <Rocket size={12} className="text-[#0070F3]" />
+                    <span>VETTED PRODUCT LAUNCHES &amp; LEADERBOARD</span>
                   </div>
-
-                  <h1 className="text-4xl sm:text-5xl md:text-[58px] font-heading font-black tracking-[-1.5px] leading-[1.05] text-black dark:text-white mb-4">
-                    Discover Top Startups. <br />
-                    <span className="bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#3b82f6] bg-clip-text text-transparent inline-block">
-                      Built by Vetted Founders.
-                    </span>
+                  <h1 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-black dark:text-white">
+                    Product Launches &amp; Leaderboard
                   </h1>
-
-                  <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg font-medium leading-relaxed max-w-xl mb-8">
-                    Vote for the top AI agents, SaaS tools, and Web3 protocols. Winning teams unlock guaranteed partner meetings, $50k angel syndication, and dofollow backlinks.
+                  <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+                    Explore live product launches built by vetted founders. Vote on top products or launch your own to get discoverable by 180+ partner VCs and earn 50 credits.
                   </p>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={() => handleProtectedAction('/dashboard/launch/submit')}
-                      className="px-6 py-3 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 shadow-xs cursor-pointer"
-                    >
-                      <span>Submit Your Launch (+50 Credits)</span>
-                      <ArrowRight size={15} />
-                    </button>
-
-                    <a
-                      href="#directory-board"
-                      className="px-6 py-3 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      Browse Leaderboard ↓
-                    </a>
-                  </div>
                 </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => handleProtectedAction('/dashboard/launch/submit')}
+                    className="px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <Rocket size={14} />
+                    <span>Submit Launch (+50 Credits)</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="relative rounded-[32px] sm:rounded-[36px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-7 sm:p-10 md:p-12 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-none transition-all">
+                <div className="absolute top-0 right-0 w-80 sm:w-96 h-80 sm:h-96 bg-gradient-to-bl from-purple-200/50 via-cyan-200/30 dark:from-purple-900/20 dark:via-cyan-900/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-amber-100/60 dark:bg-amber-900/10 rounded-full blur-2xl pointer-events-none" />
 
-                {/* Right Telemetry Box */}
-                <div className="lg:col-span-5 bg-neutral-50 dark:bg-[#18191e] rounded-[24px] p-6 sm:p-7 border border-neutral-200/80 dark:border-white/10 shadow-xs space-y-3.5">
-                  <div className="flex items-center gap-3 pb-3 border-b border-neutral-200/80 dark:border-white/10">
-                    <div className="w-10 h-10 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-bold">
-                      <Rocket size={20} className="text-[#38bdf8]" />
+                <div className="grid lg:grid-cols-12 gap-8 items-center relative z-10">
+                  <div className="lg:col-span-7 flex flex-col items-start text-left">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] sm:text-[11px] font-black uppercase tracking-[1.5px] mb-6 shadow-xs">
+                      <span>WEEKLY PRODUCT LAUNCHPAD • COHORT #42</span>
                     </div>
-                    <div>
-                      <h3 className="font-heading font-black text-base text-black dark:text-white">Cohort Telemetry</h3>
-                      <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">Weekly Voting Window</p>
+
+                    <h1 className="text-4xl sm:text-5xl md:text-[58px] font-heading font-black tracking-[-1.5px] leading-[1.05] text-black dark:text-white mb-4">
+                      Discover Top Startups. <br />
+                      <span className="bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#3b82f6] bg-clip-text text-transparent inline-block">
+                        Built by Vetted Founders.
+                      </span>
+                    </h1>
+
+                    <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg font-medium leading-relaxed max-w-xl mb-8">
+                      Vote for the top AI agents, SaaS tools, and Web3 protocols. Winning teams unlock guaranteed partner meetings, $50k angel syndication, and dofollow backlinks.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={() => handleProtectedAction('/dashboard/launch/submit')}
+                        className="px-6 py-3 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 shadow-xs cursor-pointer"
+                      >
+                        <span>Submit Your Launch (+50 Credits)</span>
+                        <ArrowRight size={15} />
+                      </button>
+
+                      <a
+                        href="#directory-board"
+                        className="px-6 py-3 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-2xs"
+                      >
+                        Browse Leaderboard ↓
+                      </a>
                     </div>
                   </div>
 
-                  <div className="space-y-2.5 font-mono text-xs">
-                    <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
-                      <span className="text-neutral-500">Weekly Active Launches:</span>
-                      <span className="font-black text-black dark:text-white">42+ Startups</span>
+                  {/* Right Telemetry Box */}
+                  <div className="lg:col-span-5 bg-neutral-50 dark:bg-[#18191e] rounded-[24px] p-6 sm:p-7 border border-neutral-200/80 dark:border-white/10 shadow-xs space-y-3.5">
+                    <div className="flex items-center gap-3 pb-3 border-b border-neutral-200/80 dark:border-white/10">
+                      <div className="w-10 h-10 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-bold">
+                        <Rocket size={20} className="text-[#38bdf8]" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading font-black text-base text-black dark:text-white">Cohort Telemetry</h3>
+                        <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">Weekly Voting Window</p>
+                      </div>
                     </div>
-                    <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
-                      <span className="text-neutral-500">Votes Cast:</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-black">14,280+ Upvotes</span>
-                    </div>
-                    <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
-                      <span className="text-neutral-500">Guaranteed Prize:</span>
-                      <span className="text-[#0070F3] font-black">3 Partner Meetings</span>
-                    </div>
-                    <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
-                      <span className="text-neutral-500">Backlink Power:</span>
-                      <span className="font-black text-black dark:text-white">100% Dofollow (DR 37+)</span>
+
+                    <div className="space-y-2.5 font-mono text-xs">
+                      <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                        <span className="text-neutral-500">Weekly Active Launches:</span>
+                        <span className="font-black text-black dark:text-white">{launches.length} Startups</span>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                        <span className="text-neutral-500">Votes Cast:</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                          {launches.reduce((sum, item) => sum + (item.votes_count || 0), 0)} Upvotes
+                        </span>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                        <span className="text-neutral-500">Guaranteed Prize:</span>
+                        <span className="text-[#0070F3] font-black">3 Partner Meetings</span>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                        <span className="text-neutral-500">Backlink Power:</span>
+                        <span className="font-black text-black dark:text-white">100% Dofollow (DR 37+)</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* ══════════════════════════════════════════════════════════
                 2. ROW 2: TOP 3 SPOTLIGHT PODIUM BENTO CARDS

@@ -74,8 +74,8 @@ export function useFounderProfile() {
 
     try {
       const docRef = doc(db, 'founder_profiles', uid);
-      await updateDoc(docRef, updates);
-      setFounderProfile((prev) => (prev ? { ...prev, ...updates } : null));
+      await setDoc(docRef, updates, { merge: true });
+      setFounderProfile((prev) => (prev ? { ...prev, ...updates } : updates as FounderProfile));
       return { error: null };
     } catch (err: any) {
       return { error: err?.message || 'Failed to update profile' };

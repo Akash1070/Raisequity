@@ -142,35 +142,68 @@ export default function AdminMatches() {
             <div className="divide-y divide-neutral-200 dark:divide-white/5">
               {adminIntros.map((item) => {
                 const isConnected = item.status === "connected";
+                const isAgencyBridge = item.type === "founder_agency_bridge_rfp";
                 const founderEmail = item.founder_email || "founder@project.com";
                 const investorEmail = item.investor_email || "investor@fund.com";
-                const emailSubject = `Introduction: ${item.investor_name} <> ${item.founder_name} (${item.deal_name})`;
-                const emailBody = `Hi ${item.founder_name},\n\nI would like to introduce you to ${item.investor_name} (${investorEmail}), an accredited investor on Raisequity who reviewed ${item.deal_name}'s round.\n\nThey requested to connect with you regarding your ${item.target_raise || 'current'} raise:\n\n"${item.message || 'We would love to discuss participating in your round.'}"\n\nYou can reply directly to this thread to schedule a call or coordinate diligence.\n\nBest regards,\nAkash Kumar Jha\nRaisequity Venture Desk`;
+                
+                const emailSubject = isAgencyBridge
+                  ? `Raisequity Warm Bridge: ${item.founder_name} (${item.company_name || 'Startup'}) <> ${item.agency_name}`
+                  : `Introduction: ${item.investor_name} <> ${item.founder_name} (${item.deal_name})`;
 
-                const mailtoUrl = `mailto:${founderEmail}?cc=${investorEmail}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+                const emailBody = isAgencyBridge
+                  ? `Hi ${item.agency_name} Team,\n\nI would like to connect you with ${item.founder_name} (${item.founder_email}), founder of ${item.company_name || 'a vetted startup'} on Raisequity.\n\nThey submitted an RFP for your ${item.agency_category || 'marketing'} services:\nScope: "${item.rfp_scope || item.message}"\nTarget Budget: ${item.budget || 'Open'}\n\nPlease reply directly to connect and coordinate deliverables.\n\nBest regards,\nAkash Kumar Jha\nRaisequity Venture Concierge`
+                  : `Hi ${item.founder_name},\n\nI would like to introduce you to ${item.investor_name} (${investorEmail}), an accredited investor on Raisequity who reviewed ${item.deal_name}'s round.\n\nThey requested to connect with you regarding your ${item.target_raise || 'current'} raise:\n\n"${item.message || 'We would love to discuss participating in your round.'}"\n\nYou can reply directly to this thread to schedule a call or coordinate diligence.\n\nBest regards,\nAkash Kumar Jha\nRaisequity Venture Desk`;
+
+                const mailtoUrl = isAgencyBridge
+                  ? `mailto:${founderEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`
+                  : `mailto:${founderEmail}?cc=${investorEmail}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
                 return (
                   <div key={item.id} className="p-6 space-y-4 hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-colors">
                     {/* Top Row: Investor & Target Deal */}
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-heading font-black text-base text-black dark:text-white">
-                            {item.investor_name}
-                          </span>
-                          <span className="text-xs font-mono text-gray-400">
-                            ({item.investor_email})
-                          </span>
-                          <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded">
-                            Wants to Connect With →
-                          </span>
-                          <span className="font-heading font-black text-base text-emerald-600 dark:text-emerald-400">
-                            {item.deal_name}
-                          </span>
-                        </div>
-                        <div className="text-xs font-mono text-gray-500 mt-1">
-                          Founder: <strong className="text-gray-800 dark:text-gray-200">{item.founder_name}</strong> {item.founder_email && `(${item.founder_email})`} • Round: {item.target_raise || "Seed"} • {item.sector || "Web3"}
-                        </div>
+                        {isAgencyBridge ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <span className="font-heading font-black text-base text-black dark:text-white">
+                                {item.founder_name}
+                              </span>
+                              <span className="text-xs font-mono text-gray-400">
+                                ({item.company_name || 'Founder'})
+                              </span>
+                              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                Agency RFP Bridge →
+                              </span>
+                              <span className="font-heading font-black text-base text-purple-600 dark:text-purple-400">
+                                {item.agency_name}
+                              </span>
+                            </div>
+                            <div className="text-xs font-mono text-gray-500 mt-1">
+                              Email: <strong className="text-gray-800 dark:text-gray-200">{item.founder_email}</strong> • Category: {item.agency_category || 'Agency Services'} • Budget: <strong className="text-emerald-600 dark:text-emerald-400">{item.budget || '$10k - $25k'}</strong>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <span className="font-heading font-black text-base text-black dark:text-white">
+                                {item.investor_name}
+                              </span>
+                              <span className="text-xs font-mono text-gray-400">
+                                ({item.investor_email})
+                              </span>
+                              <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded">
+                                Wants to Connect With →
+                              </span>
+                              <span className="font-heading font-black text-base text-emerald-600 dark:text-emerald-400">
+                                {item.deal_name}
+                              </span>
+                            </div>
+                            <div className="text-xs font-mono text-gray-500 mt-1">
+                              Founder: <strong className="text-gray-800 dark:text-gray-200">{item.founder_name}</strong> {item.founder_email && `(${item.founder_email})`} • Round: {item.target_raise || "Seed"} • {item.sector || "Web3"}
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -187,10 +220,12 @@ export default function AdminMatches() {
                       </div>
                     </div>
 
-                    {/* Investor's Note / Message */}
+                    {/* Outreach / RFP Scope Note */}
                     <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/70 dark:border-white/5 font-mono text-xs text-gray-700 dark:text-gray-300">
-                      <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Outreach Note:</span>
-                      "{item.message}"
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">
+                        {isAgencyBridge ? "RFP Scope & Deliverables:" : "Outreach Note:"}
+                      </span>
+                      "{item.rfp_scope || item.message}"
                     </div>
 
                     {/* Action Buttons for Admin */}

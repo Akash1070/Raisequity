@@ -86,7 +86,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   const fullName = founderProfile?.full_name || profile?.full_name || user?.email?.split("@")[0] || "Founder";
-  const avatarUrl = founderProfile?.profile_photo_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName.split(" ")[0]}`;
+  const avatarUrl =
+    founderProfile?.profile_photo_url ||
+    profile?.profile_photo_url ||
+    profile?.avatar_url ||
+    (profile as any)?.photoURL ||
+    (user as any)?.photoURL ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName.split(" ")[0]}`;
   const plan = founderProfile?.plan || 'basic';
   const credits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
 

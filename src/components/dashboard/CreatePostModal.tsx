@@ -10,6 +10,7 @@ interface CreatePostModalProps {
   authorName: string;
   authorEmail: string;
   authorRole: string;
+  authorAvatar?: string;
   userCredits: number;
 }
 
@@ -30,6 +31,7 @@ export default function CreatePostModal({
   authorName,
   authorEmail,
   authorRole,
+  authorAvatar,
   userCredits,
 }: CreatePostModalProps) {
   const [title, setTitle] = useState('');
@@ -93,7 +95,8 @@ export default function CreatePostModal({
         content.trim(),
         selectedTag,
         pitchDeckUrl,
-        pitchDeckName
+        pitchDeckName,
+        authorAvatar
       );
 
       setIsSubmitting(false);

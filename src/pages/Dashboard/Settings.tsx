@@ -22,7 +22,7 @@ export default function Settings() {
   const urlTab = searchParams.get("tab");
 
   const [activeTab, setActiveTab] = useState("profile");
-  const { signOut, user, profile } = useAuth();
+  const { signOut, user, profile, refreshProfile } = useAuth();
   const { founderProfile, updateProfile, refetch: refetchProfile } = useFounderProfile();
   const { contacts, addContact, deleteContact } = useInvestorContacts();
   const navigate = useNavigate();
@@ -300,6 +300,7 @@ export default function Settings() {
             await setDoc(doc(db, "users", uid), {
               profile_photo_url: profileForm.profile_photo_url,
               photoURL: profileForm.profile_photo_url,
+              avatar_url: profileForm.profile_photo_url,
               full_name: profileForm.full_name,
               location: profileForm.location,
               linkedin_url: profileForm.linkedin_url,
@@ -308,6 +309,9 @@ export default function Settings() {
               updated_at: new Date().toISOString()
             }, { merge: true });
             await refetchProfile();
+            if (refreshProfile) {
+              await refreshProfile();
+            }
           } catch (uErr) {
             console.warn("Error updating users doc:", uErr);
           }

@@ -50,6 +50,12 @@ export default function InvestorDashboardLayout({ children }: { children: React.
 
   const fullName = profile?.full_name || user?.email?.split("@")[0] || "Pro Investor";
   const avatarSeed = fullName.split(" ")[0];
+  const avatarUrl =
+    profile?.profile_photo_url ||
+    profile?.avatar_url ||
+    (profile as any)?.photoURL ||
+    (user as any)?.photoURL ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
 
   const handleLogout = async () => {
     await signOut();
@@ -269,7 +275,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
                     <div className="text-[9px] font-mono text-amber-600 dark:text-amber-400 font-bold uppercase mt-1">Verified Partner</div>
                   </div>
                   <div className="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-neutral-700 shadow-xs shrink-0">
-                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`} alt="Investor" className="w-full h-full object-cover" />
+                     <img src={avatarUrl} alt="Investor" className="w-full h-full object-cover" />
                   </div>
                   <ChevronDown
                     size={14}
@@ -288,7 +294,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
                     >
                       <div className="p-3 bg-[#FAFAFA] dark:bg-[#0A0A0A] rounded-xl mb-1 border border-slate-200 dark:border-[#262626] flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-neutral-700 shadow-xs shrink-0">
-                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`} alt="Avatar" className="w-full h-full object-cover" />
+                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-extrabold text-[#171717] dark:text-white truncate">{fullName}</div>
