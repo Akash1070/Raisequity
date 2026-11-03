@@ -56,8 +56,11 @@ const InvestorMatches = lazy(() => import("./pages/InvestorDashboard/InvestorMat
 // Lazy-Loaded Agency Dashboard Pages
 const AgencyDashboardLayout = lazy(() => import("./components/dashboard/AgencyDashboardLayout"));
 const AgencyRfpFeed = lazy(() => import("./pages/AgencyDashboard/RfpFeed"));
+const AgencyDealFlow = lazy(() => import("./pages/AgencyDashboard/AgencyDealFlow"));
+const AgencyCredits = lazy(() => import("./pages/AgencyDashboard/AgencyCredits"));
 const ActiveEscrows = lazy(() => import("./pages/AgencyDashboard/ActiveEscrows"));
 const AgencyProfile = lazy(() => import("./pages/AgencyDashboard/AgencyProfile"));
+const CommunityFeedPage = lazy(() => import("./pages/CommunityFeedPage"));
 
 // Lazy-Loaded Admin Pages
 const AdminOverview = lazy(() => import("./pages/Admin/Overview"));
@@ -155,7 +158,7 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard/feed" replace />} />
             <Route path="feed" element={<Feed />} />
             <Route path="my-launch" element={<Navigate to="/dashboard/launches?tab=my-launch" replace />} />
-            <Route path="community" element={<Navigate to="/dashboard/feed" replace />} />
+            <Route path="community" element={<CommunityFeedPage />} />
             <Route path="matches" element={<Matches />} />
             <Route path="messages" element={<Messages />} />
             <Route path="network" element={<Navigate to="/dashboard/investors?tab=warm-graph" replace />} />
@@ -182,6 +185,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/investor-dashboard/deals" replace />} />
             <Route path="deals" element={<DealFeed />} />
+            <Route path="community" element={<CommunityFeedPage />} />
             <Route path="messages" element={<Messages />} />
             <Route path="matches" element={<InvestorMatches />} />
             <Route path="intros" element={<RequestedIntros />} />
@@ -201,11 +205,13 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/agency-dashboard/rfps" replace />} />
             <Route path="rfps" element={<AgencyRfpFeed />} />
+            <Route path="startups" element={<AgencyDealFlow />} />
+            <Route path="community" element={<CommunityFeedPage />} />
             <Route path="messages" element={<Messages />} />
             <Route path="escrows" element={<ActiveEscrows />} />
             <Route path="profile" element={<AgencyProfile />} />
             <Route path="grants" element={<Grants />} />
-            <Route path="credits" element={<Credits />} />
+            <Route path="credits" element={<AgencyCredits />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

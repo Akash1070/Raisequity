@@ -200,12 +200,13 @@ export default function AgencyOnboarding() {
         settlement_currency: formData.settlement_currency,
         payout_address: formData.payout_address,
         is_verified_partner: true,
-        starter_credits_awarded: 150,
+        starter_credits_awarded: 50,
         updated_at: now,
       }, { merge: true });
 
-      // 2. Update user profile
+      // 2. Update user profile - ensure strictly 50 starter credits
       const userDocRef = doc(db, "users", uid);
+      const targetCredits = Math.max(profile?.credit_balance || 0, 50);
       await updateDoc(userDocRef, {
         role: "service_provider",
         company_name: formData.agency_name,
@@ -213,8 +214,8 @@ export default function AgencyOnboarding() {
         linkedin_url: formData.linkedin_url,
         bio: formData.bio,
         onboarding_completed: true,
-        credit_balance: (profile?.credit_balance || 0) + 150, // Grant 150 Starter Credits
-        credits: (profile?.credit_balance || 0) + 150,
+        credit_balance: targetCredits,
+        credits: targetCredits,
         updated_at: now,
       });
 
@@ -534,7 +535,7 @@ export default function AgencyOnboarding() {
                     onClick={nextStep}
                     className="w-full bg-black text-white hover:bg-[#43089f] py-4 rounded-full font-bold text-sm tracking-wide transition-all shadow-[-4px_4px_0_#84e7a5] hover:shadow-[-6px_6px_0_#fbbd41] hover:-translate-y-1 cursor-pointer flex items-center justify-center gap-2 font-mono uppercase"
                   >
-                    Next: Escrow Settlement &amp; 150 Credits <ArrowRight size={18} />
+                    Next: Escrow Settlement &amp; 50 Credits <ArrowRight size={18} />
                   </button>
                 </div>
               </motion.div>
@@ -561,13 +562,13 @@ export default function AgencyOnboarding() {
                     Escrow &amp; Welcome Grant.
                   </h1>
                   <p className="text-[#9f9b93] font-medium mt-1 text-sm sm:text-base">
-                    Activate your 150 starter credits and configure milestone settlement.
+                    Activate your 50 starter credits and configure milestone settlement.
                   </p>
                 </div>
 
                 <div className="bg-white dark:bg-[#111111] rounded-[32px] md:rounded-[40px] p-8 md:p-10 border border-[#dad4c8] dark:border-[#262626] clay-shadow space-y-6">
                   
-                  {/* 150 Starter Credits Welcome Grant Card (Clay Matcha Green) */}
+                  {/* 50 Starter Credits Welcome Grant Card (Clay Matcha Green) */}
                   <div className="bg-[#84e7a5] border border-[#078a52] text-black rounded-[28px] p-6 space-y-2 clay-shadow">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-[10px] font-black uppercase tracking-wider bg-black text-white px-3 py-1 rounded-full">
@@ -576,7 +577,7 @@ export default function AgencyOnboarding() {
                       <Coins size={22} className="text-[#078a52]" />
                     </div>
                     <h3 className="text-2xl font-black font-heading leading-tight">
-                      150 Free Starter Platform Credits
+                      50 Free Starter Platform Credits
                     </h3>
                     <p className="text-xs text-black/80 font-medium leading-relaxed">
                       Automatically credited to your account upon completing registration. Use these credits to sponsor ecosystem posts, bid on founder RFPs, and connect directly with funded startups.
@@ -652,12 +653,12 @@ export default function AgencyOnboarding() {
                     {isSubmitting ? (
                       <>
                         <Loader2 className="animate-spin" size={18} />
-                        <span>Activating 150 Credits &amp; Partner Status...</span>
+                        <span>Activating 50 Credits &amp; Partner Status...</span>
                       </>
                     ) : (
                       <>
                         <Sparkles size={18} className="text-[#fbbd41]" />
-                        <span>Complete Registration (Claim 150 Free Credits)</span>
+                        <span>Complete Registration (Claim 50 Free Credits)</span>
                       </>
                     )}
                   </button>

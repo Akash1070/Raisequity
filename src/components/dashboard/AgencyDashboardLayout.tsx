@@ -20,7 +20,8 @@ import {
   Award,
   MessageSquare,
   Plus,
-  Rocket
+  Rocket,
+  Share2
 } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -153,6 +154,12 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
               badge="5"
             />
             <AgencySidebarItem
+              to="/agency-dashboard/startups"
+              icon={<Rocket size={16} />}
+              label="Funded Startups Feed"
+              badge="98"
+            />
+            <AgencySidebarItem
               to="/agency-dashboard/messages"
               icon={<MessageSquare size={16} />}
               label="Client Messages"
@@ -162,6 +169,11 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
               icon={<Lock size={16} />}
               label="Active Escrow Vaults"
               badge="2"
+            />
+            <AgencySidebarItem
+              to="/agency-dashboard/community"
+              icon={<Share2 size={16} />}
+              label="Community Feed / Socials"
             />
             <AgencySidebarItem
               to="/agency-dashboard/grants"

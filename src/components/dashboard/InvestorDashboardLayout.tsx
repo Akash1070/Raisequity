@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, Compass, Settings, Bell, Menu, X, BarChart3, Users2, Workflow, LogOut, ChevronDown, Terminal, Flame, ShieldCheck, MessageSquare, Coins, Plus } from "lucide-react";
+import { LayoutGrid, Compass, Settings, Bell, Menu, X, BarChart3, Users2, Workflow, LogOut, ChevronDown, Terminal, Flame, ShieldCheck, MessageSquare, Coins, Plus, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import { ThemeToggle } from "../ui/ThemeToggle";
@@ -106,6 +106,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
             </span>
             <nav className="space-y-1">
               <SidebarItem to="/investor-dashboard/deals" icon={<LayoutGrid size={16} />} label="Deals" badge={180} />
+              <SidebarItem to="/investor-dashboard/community" icon={<Share2 size={16} />} label="Community Feed / Socials" />
               <SidebarItem to="/investor-dashboard/messages" icon={<MessageSquare size={16} />} label="Direct Messages" />
               <SidebarItem to="/investor-dashboard/recommended" icon={<Users2 size={16} />} label="Recommended" badge={6} />
               <SidebarItem to="/investor-dashboard/intros" icon={<Workflow size={16} />} label="Requested Intros" badge={2} />
@@ -231,6 +232,7 @@ export default function InvestorDashboardLayout({ children }: { children: React.
 
               <nav className="space-y-1">
                 <SidebarItem to="/investor-dashboard/deals" icon={<LayoutGrid size={18} />} label="Deal Feed" />
+                <SidebarItem to="/investor-dashboard/community" icon={<Share2 size={18} />} label="Community Feed" />
                 <SidebarItem to="/investor-dashboard/messages" icon={<MessageSquare size={18} />} label="Direct Messages" />
                 <SidebarItem to="/investor-dashboard/intros" icon={<Workflow size={18} />} label="Requested Intros" />
                 <SidebarItem to="/investor-dashboard/portfolio" icon={<BarChart3 size={18} />} label="Onboarded Projects" />

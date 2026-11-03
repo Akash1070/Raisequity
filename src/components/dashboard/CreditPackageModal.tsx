@@ -8,8 +8,9 @@ import {
   X, 
   Loader2, 
   ShieldCheck, 
+  CreditCard,
   Zap,
-  CreditCard
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { earnCredits } from '../../lib/credits';
@@ -24,65 +25,6 @@ interface CreditPackageModalProps {
   role?: string;
 }
 
-interface PackageTier {
-  id: string;
-  name: string;
-  credits: number;
-  bonusCredits: number;
-  priceUsd: number;
-  popular?: boolean;
-  description: string;
-  features: string[];
-}
-
-const CREDIT_PACKAGES: PackageTier[] = [
-  {
-    id: 'starter_100',
-    name: 'Starter Tier',
-    credits: 100,
-    bonusCredits: 0,
-    priceUsd: 99,
-    description: 'Perfect for initial founder intros and thesis validation.',
-    features: [
-      '4 Diligence Partner Calls (25 cr/ea)',
-      '10 Direct Counterparty Chats',
-      'Data Room Fast-Pass Access',
-      'No Expiration Date'
-    ]
-  },
-  {
-    id: 'pro_300',
-    name: 'Growth & Syndicate',
-    credits: 300,
-    bonusCredits: 50,
-    priceUsd: 249,
-    popular: true,
-    description: 'The standard package for active check-writers and growing startups.',
-    features: [
-      '14 Diligence Partner Calls',
-      '30 Direct Counterparty Chats',
-      '1-Click Standardized SAFE Execution',
-      '+50 Bonus Credits Included',
-      'Priority Fast-Pass Review'
-    ]
-  },
-  {
-    id: 'whale_1000',
-    name: 'Institutional Fund',
-    credits: 1000,
-    bonusCredits: 250,
-    priceUsd: 699,
-    description: 'Maximum velocity dealflow for syndicate leads and venture funds.',
-    features: [
-      '50 Diligence Partner Calls',
-      'Unlimited Direct Messaging Channels',
-      '+250 Bonus Credits Included',
-      'Automated Telegram & Webhook Deal Alerts',
-      'Dedicated Partner Diligence SLA'
-    ]
-  }
-];
-
 export default function CreditPackageModal({
   isOpen,
   onClose,
@@ -90,7 +32,6 @@ export default function CreditPackageModal({
   actionTitle
 }: CreditPackageModalProps) {
   const { user, profile, refreshProfile } = useAuth();
-  const [selectedPackage, setSelectedPackage] = useState<string>('pro_300');
   const [isProcessing, setIsProcessing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState<number | null>(null);
 
@@ -98,7 +39,7 @@ export default function CreditPackageModal({
 
   const currentBalance = profile?.credit_balance ?? profile?.credits ?? 0;
 
-  const handleCheckout = async (pkg: PackageTier) => {
+  const handleCheckout = async () => {
     if (!user?.uid) return;
     setIsProcessing(true);
 
@@ -110,9 +51,9 @@ export default function CreditPackageModal({
         body: JSON.stringify({
           userId: user.uid,
           email: user.email,
-          packageId: pkg.id,
-          amountUsd: pkg.priceUsd,
-          credits: pkg.credits + pkg.bonusCredits
+          packageId: 'pack_200_credits',
+          amountUsd: 20,
+          credits: 200
         })
       });
 
@@ -124,37 +65,38 @@ export default function CreditPackageModal({
         }
       }
     } catch (_) {
-      // Fallback to local test top-up simulation if gateway API is offline
+      // If payment endpoint is in local demo environment, fallback to simulated top-up
     }
 
-    // Direct Instant Top-Up Simulation (Local Dev & Verification)
-    await handleInstantTestTopUp(pkg);
+    // Direct Instant Top-Up Simulation
+    await handleInstantTestTopUp();
   };
 
-  const handleInstantTestTopUp = async (pkg: PackageTier) => {
+  const handleInstantTestTopUp = async () => {
     if (!user?.uid) return;
     setIsProcessing(true);
 
-    const totalCreditsAwarded = pkg.credits + pkg.bonusCredits;
+    const creditsToAdd = 200;
     try {
-      await earnCredits(user.uid, 'package_purchase', totalCreditsAwarded, {
-        packageName: pkg.name,
-        priceUsd: pkg.priceUsd,
-        note: `Purchased ${pkg.name} (${totalCreditsAwarded} Credits)`
+      await earnCredits(user.uid, 'package_purchase', creditsToAdd, {
+        packageName: '200 Platform Credits Pack',
+        priceUsd: 20,
+        note: 'Purchased 200 Credits Pack ($20 USD)'
       });
 
       // Also ensure user document reflects updated balance
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
-        credit_balance: currentBalance + totalCreditsAwarded
+        credit_balance: currentBalance + creditsToAdd,
+        credits: currentBalance + creditsToAdd
       }).catch(() => {});
 
       await refreshProfile();
-      setPurchaseSuccess(totalCreditsAwarded);
+      setPurchaseSuccess(creditsToAdd);
       setTimeout(() => {
         setPurchaseSuccess(null);
         onClose();
-      }, 1800);
+      }, 1500);
     } catch (err) {
       console.error('[CreditPackageModal] Purchase error:', err);
     } finally {
@@ -164,15 +106,15 @@ export default function CreditPackageModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          className="bg-white dark:bg-[#121316] rounded-[32px] border border-neutral-200 dark:border-white/10 shadow-2xl max-w-3xl w-full my-8 overflow-hidden flex flex-col font-sans"
+          className="bg-white dark:bg-[#111215] rounded-[32px] border border-neutral-200 dark:border-white/10 shadow-2xl max-w-lg w-full my-8 overflow-hidden flex flex-col font-sans"
         >
           {/* Header */}
-          <div className="p-6 bg-slate-50 dark:bg-[#15161b] border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
+          <div className="p-6 bg-slate-50 dark:bg-[#16171b] border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
                 <Coins size={20} />
@@ -183,13 +125,13 @@ export default function CreditPackageModal({
                     Platform Credit Top-Up
                   </h3>
                   <span className="font-mono text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
-                    Current: {currentBalance} Credits
+                    {currentBalance} Credits
                   </span>
                 </div>
                 <p className="text-xs font-mono text-neutral-500 dark:text-neutral-400 mt-0.5">
                   {actionTitle 
-                    ? `Action requires ${requiredCredits} Credits · Refill your balance to proceed`
-                    : 'Universal currency used by Founders, Investors, and Accredited Agencies'}
+                    ? `Action requires ${requiredCredits || 1} Credit · Refill to proceed`
+                    : 'Universal platform credits for Founders, Investors, and Agencies'}
                 </p>
               </div>
             </div>
@@ -205,120 +147,90 @@ export default function CreditPackageModal({
           {/* Success Banner */}
           {purchaseSuccess && (
             <div className="p-4 bg-emerald-500 text-white font-mono text-xs font-black text-center flex items-center justify-center gap-2">
-              <Check size={16} />
-              <span>+{purchaseSuccess} Credits Successfully Added to Your Balance!</span>
+              <CheckCircle2 size={16} />
+              <span>+200 Credits Added to Your Account Successfully!</span>
             </div>
           )}
 
-          {/* Body: 3 Package Cards Grid */}
+          {/* Unified Package Presentation */}
           <div className="p-6 sm:p-7 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {CREDIT_PACKAGES.map((pkg) => {
-                const isSelected = selectedPackage === pkg.id;
-                const totalCredits = pkg.credits + pkg.bonusCredits;
+            <div className="p-6 rounded-[28px] border-2 border-amber-500 bg-amber-50/20 dark:bg-amber-950/10 relative shadow-sm">
+              <span className="absolute -top-3 left-6 font-mono text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-amber-500 text-black shadow-xs">
+                OFFICIAL PLATFORM PACKAGE
+              </span>
 
-                return (
-                  <div
-                    key={pkg.id}
-                    onClick={() => setSelectedPackage(pkg.id)}
-                    className={`p-5 rounded-[24px] border transition-all cursor-pointer flex flex-col justify-between relative group ${
-                      isSelected
-                        ? 'border-amber-500 bg-amber-50/30 dark:bg-amber-950/10 shadow-md ring-2 ring-amber-500/20'
-                        : 'border-neutral-200 dark:border-white/10 bg-white dark:bg-[#18191e] hover:border-black/30 dark:hover:border-white/20'
-                    }`}
-                  >
-                    {pkg.popular && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-mono text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500 text-black shadow-xs">
-                        MOST POPULAR
-                      </span>
-                    )}
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-heading font-black text-sm text-black dark:text-white">
-                          {pkg.name}
-                        </span>
-                        {pkg.bonusCredits > 0 && (
-                          <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                            +{pkg.bonusCredits} Bonus
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-baseline gap-1 mb-2">
-                        <span className="font-heading font-black text-3xl text-black dark:text-white">
-                          {totalCredits}
-                        </span>
-                        <span className="font-mono text-xs text-neutral-400 uppercase font-bold">Credits</span>
-                      </div>
-
-                      <div className="font-mono text-sm font-black text-black dark:text-white mb-3">
-                        ${pkg.priceUsd} <span className="text-[10px] text-neutral-400 font-normal">one-time</span>
-                      </div>
-
-                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug mb-4">
-                        {pkg.description}
-                      </p>
-
-                      <ul className="space-y-2 border-t border-neutral-100 dark:border-white/5 pt-3">
-                        {pkg.features.map((feat, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-[11px] font-mono text-neutral-600 dark:text-neutral-300">
-                            <Check size={13} className="text-emerald-500 shrink-0 mt-0.5" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCheckout(pkg);
-                      }}
-                      disabled={isProcessing}
-                      className={`w-full mt-5 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
-                        isSelected
-                          ? 'bg-amber-500 hover:bg-amber-600 text-black'
-                          : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-90'
-                      }`}
-                    >
-                      {isProcessing && selectedPackage === pkg.id ? (
-                        <>
-                          <Loader2 size={13} className="animate-spin" />
-                          <span>Processing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Select &amp; Pay ${pkg.priceUsd}</span>
-                          <ArrowRight size={13} />
-                        </>
-                      )}
-                    </button>
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <h4 className="font-heading font-black text-xl text-black dark:text-white">
+                    200 Platform Credits
+                  </h4>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono mt-0.5">
+                    Pay once · Never expires · Universal usage
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-heading font-black text-black dark:text-white">
+                    $20
                   </div>
-                );
-              })}
+                  <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase">
+                    USD One-Time
+                  </span>
+                </div>
+              </div>
+
+              {/* Utility breakdown */}
+              <div className="space-y-2.5 border-t border-neutral-200 dark:border-white/10 pt-4">
+                {[
+                  '200 Direct messages & warm intro outreach (1 cr / action)',
+                  '200 Community social broadcasts & case study posts (1 cr / post)',
+                  '200 Agency RFP proposals & funded startup pitches (1 cr / pitch)',
+                  '8 Partner diligence call bookings (25 cr / call)',
+                  'Instant real-time ledger sync & automated webhook delivery'
+                ].map((feat, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs font-mono text-neutral-700 dark:text-neutral-300">
+                    <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <span>{feat}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Bottom SLA & Dodo Guarantee */}
-            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
-                <span className="text-neutral-500 dark:text-neutral-400">
-                  Secured by Dodo Payments Gateway · Automated Webhook Credit Issuance
-                </span>
-              </div>
+            {/* Checkout Action Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleCheckout}
+                disabled={isProcessing}
+                className="w-full py-4 rounded-2xl bg-black hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 text-white font-extrabold text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Processing Top-Up...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={16} />
+                    <span>Pay $20 USD via Dodo Payments (Add 200 Credits)</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  const pkg = CREDIT_PACKAGES.find(p => p.id === selectedPackage) || CREDIT_PACKAGES[1];
-                  handleInstantTestTopUp(pkg);
-                }}
+                onClick={handleInstantTestTopUp}
                 disabled={isProcessing}
-                className="text-[11px] text-[#0070F3] hover:underline font-bold shrink-0 cursor-pointer"
+                className="w-full py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
-                ⚡ Instant Test Top-Up (+{CREDIT_PACKAGES.find(p => p.id === selectedPackage)?.credits || 300} cr)
+                <Zap size={14} />
+                <span>Instant Demo / Test Top-Up (+200 Credits Now)</span>
               </button>
+            </div>
+
+            {/* Guarantee footer */}
+            <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-neutral-400 text-center">
+              <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+              <span>Secured by Dodo Payments · Instant account balance update</span>
             </div>
           </div>
         </motion.div>

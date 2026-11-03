@@ -383,23 +383,21 @@ export default function Settings() {
   };
 
   const handleSelectPlan = async (plan: PlanDetails) => {
+    if (plan.id === "credit_pack_200") {
+      setCreditModalOpen(true);
+      return;
+    }
     if (!founderProfile) return;
     setBillingLoading(true);
     try {
-      let creditsReward = 50;
-      if (plan.id === "premium") creditsReward = 500;
-      if (plan.id === "pro") creditsReward = 1500;
-      if (plan.id === "concierge") creditsReward = 10000;
-
       const res = await updateProfile({
-        plan: plan.id as any,
-        credits: (founderProfile.credits || 0) + creditsReward
+        plan: "basic" as any,
       });
 
       if (res.error) throw new Error(res.error);
       await refetchProfile();
     } catch (err) {
-      console.error("Error upgrading plan:", err);
+      console.error("Error setting plan:", err);
     } finally {
       setBillingLoading(false);
     }
@@ -1164,14 +1162,14 @@ export default function Settings() {
               {/* Subscriptions Grid */}
               <div className="space-y-4">
                 <h4 className="text-xs font-mono font-bold uppercase text-slate-900 dark:text-white tracking-wider">
-                  Available Institutional Membership Plans
+                  Platform Membership &amp; Credit Top-Up ($20 for 200 Credits)
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {PLANS.map((plan) => (
                     <PlanCard
                       key={plan.id}
                       plan={plan}
-                      isActive={founderProfile?.plan === plan.id}
+                      isActive={plan.id === "basic" && !profile?.has_active_subscription}
                       onSelect={() => handleSelectPlan(plan)}
                       loading={billingLoading}
                     />

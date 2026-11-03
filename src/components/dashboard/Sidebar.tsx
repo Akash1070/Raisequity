@@ -152,6 +152,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
         <SidebarItem to="/dashboard/feed" icon={<Home size={16} />} label="Feed & Telemetry" />
+        <SidebarItem to="/dashboard/community" icon={<Share2 size={16} />} label="Community Feed / Socials" />
         <SidebarItem to="/dashboard/messages" icon={<MessageSquare size={16} />} label="Direct Messages" />
         <SidebarItem to="/dashboard/matches" icon={<Users size={16} />} label="Double-Blind Matches" badge={3} />
         <SidebarItem to="/dashboard/investors" icon={<Briefcase size={16} />} label="Check-Writers CRM" />
