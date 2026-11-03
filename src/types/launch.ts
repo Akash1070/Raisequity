@@ -22,6 +22,13 @@ export interface LaunchItem {
   created_at: string;
   is_winner?: boolean; // Launch of the week badge
   target_keywords?: string[]; // For Spotlight tier SEO optimization
+  raising_status?: string;
+  target_raise?: string;
+  valuation_cap?: string;
+  demo_url?: string;
+  github_url?: string;
+  telegram_url?: string;
+  traction_metric?: string;
 }
 
 export interface LaunchSubmissionData {
@@ -37,6 +44,13 @@ export interface LaunchSubmissionData {
   launch_tier: LaunchTier;
   scheduled_date?: string;
   target_keywords?: string[];
+  raising_status?: string;
+  target_raise?: string;
+  valuation_cap?: string;
+  demo_url?: string;
+  github_url?: string;
+  telegram_url?: string;
+  traction_metric?: string;
 }
 
 export interface LaunchVote {

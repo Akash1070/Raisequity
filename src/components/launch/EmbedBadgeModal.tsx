@@ -23,6 +23,7 @@ export default function EmbedBadgeModal({
 }: EmbedBadgeModalProps) {
   const [copiedHtml, setCopiedHtml] = useState(false);
   const [copiedMd, setCopiedMd] = useState(false);
+  const [badgeTheme, setBadgeTheme] = useState<'light' | 'dark'>('light');
   const [verifying, setVerifying] = useState(false);
   const [verificationState, setVerificationState] = useState<boolean | null>(isVerified);
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
@@ -30,7 +31,10 @@ export default function EmbedBadgeModal({
   if (!isOpen) return null;
 
   const launchUrl = `https://raisequity.com/launch/${slug}`;
-  const badgeImgUrl = `https://raisequity.com/badges/featured.svg`;
+  const badgeImgUrl = badgeTheme === 'dark'
+    ? `https://raisequity.com/badges/featured-dark.svg`
+    : `https://raisequity.com/badges/featured.svg`;
+  const previewSrc = badgeTheme === 'dark' ? '/badges/featured-dark.svg' : '/badges/featured.svg';
 
   const htmlSnippet = `<a href="${launchUrl}" target="_blank" rel="noopener noreferrer"><img src="${badgeImgUrl}" alt="Featured on Raisequity Launch" width="220" height="54" /></a>`;
   const mdSnippet = `[![Featured on Raisequity Launch](${badgeImgUrl})](${launchUrl})`;
@@ -47,18 +51,22 @@ export default function EmbedBadgeModal({
     setTimeout(() => setCopiedMd(false), 2000);
   };
 
-  const handleRunVerification = async () => {
+  const handleRunVerification = async (forceSelfAttest = false) => {
     setVerifying(true);
     setVerificationMessage(null);
-    const result = await verifyFounderBadge(launchId, websiteUrl);
+    const result = await verifyFounderBadge(launchId, websiteUrl, forceSelfAttest);
     setVerifying(false);
     setVerificationState(result.verified);
 
     if (result.verified) {
-      setVerificationMessage('Badge verified! Your listing is now counted in public verified metrics.');
+      setVerificationMessage(
+        result.source === 'self_attest'
+          ? 'Badge verified via self-attestation! Your launch is now verified on Raisequity.'
+          : 'Badge verified on your live website! Backlink registered.'
+      );
     } else {
       setVerificationMessage(
-        result.error || 'Badge not detected yet. Please ensure the code snippet is pasted into your website HTML and try again.'
+        result.error || 'Badge not detected yet. Please ensure the code snippet is saved in your website HTML.'
       );
     }
   };
@@ -89,23 +97,43 @@ export default function EmbedBadgeModal({
         {/* Badge Preview */}
         <div className="p-6 space-y-6">
           <div className="p-6 rounded-2xl bg-slate-50 dark:bg-[#0A0A0A] text-slate-900 dark:text-white flex flex-col items-center justify-center gap-4 text-center border border-slate-200 dark:border-[#262626] shadow-xs">
-            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">Badge Visual Preview</span>
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">Badge Visual Preview</span>
+              <div className="flex items-center gap-1 bg-white dark:bg-[#171717] p-1 rounded-xl border border-slate-200 dark:border-white/10 text-[10px] font-mono font-bold">
+                <button
+                  type="button"
+                  onClick={() => setBadgeTheme('light')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    badgeTheme === 'light' ? 'bg-[#0070F3] text-white' : 'text-slate-400'
+                  }`}
+                >
+                  Light
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBadgeTheme('dark')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    badgeTheme === 'dark' ? 'bg-[#0070F3] text-white' : 'text-slate-400'
+                  }`}
+                >
+                  Dark
+                </button>
+              </div>
+            </div>
 
             <a
               href={launchUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-white dark:bg-[#171717] border border-slate-200 dark:border-[#333333] text-slate-900 dark:text-white hover:border-[#0070F3]/50 transition-all group shadow-sm"
+              className="inline-block transition-transform hover:scale-105 active:scale-95"
             >
-              <div className="w-7 h-7 rounded-xl bg-[#0070F3] text-white flex items-center justify-center font-black text-sm">
-                R
-              </div>
-              <div className="text-left font-mono">
-                <div className="text-[10px] text-[#0070F3] uppercase tracking-widest font-bold">Featured on</div>
-                <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1">
-                  Raisequity Launch <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </div>
+              <img
+                src={previewSrc}
+                alt="Featured on Raisequity Launch"
+                width={220}
+                height={54}
+                className="rounded-2xl shadow-sm border border-black/5 dark:border-white/10"
+              />
             </a>
           </div>
 
@@ -132,14 +160,27 @@ export default function EmbedBadgeModal({
               </div>
             </div>
 
-            <button
-              onClick={handleRunVerification}
-              disabled={verifying}
-              className="px-3.5 py-2 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer disabled:opacity-50 shadow-xs font-mono"
-            >
-              {verifying ? <Loader2 size={13} className="animate-spin text-white" /> : <RefreshCw size={13} />}
-              <span>Verify Now</span>
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => handleRunVerification(false)}
+                disabled={verifying}
+                className="px-3 py-2 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs font-mono"
+              >
+                {verifying ? <Loader2 size={13} className="animate-spin text-white" /> : <RefreshCw size={13} />}
+                <span>Verify Now</span>
+              </button>
+              {!verificationState && (
+                <button
+                  type="button"
+                  onClick={() => handleRunVerification(true)}
+                  disabled={verifying}
+                  title="Self-verify if testing locally or on staging"
+                  className="px-2.5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 rounded-xl text-[10px] font-mono font-bold transition-all cursor-pointer"
+                >
+                  Self-Verify
+                </button>
+              )}
+            </div>
           </div>
 
           {/* HTML Snippet */}

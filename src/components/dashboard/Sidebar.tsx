@@ -127,7 +127,6 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         <SidebarItem to="/dashboard/investors" icon={<Briefcase size={16} />} label="Check-Writers CRM" />
         <SidebarItem to="/dashboard/bookings" icon={<Clock size={16} />} label="30-Day SLA Calls" badge={1} />
         <SidebarItem to="/dashboard/services" icon={<Sparkles size={16} />} label="Vetted Web3 Agencies" badge={109} />
-        <SidebarItem to="/dashboard/network" icon={<Share2 size={16} />} label="Network Partners" />
         <SidebarItem to="/dashboard/launch" icon={<Rocket size={16} />} label="Launch Directory" />
         <SidebarItem to="/dashboard/grants" icon={<Zap size={16} />} label="Grants Directory" />
         <SidebarItem to="/dashboard/credits" icon={<Gift size={16} />} label="Perks & Credits" />

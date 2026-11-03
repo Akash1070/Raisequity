@@ -158,7 +158,7 @@ export default function App() {
             <Route path="community" element={<Navigate to="/dashboard/feed" replace />} />
             <Route path="matches" element={<Matches />} />
             <Route path="messages" element={<Messages />} />
-            <Route path="network" element={<DashboardNetwork />} />
+            <Route path="network" element={<Navigate to="/dashboard/investors?tab=warm-graph" replace />} />
             <Route path="coaching" element={<Coaching />} />
             <Route path="investors" element={<DashboardInvestors />} />
             <Route path="grants" element={<Grants />} />

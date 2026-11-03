@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="54" viewBox="0 0 220 54" fill="none">
+  <defs>
+    <linearGradient id="bgGradDark" x1="0" y1="0" x2="220" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#141518"/>
+      <stop offset="100%" stop-color="#0A0B0D"/>
+    </linearGradient>
+    <linearGradient id="borderGradDark" x1="0" y1="0" x2="220" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2D3139"/>
+      <stop offset="100%" stop-color="#1F232B"/>
+    </linearGradient>
+    <filter id="shadowDark" x="0" y="0" width="220" height="54" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Container -->
+  <rect x="1" y="1" width="218" height="52" rx="14" fill="url(#bgGradDark)" stroke="url(#borderGradDark)" stroke-width="1.5" filter="url(#shadowDark)"/>
+
+  <!-- Logo Emblem Container -->
+  <rect x="12" y="11" width="32" height="32" rx="9" fill="#0070F3"/>
+
+  <!-- Logo Icon "R" Geometric -->
+  <path d="M22 19H29C31.2 19 33 20.3 33 22.5C33 24.7 31.2 26 29 26H22V19Z" fill="#FFFFFF"/>
+  <path d="M22 26V35H25.5V28.5H28.8L32.2 35H36L32.2 28.2C33.8 27.5 35 25.8 35 23.5C35 20.2 32.5 17.5 29 17.5H19.5V35H22V26Z" fill="#FFFFFF"/>
+  <circle cx="28.5" cy="24" r="2.2" fill="#00F5A0"/>
+
+  <!-- Badge Typography -->
+  <text x="54" y="24" fill="#00F5A0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="9" font-weight="800" letter-spacing="1.2">FEATURED ON</text>
+  <text x="54" y="39" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="900" letter-spacing="-0.3">Raisequity Launch</text>
+</svg>

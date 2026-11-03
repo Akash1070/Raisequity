@@ -73,6 +73,13 @@ export async function createLaunch(
     votes_count: 1, // Maker auto-vote
     created_at: now,
     target_keywords: data.target_keywords || [],
+    raising_status: data.raising_status || 'not_raising',
+    target_raise: data.target_raise || '',
+    valuation_cap: data.valuation_cap || '',
+    demo_url: data.demo_url || '',
+    github_url: data.github_url || '',
+    telegram_url: data.telegram_url || '',
+    traction_metric: data.traction_metric || '',
   };
 
   try {

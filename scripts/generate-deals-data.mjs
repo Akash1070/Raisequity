@@ -209,3 +209,4 @@ export const SEEDED_LAUNCHES: any[] = ${JSON.stringify(launches, null, 2)};
 
 fs.writeFileSync('g:\\CODE\\Raisequity\\src\\data\\dealFlowData.ts', fileContent, 'utf-8');
 console.log(`Generated src/data/dealFlowData.ts with ${deals.length} deals and ${launches.length} launches!`);
+
