@@ -29,7 +29,9 @@ import {
   Loader2,
   Coins,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  X,
+  Send
 } from "lucide-react";
 import { collection, getDocs, query, limit, addDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -219,7 +221,7 @@ const CURATED_HIRE_DEALS: DealItem[] = [
 ];
 
 export default function DealFeed() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [deals, setDeals] = useState<DealItem[]>(CURATED_HIRE_DEALS);
   const [selectedDealId, setSelectedDealId] = useState<string>("deal_neurochain");
@@ -235,6 +237,113 @@ export default function DealFeed() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [creditModalOpen, setCreditModalOpen] = useState(false);
+
+  // Outreach to Manual/Seeded Founder Modal
+  const [outreachModalOpen, setOutreachModalOpen] = useState(false);
+  const [outreachMessage, setOutreachMessage] = useState("");
+  const [submittingOutreach, setSubmittingOutreach] = useState(false);
+  const [outreachSuccess, setOutreachSuccess] = useState(false);
+  const [outreachError, setOutreachError] = useState<string | null>(null);
+
+  const handleOpenOutreachModal = () => {
+    setOutreachError(null);
+    setOutreachSuccess(false);
+    setOutreachMessage(
+      `Hi ${selectedDeal.founder},\n\nI reviewed ${selectedDeal.name}'s ${selectedDeal.stage || 'round'} on Raisequity. We are an active venture investor evaluating ${selectedDeal.sector || 'Web3'} protocols.\n\nWe would love to review your data room metrics and discuss participating in your ${selectedDeal.targetRaise || 'current'} round. What time works best this week for a brief call?`
+    );
+    setOutreachModalOpen(true);
+  };
+
+  const handleConfirmOutreach = async () => {
+    if (!user || !selectedDeal) return;
+    const currentCredits = profile?.credit_balance ?? 0;
+    if (currentCredits < 1) {
+      setOutreachError("Insufficient credits. 1 credit required to dispatch founder outreach.");
+      setCreditModalOpen(true);
+      return;
+    }
+
+    setSubmittingOutreach(true);
+    setOutreachError(null);
+
+    try {
+      const spendRes = await spendCredits(
+        user.uid,
+        'extra_intro',
+        1,
+        'discretionary_addon',
+        { company: selectedDeal.name, founder: selectedDeal.founder }
+      );
+
+      if (!spendRes.success) {
+        setOutreachError(spendRes.error || "Credit deduction failed.");
+        setSubmittingOutreach(false);
+        return;
+      }
+
+      // Record in admin_intros collection so admin can connect them manually
+      await addDoc(collection(db, "admin_intros"), {
+        type: "investor_founder_outreach",
+        investor_id: user.uid,
+        investor_name: profile?.full_name || user.email?.split("@")[0] || "Accredited Investor",
+        investor_email: user.email || "",
+        deal_id: selectedDeal.id,
+        deal_name: selectedDeal.name,
+        founder_name: selectedDeal.founder,
+        founder_email: selectedDeal.founder_email || "",
+        sector: selectedDeal.sector,
+        stage: selectedDeal.stage,
+        target_raise: selectedDeal.targetRaise,
+        valuation_cap: selectedDeal.valuationCap,
+        message: outreachMessage,
+        status: "pending_manual_connect",
+        created_at: new Date().toISOString()
+      });
+
+      // Also dispatch message in direct messages
+      try {
+        const founderUid = selectedDeal.founder_id || `founder_${selectedDeal.id}`;
+        const convId = await getOrCreateConversation(
+          {
+            id: user.uid,
+            name: profile?.full_name || "Accredited Investor",
+            role: "investor",
+            email: user.email || "investor@raisequity.com"
+          },
+          {
+            id: founderUid,
+            name: selectedDeal.founder,
+            role: "founder",
+            email: selectedDeal.founder_email || "founder@raisequity.com",
+            headline: `${selectedDeal.name} · Founder`
+          }
+        );
+
+        await sendDirectMessage({
+          conversationId: convId,
+          sender: {
+            id: user.uid,
+            name: profile?.full_name || "Accredited Investor",
+            role: "investor",
+            email: user.email || "investor@raisequity.com"
+          },
+          recipientId: founderUid,
+          recipientRole: "founder",
+          content: outreachMessage
+        });
+      } catch (mErr) {
+        console.warn("Direct message thread creation notice:", mErr);
+      }
+
+      await refreshProfile();
+      setOutreachSuccess(true);
+    } catch (err: any) {
+      console.error("Outreach dispatch error:", err);
+      setOutreachError(err.message || "Failed to dispatch outreach request.");
+    } finally {
+      setSubmittingOutreach(false);
+    }
+  };
 
   const handleConfirmDiligenceCall = async () => {
     if (!user) return;
@@ -638,10 +747,7 @@ export default function DealFeed() {
 
                 {/* Direct Message Founder Button */}
                 <button
-                  onClick={() => {
-                    const targetId = selectedDeal.founder_id || 'lead_founder_elena';
-                    navigate(`/investor-dashboard/messages?to=${targetId}&name=${encodeURIComponent(selectedDeal.founder)}&company=${encodeURIComponent(selectedDeal.name)}&deal=${encodeURIComponent(selectedDeal.name)}`);
-                  }}
+                  onClick={handleOpenOutreachModal}
                   className="px-4 py-2 rounded-xl bg-[#0070F3] hover:bg-[#0060DF] text-white font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
                 >
                   <MessageSquare size={13} />
@@ -758,10 +864,7 @@ export default function DealFeed() {
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    const targetId = selectedDeal.founder_id || 'lead_founder_elena';
-                    navigate(`/investor-dashboard/messages?to=${targetId}&name=${encodeURIComponent(selectedDeal.founder)}&company=${encodeURIComponent(selectedDeal.name)}`);
-                  }}
+                  onClick={handleOpenOutreachModal}
                   className="px-3.5 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-bold text-xs transition-all cursor-pointer"
                 >
                   Direct Chat →
@@ -962,6 +1065,125 @@ export default function DealFeed() {
                   {bookingCall ? <Loader2 size={15} className="animate-spin" /> : <Coins size={14} className="text-amber-400" />}
                   {bookingCall ? "Securing Session & Deducting Credits..." : "Confirm 30-Min Call Request (25 Credits) →"}
                 </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Founder Outreach Modal (Routes to Admin Panel & Messages) */}
+      {outreachModalOpen && selectedDeal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#121316] rounded-[28px] border border-neutral-200 dark:border-white/10 max-w-lg w-full p-6 sm:p-7 space-y-5 font-sans shadow-2xl relative">
+            <button
+              onClick={() => setOutreachModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            {outreachSuccess ? (
+              <div className="py-8 text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-black text-lg text-slate-900 dark:text-white">
+                    Intro Request Dispatched to {selectedDeal.founder}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1.5 leading-relaxed">
+                    1 Credit deducted. Our venture partner facilitation desk has received your request and will connect you with {selectedDeal.founder} ({selectedDeal.name}) via email and Telegram.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setOutreachModalOpen(false);
+                      navigate("/investor-dashboard/messages");
+                    }}
+                    className="px-5 py-2.5 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black rounded-xl font-mono font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                  >
+                    <MessageSquare size={14} /> View in Messages Channel
+                  </button>
+                  <button
+                    onClick={() => setOutreachModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/10 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block mb-1">
+                    Direct Protocol Introduction
+                  </span>
+                  <h3 className="font-heading font-black text-xl text-slate-900 dark:text-white">
+                    Request Intro to {selectedDeal.name}
+                  </h3>
+                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                    Connecting with founder <strong className="text-slate-800 dark:text-slate-200">{selectedDeal.founder}</strong> ({selectedDeal.stage} Round • {selectedDeal.targetRaise})
+                  </p>
+                </div>
+
+                {/* Credit Cost Pill */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 font-mono text-xs">
+                  <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-bold">
+                    <Coins size={14} className="text-amber-500" /> Introduction Fee: 1 Platform Credit
+                  </span>
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Your Balance: <strong className="text-slate-900 dark:text-white">{profile?.credit_balance ?? 50} Cr</strong>
+                  </span>
+                </div>
+
+                {outreachError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 rounded-xl border border-red-500/30 text-xs font-mono text-red-600 dark:text-red-300">
+                    {outreachError}
+                  </div>
+                )}
+
+                {/* Outreach Message */}
+                <div>
+                  <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                    Introduction &amp; Diligence Note for {selectedDeal.founder}
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={outreachMessage}
+                    onChange={(e) => setOutreachMessage(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-slate-50 dark:bg-[#18191e] border border-neutral-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#0070F3]"
+                  />
+                  <p className="text-[10px] font-mono text-slate-400 mt-1">
+                    Dispatched directly to the Raisequity Venture Desk for manual warm intro &amp; founder onboarding.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    onClick={() => setOutreachModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl border border-neutral-300 dark:border-white/10 text-slate-600 dark:text-slate-300 font-mono font-bold text-xs hover:bg-slate-100 dark:hover:bg-white/5 transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmOutreach}
+                    disabled={submittingOutreach || !outreachMessage.trim()}
+                    className="flex-2 py-3 rounded-xl bg-black hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 text-white font-mono font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {submittingOutreach ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Submitting Outreach Request...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={14} className="text-amber-400" />
+                        <span>Send Request (1 Credit)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </>
             )}
           </div>

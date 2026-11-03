@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   DollarSign,
@@ -11,7 +11,9 @@ import {
   ChevronRight,
   ArrowUpRight,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Loader2,
+  ArrowRight
 } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -34,62 +36,18 @@ interface PortfolioDeal {
   dateClosed: string;
 }
 
-const DEFAULT_PORTFOLIO: PortfolioDeal[] = [
-  {
-    id: "p1",
-    founder_id: "lead_founder_elena",
-    name: "NeuroChain AI",
-    sector: "AI & Agents",
-    stage: "Seed Round",
-    investedAmount: "$100,000",
-    investedAmountNum: 100000,
-    valuationCap: "$7,500,000",
-    sharesOrTokens: "1.33% SAFE",
-    currentMultiple: "1.4x",
-    status: "Active",
-    founder: "Elena Rostova",
-    dateClosed: "Oct 15, 2026"
-  },
-  {
-    id: "p2",
-    founder_id: "lead_founder_marcus",
-    name: "SecantX Protocol",
-    sector: "Web3 & ZK",
-    stage: "Seed Round",
-    investedAmount: "$50,000",
-    investedAmountNum: 50000,
-    valuationCap: "$11,000,000",
-    sharesOrTokens: "0.45% SAFT",
-    currentMultiple: "1.1x",
-    status: "Follow-on",
-    founder: "Marcus Vance",
-    dateClosed: "Sep 22, 2026"
-  },
-  {
-    id: "p3",
-    founder_id: "lead_founder_david",
-    name: "HyperScale DB",
-    sector: "Infrastructure",
-    stage: "Series A",
-    investedAmount: "$150,000",
-    investedAmountNum: 150000,
-    valuationCap: "$15,000,000",
-    sharesOrTokens: "1.00% Preferred",
-    currentMultiple: "2.2x",
-    status: "Active",
-    founder: "David Chen",
-    dateClosed: "Jun 10, 2026"
-  }
-];
-
 export default function Portfolio() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [portfolio, setPortfolio] = useState<PortfolioDeal[]>(DEFAULT_PORTFOLIO);
+  const [portfolio, setPortfolio] = useState<PortfolioDeal[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Subscribe live to investor_portfolio in Firestore
+  // Subscribe live to real investor portfolio in Firestore
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
 
     const q = query(
       collection(db, "investor_portfolio"),
@@ -114,18 +72,21 @@ export default function Portfolio() {
             investedAmountNum: amt,
             valuationCap: `$${cap.toLocaleString()}`,
             sharesOrTokens: `${ownershipPct}% ${data.instrument_type || 'SAFE'}`,
-            currentMultiple: '1.4x',
+            currentMultiple: '1.0x',
             status: data.status || 'Active',
             founder: data.founder_name || 'Founder',
-            dateClosed: data.created_at ? new Date(data.created_at).toLocaleDateString() : 'Today',
+            dateClosed: data.created_at ? new Date(data.created_at).toLocaleDateString() : 'Recent',
           };
         });
-
-        // Merge live deals ahead of defaults
-        setPortfolio([...liveDeals, ...DEFAULT_PORTFOLIO]);
+        setPortfolio(liveDeals);
+      } else {
+        setPortfolio([]);
       }
+      setLoading(false);
     }, (err) => {
       console.warn("[Portfolio] Snapshot listener error:", err);
+      setPortfolio([]);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -134,7 +95,7 @@ export default function Portfolio() {
   const totalCapitalDeployed = portfolio.reduce((acc, curr) => acc + (curr.investedAmountNum || 0), 0);
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 font-sans">
       
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
@@ -160,105 +121,129 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* Top 3 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+      {/* KPI Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-6 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+          <span className="font-mono text-[10px] font-black uppercase tracking-wider text-neutral-400">
             TOTAL CAPITAL DEPLOYED
           </span>
-          <div className="text-3xl font-heading font-black text-black dark:text-white">
-            $<NumberTicker value={Math.round(totalCapitalDeployed / 1000)} />k
+          <div className="text-3xl font-heading font-black text-black dark:text-white my-1">
+            ${totalCapitalDeployed > 0 ? (totalCapitalDeployed / 1000).toFixed(0) + 'k' : '0'}
           </div>
-          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">
+          <span className="font-mono text-xs text-neutral-400">
             Across {portfolio.length} Active Checks &amp; SAFEs
           </span>
         </div>
 
-        <div className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+        <div className="p-6 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+          <span className="font-mono text-[10px] font-black uppercase tracking-wider text-neutral-400">
             AVERAGE PORTFOLIO MULTIPLE
           </span>
-          <div className="text-3xl font-heading font-black text-purple-600 dark:text-purple-400">
-            1.62x
+          <div className="text-3xl font-heading font-black text-purple-600 dark:text-purple-400 my-1">
+            {portfolio.length > 0 ? "1.00x" : "0.00x"}
           </div>
-          <span className="text-[10px] font-mono text-neutral-400 font-bold mt-1 block">
-            Net IRR: +48.2%
+          <span className="font-mono text-xs text-neutral-400">
+            {portfolio.length > 0 ? "Tracking live valuations" : "No active holdings yet"}
           </span>
         </div>
 
-        <div className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+        <div className="p-6 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+          <span className="font-mono text-[10px] font-black uppercase tracking-wider text-neutral-400">
             SYNDICATE ANCHORS HELD
           </span>
-          <div className="text-3xl font-heading font-black text-amber-500">
-            $<NumberTicker value={80} />k
+          <div className="text-3xl font-heading font-black text-amber-500 my-1">
+            $0
           </div>
-          <span className="text-[10px] font-mono text-neutral-400 font-bold mt-1 block">
-            Apex Syndicate Co-Investment
+          <span className="font-mono text-xs text-neutral-400">
+            Co-investment lead allocations
           </span>
         </div>
       </div>
 
-      {/* Portfolio Deals Table in HireInCrypto Style */}
-      <div className="p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
-        <h2 className="text-lg font-heading font-black text-black dark:text-white">
+      {/* Portfolio Holdings Section */}
+      <div className="space-y-4">
+        <h2 className="text-base font-heading font-black text-black dark:text-white">
           Active Portfolio Holdings
         </h2>
 
-        <div className="divide-y divide-neutral-100 dark:divide-white/5 font-mono text-xs">
-          {portfolio.map((item) => (
-            <div
-              key={item.id}
-              className="py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 group"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/10 flex items-center justify-center font-bold text-xs">
-                  {item.name.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-heading font-black text-sm text-black dark:text-white">
-                      {item.name}
-                    </span>
-                    <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-[#1c1d22] text-neutral-600 dark:text-neutral-400">
-                      {item.sector}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">
-                    Founder: {item.founder} • Closed on {item.dateClosed}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 sm:gap-6 text-right">
-                <div>
-                  <div className="font-black text-black dark:text-white">{item.investedAmount}</div>
-                  <div className="text-[10px] text-neutral-400">@ {item.valuationCap}</div>
-                </div>
-
-                <div>
-                  <div className="font-bold text-emerald-600 dark:text-emerald-400">{item.sharesOrTokens}</div>
-                  <div className="text-[10px] text-purple-500 font-black">{item.currentMultiple} Current</div>
-                </div>
-
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  {item.status}
-                </span>
-
-                <button
-                  onClick={() => {
-                    const targetId = item.founder_id || 'lead_founder_elena';
-                    navigate(`/investor-dashboard/messages?to=${targetId}&name=${encodeURIComponent(item.founder)}&deal=${encodeURIComponent(item.name)}&company=${encodeURIComponent(item.name)}`);
-                  }}
-                  className="p-2 rounded-xl border border-neutral-200 dark:border-white/10 hover:border-[#0070F3] hover:text-[#0070F3] text-neutral-400 transition-colors cursor-pointer"
-                  title="Message Founder"
-                >
-                  <MessageSquare size={14} />
-                </button>
-              </div>
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-3 text-neutral-400">
+            <Loader2 className="animate-spin text-emerald-500" size={32} />
+            <span className="text-xs font-mono">Loading portfolio allocations...</span>
+          </div>
+        ) : portfolio.length === 0 ? (
+          <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#121316] border border-neutral-200 dark:border-white/10 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+              <BarChart3 size={24} />
             </div>
-          ))}
-        </div>
+            <h3 className="text-base font-bold text-black dark:text-white font-mono">
+              No Active Portfolio Holdings or Signed SAFEs Yet
+            </h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
+              When you execute 1-Click SAFEs, term sheets, or syndicate allocations on Raisequity, your deployed capital, equity stakes, and valuation multiples will track here in real time.
+            </p>
+            <div className="pt-2">
+              <Link
+                to="/investor-dashboard/deals"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all shadow-xs"
+              >
+                <span>Browse Active Dealflow</span>
+                <ArrowRight size={13} />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden">
+            <div className="divide-y divide-neutral-100 dark:divide-white/5">
+              {portfolio.map((item) => (
+                <div key={item.id} className="py-4.5 first:pt-0 last:pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center font-mono font-black text-sm text-black dark:text-white shrink-0">
+                      {item.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-heading font-black text-base text-black dark:text-white">
+                          {item.name}
+                        </h4>
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-white/10 text-neutral-500">
+                          {item.sector}
+                        </span>
+                      </div>
+                      <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
+                        Founder: {item.founder} • Closed on {item.dateClosed}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="text-right">
+                      <div className="font-mono font-black text-sm text-black dark:text-white">
+                        {item.investedAmount}
+                      </div>
+                      <div className="font-mono text-[10px] text-neutral-400">
+                        @ {item.valuationCap}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                        {item.sharesOrTokens}
+                      </div>
+                      <div className="font-mono text-[10px] text-neutral-400">
+                        {item.currentMultiple} Current
+                      </div>
+                    </div>
+
+                    <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {item.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
     </div>

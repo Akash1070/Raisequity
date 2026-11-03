@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Sparkles,
@@ -9,92 +9,118 @@ import {
   ExternalLink,
   ChevronRight,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  Loader2,
+  Coins
 } from "lucide-react";
-
-interface RecommendedStartup {
-  id: string;
-  name: string;
-  founder: string;
-  sector: string;
-  stage: string;
-  raise: string;
-  valuation: string;
-  mrr: string;
-  traction: string;
-  matchScore: number;
-  thesisMatchNote: string;
-}
-
-const RECOMMENDED_STARTUPS: RecommendedStartup[] = [
-  {
-    id: "rec-1",
-    name: "NeuroChain AI",
-    founder: "Elena Rostova",
-    sector: "AI & Agents",
-    stage: "Seed Round",
-    raise: "$1.5M",
-    valuation: "$7.5M Cap",
-    mrr: "$42k MRR (+28% MoM)",
-    traction: "248 commits / 30d • Ex-DeepMind Team",
-    matchScore: 96,
-    thesisMatchNote: "Direct match for your $100k-$500k check preference in autonomous AI infrastructure."
-  },
-  {
-    id: "rec-2",
-    name: "SecantX Protocol",
-    founder: "Marcus Vance",
-    sector: "Web3 & ZK",
-    stage: "Seed Round",
-    raise: "$2.2M",
-    valuation: "$11.0M Cap",
-    mrr: "$28k MRR (+35% MoM)",
-    traction: "Trail of Bits Audited • $50k Lead Locked",
-    matchScore: 92,
-    thesisMatchNote: "Matches your DeFi settlement and cross-chain liquidity allocation quota."
-  },
-  {
-    id: "rec-3",
-    name: "HyperScale DB",
-    founder: "David Chen",
-    sector: "Infrastructure",
-    stage: "Series A",
-    raise: "$3.0M",
-    valuation: "$15.0M Cap",
-    mrr: "$68k MRR (+22% MoM)",
-    traction: "Serving 400M daily RPCs • YC W24",
-    matchScore: 88,
-    thesisMatchNote: "High-throughput time-series database for institutional trading systems."
-  },
-  {
-    id: "rec-4",
-    name: "Fasqon Fintech",
-    founder: "Alexandre Silva",
-    sector: "Fintech & RWA",
-    stage: "Pre-Seed",
-    raise: "$800k",
-    valuation: "$4.0M Cap",
-    mrr: "$19k MRR (+40% MoM)",
-    traction: "FCA-registered EMI rails in UK & EU",
-    matchScore: 85,
-    thesisMatchNote: "Crypto-native neobank bridging Web3 liquidity and SEPA accounts."
-  }
-];
+import { collection, getDocs, query, limit, addDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { SEEDED_DEAL_FLOW, DealItem } from "../../data/dealFlowData";
+import { spendCredits } from "../../lib/credits";
 
 export default function RecommendedFounders() {
+  const { user, profile, refreshProfile } = useAuth();
+  const [recommendedDeals, setRecommendedDeals] = useState<DealItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [invited, setInvited] = useState<Record<string, boolean>>({});
   const [introSuccessNote, setIntroSuccessNote] = useState<string | null>(null);
 
-  const handleRequestIntro = (id: string, name: string) => {
-    setInvited((prev) => ({ ...prev, [id]: true }));
-    setIntroSuccessNote(`Double-blind intro request dispatched to ${name}. Calendar invite will synchronize automatically once confirmed.`);
-    setTimeout(() => setIntroSuccessNote(null), 5000);
+  // Load and rank deals dynamically from database
+  useEffect(() => {
+    async function loadAndRankDeals() {
+      try {
+        setLoading(true);
+        const snap = await getDocs(query(collection(db, "deal_flow"), limit(100)));
+        let allDeals: DealItem[] = [];
+        if (!snap.empty) {
+          allDeals = snap.docs.map(d => ({ id: d.id, ...d.data() })) as DealItem[];
+        } else {
+          allDeals = SEEDED_DEAL_FLOW;
+        }
+
+        // Compute dynamic fit score against investor preferences
+        const investorSectors: string[] = (profile as any)?.target_sectors || (profile as any)?.sectors || ["AI & Agents", "DeFi", "Fintech", "Infrastructure"];
+        const investorStage: string = (profile as any)?.stage_focus || "Seed";
+
+        const ranked = allDeals.map((deal, idx) => {
+          let score = 85;
+          const sectorMatch = investorSectors.some(s => 
+            deal.sector?.toLowerCase().includes(s.toLowerCase()) ||
+            (deal.industry || []).some(i => i.toLowerCase().includes(s.toLowerCase()))
+          );
+          if (sectorMatch) score += 9;
+          if (deal.stage?.toLowerCase().includes(investorStage.toLowerCase())) score += 4;
+          // Add deterministic variance based on project index
+          const finalScore = Math.min(99, score + (idx % 3));
+
+          return {
+            ...deal,
+            matchScore: finalScore,
+            whyMatched: sectorMatch 
+              ? `Direct match for your check size and ${deal.sector || 'high-conviction'} protocol allocation quota.`
+              : `High velocity ${deal.stage || 'Seed'} round with verified GitHub momentum and audit verification.`
+          };
+        });
+
+        // Sort descending by match score and pick top 6
+        ranked.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+        setRecommendedDeals(ranked.slice(0, 6));
+      } catch (err) {
+        console.warn("Could not load dynamic recommendations:", err);
+        setRecommendedDeals(SEEDED_DEAL_FLOW.slice(0, 6));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAndRankDeals();
+  }, [profile]);
+
+  const handleRequestIntro = async (deal: DealItem) => {
+    if (!user?.uid) return;
+    setInvited((prev) => ({ ...prev, [deal.id]: true }));
+
+    try {
+      // 1. Spend 1 credit
+      await spendCredits(
+        user.uid,
+        'extra_intro',
+        1,
+        'discretionary_addon',
+        { dealId: deal.id, companyName: deal.name, founder: deal.founder }
+      ).catch(() => {});
+
+      // 2. Dispatch to admin_intros so Admin can connect manually if founder is not onboarded
+      await addDoc(collection(db, "admin_intros"), {
+        type: "investor_founder_outreach",
+        investor_id: user.uid,
+        investor_name: profile?.full_name || user.email?.split("@")[0] || "Accredited Investor",
+        investor_email: user.email || "",
+        deal_id: deal.id,
+        deal_name: deal.name,
+        founder_name: deal.founder,
+        founder_email: deal.founder_email || "",
+        sector: deal.sector,
+        stage: deal.stage,
+        target_raise: deal.targetRaise,
+        message: `Investor requested double-blind introduction to ${deal.founder} for ${deal.name}.`,
+        status: "pending_manual_connect",
+        created_at: new Date().toISOString()
+      });
+
+      await refreshProfile();
+      setIntroSuccessNote(`Double-blind intro request dispatched for ${deal.name}! Our venture partner desk has received your request and will facilitate your direct meeting.`);
+      setTimeout(() => setIntroSuccessNote(null), 6000);
+    } catch (err: any) {
+      console.error("Intro request error:", err);
+    }
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 font-sans">
       {introSuccessNote && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs">
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs animate-fade-in">
           <span>✓ {introSuccessNote}</span>
           <button onClick={() => setIntroSuccessNote(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-80">✕</button>
         </div>
@@ -113,7 +139,7 @@ export default function RecommendedFounders() {
             Recommended Founders <Sparkles size={22} className="text-amber-400" />
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-1">
-            Top 1% founders curated directly to match your sector thesis and check-size criteria.
+            Dynamically curated from live database deals matching your sector thesis and check-size criteria.
           </p>
         </div>
 
@@ -126,84 +152,99 @@ export default function RecommendedFounders() {
       </div>
 
       {/* Grid of Recommended Founder Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {RECOMMENDED_STARTUPS.map((item) => (
-          <div
-            key={item.id}
-            className="p-6 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between group hover:border-black/30 dark:hover:border-white/20 transition-all"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-400/10 text-amber-600 dark:text-amber-400 font-mono font-black text-base flex items-center justify-center shrink-0">
-                    {item.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-black text-base text-black dark:text-white">
-                      {item.name}
-                    </h3>
-                    <div className="text-[11px] font-mono text-neutral-400">
-                      Founder: {item.founder} • {item.sector}
+      {loading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-neutral-400">
+          <Loader2 className="animate-spin text-amber-500" size={32} />
+          <span className="text-xs font-mono">Running algorithmic thesis matching...</span>
+        </div>
+      ) : recommendedDeals.length === 0 ? (
+        <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#121316] border border-neutral-200 dark:border-white/10 space-y-2">
+          <Building2 size={32} className="mx-auto text-neutral-400" />
+          <div className="text-sm font-bold text-black dark:text-white font-mono">No recommended deals yet</div>
+          <p className="text-xs text-neutral-500">Update your check size and target sectors in Settings to tune your matcher.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {recommendedDeals.map((item) => (
+            <div
+              key={item.id}
+              className="p-6 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between group hover:border-black/30 dark:hover:border-white/20 transition-all"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-400/10 text-amber-600 dark:text-amber-400 font-mono font-black text-base flex items-center justify-center shrink-0">
+                      {item.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-black text-base text-black dark:text-white">
+                        {item.name}
+                      </h3>
+                      <div className="text-[11px] font-mono text-neutral-400">
+                        Founder: {item.founder} • {item.sector}
+                      </div>
                     </div>
                   </div>
+
+                  <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                    {item.matchScore}% Fit
+                  </span>
                 </div>
 
-                <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                  {item.matchScore}% Fit
-                </span>
+                <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 font-mono text-xs mb-3.5 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Target Raise:</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400">{item.targetRaise} @ {item.valuationCap}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Round Stage:</span>
+                    <strong className="text-black dark:text-white">{item.stage || "Seed"}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-400">Chain / Tech Stack:</span>
+                    <strong className="text-neutral-600 dark:text-neutral-300 truncate max-w-[200px]">
+                      {item.chain || (item.industry && item.industry[0]) || "Web3 Architecture"}
+                    </strong>
+                  </div>
+                </div>
+
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-4 leading-relaxed">
+                  💡 <strong className="text-black dark:text-white">Why Matched:</strong> {(item as any).whyMatched}
+                </p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 font-mono text-xs mb-3.5 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Target Raise:</span>
-                  <strong className="text-emerald-600 dark:text-emerald-400">{item.raise} @ {item.valuation}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Revenue / Traction:</span>
-                  <strong className="text-black dark:text-white">{item.mrr}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Signals:</span>
-                  <strong className="text-neutral-600 dark:text-neutral-300">{item.traction}</strong>
-                </div>
+              <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
+                <Link
+                  to={`/investor-dashboard/deals`}
+                  className="font-mono text-xs font-bold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1"
+                >
+                  Inspect Pitch <ChevronRight size={13} />
+                </Link>
+
+                <button
+                  onClick={() => handleRequestIntro(item)}
+                  disabled={invited[item.id]}
+                  className={`px-4 py-2 rounded-xl font-bold text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                    invited[item.id]
+                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+                      : "bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black shadow-xs active:scale-95"
+                  }`}
+                >
+                  {invited[item.id] ? (
+                    <>
+                      <CheckCircle2 size={13} /> Intro Dispatched
+                    </>
+                  ) : (
+                    <>
+                      <Send size={13} /> Request 1-Click Intro (1 Cr)
+                    </>
+                  )}
+                </button>
               </div>
-
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-4 leading-relaxed">
-                💡 <strong className="text-black dark:text-white">Why Matched:</strong> {item.thesisMatchNote}
-              </p>
             </div>
-
-            <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
-              <Link
-                to={`/launch/${item.id === 'rec-1' ? 'neurochain-ai' : item.id === 'rec-2' ? 'secantx-protocol' : 'hyperscale-db'}`}
-                className="font-mono text-xs font-bold text-neutral-500 hover:text-black dark:hover:text-white flex items-center gap-1"
-              >
-                Inspect Pitch <ChevronRight size={13} />
-              </Link>
-
-              <button
-                onClick={() => handleRequestIntro(item.id, item.name)}
-                disabled={invited[item.id]}
-                className={`px-4 py-2 rounded-xl font-bold text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
-                  invited[item.id]
-                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
-                    : "bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black shadow-xs active:scale-95"
-                }`}
-              >
-                {invited[item.id] ? (
-                  <>
-                    <CheckCircle2 size={13} /> Intro Dispatched
-                  </>
-                ) : (
-                  <>
-                    <Send size={13} /> Request 1-Click Intro
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
     </div>
   );

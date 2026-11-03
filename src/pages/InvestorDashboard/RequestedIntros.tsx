@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Workflow,
@@ -11,8 +11,13 @@ import {
   MessageSquare,
   ArrowRight,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Loader2,
+  Send
 } from "lucide-react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface IntroItem {
   id: string;
@@ -27,49 +32,55 @@ interface IntroItem {
   memoScore: number;
 }
 
-const DEFAULT_INTROS: IntroItem[] = [
-  {
-    id: "intro-1",
-    founder: "Elena Rostova",
-    company: "NeuroChain AI",
-    sector: "AI & Agents",
-    stage: "Seed Round",
-    raise: "$1.5M @ $7.5M Cap",
-    requestDate: "Today, 2:15 PM",
-    status: "pending",
-    message: "Ex-DeepMind team with 248 verified GitHub commits and $42k MRR seeking $100k-$500k lead/co-investor.",
-    memoScore: 96
-  },
-  {
-    id: "intro-2",
-    founder: "Marcus Vance",
-    company: "SecantX Protocol",
-    sector: "Web3 & ZK",
-    stage: "Seed Round",
-    raise: "$2.2M @ $11.0M Cap",
-    requestDate: "Yesterday",
-    status: "confirmed",
-    message: "Trail of Bits audited ZK settlement protocol. $50k lead check committed by Alliance DAO.",
-    memoScore: 92
-  },
-  {
-    id: "intro-3",
-    founder: "David Chen",
-    company: "HyperScale DB",
-    sector: "Infrastructure",
-    stage: "Series A",
-    raise: "$3.0M @ $15.0M Cap",
-    requestDate: "Oct 28, 2026",
-    status: "completed",
-    message: "Distributed time-series engine with native sub-millisecond vector query serving 400M daily RPCs.",
-    memoScore: 88
-  }
-];
-
 export default function RequestedIntros() {
-  const [intros, setIntros] = useState<IntroItem[]>(DEFAULT_INTROS);
+  const { user } = useAuth();
+  const [intros, setIntros] = useState<IntroItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [acceptedNote, setAcceptedNote] = useState<string | null>(null);
+
+  // Subscribe live to real intro requests in Firestore
+  useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, "admin_intros"),
+      where("investor_id", "==", user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        const live = snap.docs.map((docSnap) => {
+          const d = docSnap.data();
+          return {
+            id: docSnap.id,
+            founder: d.founder_name || d.founder || "Founder",
+            company: d.deal_name || d.company_name || d.company || "Portfolio Protocol",
+            sector: d.sector || "Web3",
+            stage: d.stage || "Seed",
+            raise: d.target_raise ? `${d.target_raise}` : "$1.5M",
+            requestDate: d.created_at ? new Date(d.created_at).toLocaleDateString() : "Recent",
+            status: (d.status === "connected" ? "confirmed" : d.status === "completed" ? "completed" : "pending") as "pending" | "confirmed" | "completed",
+            message: d.message || "Double-blind partner introduction coordinated via Raisequity Venture Desk.",
+            memoScore: d.memo_score || 94
+          };
+        });
+        setIntros(live);
+        setLoading(false);
+      },
+      (err) => {
+        console.warn("Could not listen to real intros:", err);
+        setIntros([]);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const filtered = intros.filter((i) => {
     if (activeFilter === "all") return true;
@@ -77,7 +88,7 @@ export default function RequestedIntros() {
   });
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 font-sans">
       {acceptedNote && (
         <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs">
           <span>✓ {acceptedNote}</span>
@@ -98,20 +109,21 @@ export default function RequestedIntros() {
             Requested Partner Intros
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-1">
-            Review double-blind introduction requests from thesis-matched founders with verified diligence tear sheets.
+            Track double-blind introduction requests and scheduled meetings with thesis-matched founders.
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-neutral-100 dark:bg-[#18191e] p-1 rounded-full border border-neutral-200/80 dark:border-white/5 font-mono text-xs">
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1 p-1 bg-neutral-100 dark:bg-[#18191e] rounded-xl font-mono text-xs">
           {["all", "pending", "confirmed", "completed"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveFilter(tab)}
-              className={`px-3 py-1 rounded-full font-bold uppercase transition-all cursor-pointer ${activeFilter === tab
+              className={`px-3 py-1.5 rounded-lg font-bold uppercase text-[10px] transition-all cursor-pointer ${
+                activeFilter === tab
                   ? "bg-black text-white dark:bg-white dark:text-black shadow-xs"
                   : "text-neutral-500 hover:text-black dark:hover:text-white"
-                }`}
+              }`}
             >
               {tab}
             </button>
@@ -119,86 +131,87 @@ export default function RequestedIntros() {
         </div>
       </div>
 
-      {/* Intros List in HireInCrypto Style */}
-      <div className="space-y-3.5">
-        {filtered.map((item) => (
-          <div
-            key={item.id}
-            className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all hover:border-black/30 dark:hover:border-white/20"
-          >
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 font-mono font-black text-base flex items-center justify-center shrink-0">
-                {item.company.slice(0, 2).toUpperCase()}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-heading font-black text-base text-black dark:text-white">
-                    {item.company}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-[#1c1d22] text-neutral-600 dark:text-neutral-300">
-                    {item.sector}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    {item.memoScore}% Fit
-                  </span>
-                </div>
-
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium line-clamp-2 mb-2">
-                  {item.message}
-                </p>
-
-                <div className="flex items-center gap-3 font-mono text-[10px] text-neutral-400">
-                  <span>Founder: <strong className="text-black dark:text-white">{item.founder}</strong></span>
-                  <span>•</span>
-                  <span>Round: <strong className="text-emerald-600 dark:text-emerald-400">{item.raise}</strong></span>
-                  <span>•</span>
-                  <span>Requested: {item.requestDate}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Status & Action */}
-            <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-              {item.status === "pending" && (
-                <>
-                  <button
-                    onClick={() => {
-                      setAcceptedNote(`Confirmed intro with ${item.founder} (${item.company}). Meeting details synchronized with your partner calendar.`);
-                      setIntros(intros.map(i => i.id === item.id ? { ...i, status: "confirmed" } : i));
-                      setTimeout(() => setAcceptedNote(null), 6000);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 shadow-xs cursor-pointer"
-                  >
-                    Accept Intro &amp; Call →
-                  </button>
-                  <button
-                    onClick={() => setIntros(intros.filter(i => i.id !== item.id))}
-                    className="px-3 py-2 rounded-xl bg-neutral-100 dark:bg-[#1c1d22] text-neutral-500 hover:text-black dark:hover:text-white font-mono text-xs transition-all cursor-pointer"
-                  >
-                    Pass
-                  </button>
-                </>
-              )}
-
-              {item.status === "confirmed" && (
-                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold">
-                  <CheckCircle2 size={13} />
-                  <span>Call Confirmed</span>
-                </div>
-              )}
-
-              {item.status === "completed" && (
-                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-100 dark:bg-[#1c1d22] text-neutral-500 font-mono text-xs font-bold">
-                  <Clock size={13} />
-                  <span>Meeting Completed</span>
-                </div>
-              )}
-            </div>
+      {/* Intro List / Zero State */}
+      {loading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-neutral-400">
+          <Loader2 className="animate-spin text-[#0070F3]" size={32} />
+          <span className="text-xs font-mono">Loading intro requests...</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#121316] border border-neutral-200 dark:border-white/10 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mx-auto">
+            <Workflow size={24} />
           </div>
-        ))}
-      </div>
+          <h3 className="text-base font-bold text-black dark:text-white font-mono">
+            No Introduction Requests Yet
+          </h3>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
+            When founders matching your thesis request an intro, or when you click "Request 1-Click Intro" on deal flow startups, your active introductions will be tracked here in real time.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/investor-dashboard/deals"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all shadow-xs"
+            >
+              <span>Explore Deals &amp; Request Intros</span>
+              <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((item) => (
+            <div
+              key={item.id}
+              className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-4"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono font-black text-sm shrink-0">
+                  {item.company.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-heading font-black text-base text-black dark:text-white">
+                      {item.company}
+                    </h3>
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-neutral-500">
+                      {item.sector}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                      {item.memoScore}% Fit
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-1 mb-1">
+                    {item.message}
+                  </p>
+                  <div className="text-[11px] font-mono text-neutral-400">
+                    Founder: <strong className="text-black dark:text-white">{item.founder}</strong> • Round: {item.raise} • Requested: {item.requestDate}
+                  </div>
+                </div>
+              </div>
 
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`px-3 py-1.5 rounded-full font-mono text-[10px] font-black uppercase flex items-center gap-1.5 ${
+                  item.status === "confirmed"
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                    : item.status === "completed"
+                    ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30"
+                    : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                }`}>
+                  {item.status === "confirmed" ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                  <span>{item.status === "confirmed" ? "Call Confirmed" : item.status === "completed" ? "Meeting Completed" : "Coordinating Intro"}</span>
+                </span>
+                <Link
+                  to="/investor-dashboard/messages"
+                  className="px-4 py-2 rounded-xl bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-bold text-xs font-mono transition-all cursor-pointer shadow-xs"
+                >
+                  Messages →
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

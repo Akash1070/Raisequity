@@ -130,7 +130,7 @@ export default function CreditPackageModal({
                 </div>
                 <p className="text-xs font-mono text-neutral-500 dark:text-neutral-400 mt-0.5">
                   {actionTitle 
-                    ? `Action requires ${requiredCredits || 1} Credit · Refill to proceed`
+                    ? `Action: ${actionTitle} (${requiredCredits || 1} ${(requiredCredits || 1) === 1 ? 'Credit' : 'Credits'}) · Refill to proceed`
                     : 'Universal platform credits for Founders, Investors, and Agencies'}
                 </p>
               </div>
