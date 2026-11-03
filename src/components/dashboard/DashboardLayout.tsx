@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, Coins, Settings, LogOut, ChevronDown, Terminal, Sparkles } from "lucide-react";
+import { Menu, X, Coins, Settings, LogOut, ChevronDown, Terminal, Sparkles, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
 import Sidebar from "./Sidebar";
@@ -17,9 +19,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { founderProfile } = useFounderProfile();
   const navigate = useNavigate();
 
+  // Role Protection: Redirect agencies and investors out of Founder Hub
+  useEffect(() => {
+    if (profile?.role === "service_provider") {
+      navigate("/agency-dashboard/rfps", { replace: true });
+    } else if (profile?.role === "investor") {
+      navigate("/investor-dashboard/deals", { replace: true });
+    }
+  }, [profile?.role, navigate]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
+  };
+
+  const handleSwitchToAgency = async () => {
+    setIsProfileDropdownOpen(false);
+    const uid = user?.uid || (user as any)?.id;
+    if (uid) {
+      try {
+        await updateDoc(doc(db, "users", uid), {
+          role: "service_provider",
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Could not switch role:", err);
+      }
+    }
+    navigate("/agency-dashboard/rfps");
+  };
+
+  const handleSwitchToInvestor = async () => {
+    setIsProfileDropdownOpen(false);
+    const uid = user?.uid || (user as any)?.id;
+    if (uid) {
+      try {
+        await updateDoc(doc(db, "users", uid), {
+          role: "investor",
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Could not switch role:", err);
+      }
+    }
+    navigate("/investor-dashboard/deals");
   };
 
   useEffect(() => {
@@ -194,13 +237,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <Settings size={14} className="text-slate-500" />
                         Settings &amp; SLA
                       </Link>
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors text-left cursor-pointer"
-                      >
-                        <LogOut size={14} />
-                        Log Out
-                      </button>
+
+                      {/* Switch Workspace Quick Links */}
+                      <div className="pt-1.5 pb-1 border-t border-slate-100 dark:border-neutral-800">
+                        <div className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase px-3 py-1">
+                          Switch Workspace
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSwitchToAgency}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold rounded-xl hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 transition-colors text-left cursor-pointer"
+                        >
+                          <Sparkles size={14} className="text-emerald-500" />
+                          <span>⚡ Agency Suite</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSwitchToInvestor}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold rounded-xl hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-colors text-left cursor-pointer"
+                        >
+                          <ShieldCheck size={14} className="text-amber-500" />
+                          <span>💼 Investor Terminal</span>
+                        </button>
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-100 dark:border-neutral-800">
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors text-left cursor-pointer"
+                        >
+                          <LogOut size={14} />
+                          Log Out
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}

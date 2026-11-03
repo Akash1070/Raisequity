@@ -3,6 +3,8 @@ import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Home, Users, Share2, Briefcase, Settings, LogOut, Gift, Coins, Crown, Sparkles, Zap, Flame, Rocket, Clock, MessageSquare
 } from "lucide-react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
 import ReferralCard from "./ReferralCard";
@@ -74,6 +76,21 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     navigate("/login");
   };
 
+  const handleSwitchToAgency = async () => {
+    const uid = user?.uid || (user as any)?.id;
+    if (uid) {
+      try {
+        await updateDoc(doc(db, "users", uid), {
+          role: "service_provider",
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Could not switch role:", err);
+      }
+    }
+    navigate("/agency-dashboard/rfps");
+  };
+
   return (
     <div className="flex flex-col h-full font-sans text-[#171717] dark:text-[#EDEDED]">
       {/* Logo */}
@@ -94,6 +111,19 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         <span>Invite Founders</span>
         <span className="bg-white/20 text-white px-1.5 py-0.2 rounded font-mono text-[10px] font-black">+50</span>
       </button>
+
+      {/* Portal Switcher Pill */}
+      <div className="mb-3 p-1.5 bg-slate-100 dark:bg-[#141414] rounded-xl border border-slate-200 dark:border-[#262626] flex items-center justify-between text-[11px] font-mono">
+        <span className="text-slate-500 font-bold px-1.5 text-[10px] uppercase">Portal:</span>
+        <button
+          onClick={handleSwitchToAgency}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[10px] shadow-xs cursor-pointer active:scale-95 transition-all"
+          title="Switch to Agency Dashboard"
+        >
+          <Sparkles size={11} />
+          <span>Agency Suite →</span>
+        </button>
+      </div>
 
       {/* User Card */}
       <Link 

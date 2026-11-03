@@ -155,8 +155,12 @@ export default function Settings() {
         });
       }).catch(() => {});
     } else if (userRole === "service_provider") {
-      getDoc(doc(db, "agency_profiles", uid)).then((snap) => {
-        const agData = snap.exists() ? snap.data() : {};
+      getDoc(doc(db, "agency_profiles", uid)).then(async (snap) => {
+        let agData = snap.exists() ? snap.data() : {};
+        if (!snap.exists()) {
+          const spSnap = await getDoc(doc(db, "service_providers", uid));
+          if (spSnap.exists()) agData = spSnap.data();
+        }
         setAgencyForm({
           agency_name: agData.agency_name || profile?.company_name || "ChainCraft Labs",
           contact_name: agData.contact_name || profile?.full_name || user?.displayName || "",
@@ -262,7 +266,7 @@ export default function Settings() {
           updated_at: new Date().toISOString()
         });
       } else if (userRole === "service_provider") {
-        await setDoc(doc(db, "agency_profiles", uid), {
+        const agencyData = {
           id: uid,
           agency_name: agencyForm.agency_name,
           contact_name: agencyForm.contact_name,
@@ -276,7 +280,10 @@ export default function Settings() {
           portfolio_url: agencyForm.portfolio_url,
           bio: agencyForm.bio,
           updated_at: new Date().toISOString()
-        }, { merge: true });
+        };
+
+        await setDoc(doc(db, "agency_profiles", uid), agencyData, { merge: true });
+        await setDoc(doc(db, "service_providers", uid), agencyData, { merge: true });
 
         await updateDoc(doc(db, "users", uid), {
           full_name: agencyForm.contact_name,

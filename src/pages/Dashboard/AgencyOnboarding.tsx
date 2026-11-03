@@ -220,7 +220,7 @@ export default function AgencyOnboarding() {
 
       safeStorage.setItem(`rq_onboarding_completed_${uid}`, "true");
       await refreshProfile();
-      navigate("/dashboard/feed", { replace: true });
+      navigate("/agency-dashboard/rfps", { replace: true });
     } catch (err: any) {
       console.error("Agency onboarding error:", err);
       setError(err.message || "Failed to complete onboarding. Please try again.");

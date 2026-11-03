@@ -142,9 +142,9 @@ export default function App() {
             </ProtectedRoute>
           } />
 
-          {/* ========== FOUNDER & SERVICE PROVIDER DASHBOARD ========== */}
+          {/* ========== FOUNDER DASHBOARD ========== */}
           <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={['founder', 'service_provider', 'scout']}>
+            <ProtectedRoute allowedRoles={['founder', 'scout']}>
               <ErrorBoundary fallbackMessage="The dashboard crashed. Please reload or check your connection.">
                 <NotificationsProvider>
                   <DashboardLayout><Outlet /></DashboardLayout>

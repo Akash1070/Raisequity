@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -19,18 +20,27 @@ import {
   Send,
   Award,
   Coins,
-  Plus
+  Plus,
+  Loader2,
+  CheckCircle
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import { spendCredits } from "../../lib/credits";
+import { getOrCreateConversation, sendDirectMessage } from "../../lib/messages";
 import CommunityBroadcastFeed from "../../components/dashboard/CommunityBroadcastFeed";
 import { AGENCY_RFPS, AgencyRfp } from "../../data/agencyRfps";
 
 export default function RfpFeed() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [selectedRfpId, setSelectedRfpId] = useState<string>(AGENCY_RFPS[0].id);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [proposalSubmitted, setProposalSubmitted] = useState<boolean>(false);
+  const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   // Filter RFPs
   const filteredRfps = AGENCY_RFPS.filter((rfp) => {
@@ -72,9 +82,109 @@ export default function RfpFeed() {
     }
   ];
 
-  const handleApply = () => {
-    setProposalSubmitted(true);
-    setTimeout(() => setProposalSubmitted(false), 4000);
+  const handleApply = async () => {
+    if (!user) return;
+    setApplying(true);
+    setApplyError(null);
+    try {
+      // 1. Spend 1 credit for RFP proposal submission
+      const spendRes = await spendCredits(
+        user.uid,
+        'boosted_bid',
+        1,
+        'discretionary_addon',
+        { rfpId: selectedRfp.id, client: selectedRfp.clientName, project: selectedRfp.projectTitle }
+      );
+
+      if (!spendRes.success) {
+        setApplyError(spendRes.error || "1 Credit required to submit a milestone proposal.");
+        setApplying(false);
+        return;
+      }
+
+      // 2. Record proposal submission in Firestore
+      await addDoc(collection(db, "rfp_proposals"), {
+        rfp_id: selectedRfp.id,
+        agency_id: user.uid,
+        agency_name: profile?.company_name || profile?.full_name || "Verified Agency",
+        agency_email: user.email || "",
+        client_name: selectedRfp.clientName,
+        project_title: selectedRfp.projectTitle,
+        budget: selectedRfp.budgetFormatted,
+        status: "submitted",
+        created_at: new Date().toISOString()
+      });
+
+      // 3. Automated message in chat
+      const clientUid = `client_${selectedRfp.clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+      try {
+        const convId = await getOrCreateConversation(
+          {
+            id: user.uid,
+            name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
+            role: "service_provider",
+            email: user.email || "agency@raisequity.com",
+            headline: "Vetted Web3 Partner"
+          },
+          {
+            id: clientUid,
+            name: selectedRfp.clientName,
+            role: "founder",
+            email: "founder@client.com",
+            headline: `${selectedRfp.clientName} · ${selectedRfp.projectTitle}`
+          }
+        );
+
+        await sendDirectMessage({
+          conversationId: convId,
+          sender: {
+            id: user.uid,
+            name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
+            role: "service_provider",
+            email: user.email || "agency@raisequity.com"
+          },
+          recipientId: clientUid,
+          recipientRole: "founder",
+          content: `Hi ${selectedRfp.clientName}, our studio just submitted a milestone proposal for "${selectedRfp.projectTitle}". All deliverables will be verified under your 100% pre-funded escrow vault.`
+        });
+      } catch (cErr) {
+        console.warn("Direct message creation error:", cErr);
+      }
+
+      setProposalSubmitted(true);
+    } catch (err: any) {
+      console.error("Proposal error:", err);
+      setApplyError(err.message || "Failed to submit proposal.");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleChatWithFounder = async () => {
+    if (!user) return;
+    const clientUid = `client_${selectedRfp.clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+    try {
+      const convId = await getOrCreateConversation(
+        {
+          id: user.uid,
+          name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
+          role: "service_provider",
+          email: user.email || "agency@raisequity.com",
+          headline: "Vetted Web3 Partner"
+        },
+        {
+          id: clientUid,
+          name: selectedRfp.clientName,
+          role: "founder",
+          email: "founder@client.com",
+          headline: `${selectedRfp.clientName} · ${selectedRfp.projectTitle}`
+        }
+      );
+      navigate(`/agency-dashboard/messages?convId=${convId}`);
+    } catch (err) {
+      console.error("Chat error:", err);
+      navigate("/agency-dashboard/messages");
+    }
   };
 
   return (
@@ -277,20 +387,25 @@ export default function RfpFeed() {
             <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-neutral-100 dark:border-white/5">
               <button
                 onClick={handleApply}
-                disabled={proposalSubmitted}
-                className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition-all active:scale-95 flex items-center gap-2 shadow-xs cursor-pointer"
+                disabled={applying || proposalSubmitted}
+                className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition-all active:scale-95 flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
               >
-                <Sparkles size={14} />
+                {applying ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 <span>
-                  {proposalSubmitted
-                    ? "Proposal Submitted to Escrow Queue!"
+                  {applying
+                    ? "Submitting to Escrow Queue..."
+                    : proposalSubmitted
+                    ? "✓ Proposal Submitted to Escrow Queue!"
                     : "Submit Milestone Proposal (1 Credit)"}
                 </span>
               </button>
 
-              <button className="px-4 py-2.5 rounded-full bg-white dark:bg-[#18191e] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer">
-                <MessageSquare size={14} />
-                <span>Chat with Founder</span>
+              <button
+                onClick={handleChatWithFounder}
+                className="px-4 py-2.5 rounded-full bg-white dark:bg-[#18191e] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
+              >
+                <MessageSquare size={14} className="text-emerald-500" />
+                <span>Chat with Founder 💬</span>
               </button>
 
               <a
@@ -301,6 +416,12 @@ export default function RfpFeed() {
                 <ExternalLink size={12} />
               </a>
             </div>
+
+            {applyError && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/40 rounded-xl border border-red-500/30 text-xs font-mono text-red-600 dark:text-red-400">
+                {applyError}
+              </div>
+            )}
           </div>
 
           {/* Detail Body Content */}

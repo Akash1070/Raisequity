@@ -97,20 +97,31 @@ export default function Onboarding() {
   React.useEffect(() => {
     const uid = user?.uid || (user as any)?.id;
     if (uid) {
+      const userRole = profile?.role;
       const isLocalCompleted = Boolean(safeStorage.getItem(`rq_onboarding_completed_${uid}`));
-      if (profile?.onboarding_completed || isLocalCompleted) {
-        navigate("/dashboard/feed", { replace: true });
+
+      // If user is service_provider, route to agency dashboard or agency onboarding
+      if (userRole === "service_provider") {
+        if (profile?.onboarding_completed || isLocalCompleted) {
+          navigate("/agency-dashboard/rfps", { replace: true });
+        } else {
+          navigate("/agency-onboarding", { replace: true });
+        }
         return;
       }
 
-      // Route check: If profile is already explicitly set to investor or service_provider, direct to their dedicated onboarding
-      const userRole = profile?.role;
+      // If user is investor, route to investor dashboard or investor onboarding
       if (userRole === "investor") {
-        navigate("/investor-onboarding", { replace: true });
+        if (profile?.onboarding_completed || isLocalCompleted) {
+          navigate("/investor-dashboard/deals", { replace: true });
+        } else {
+          navigate("/investor-onboarding", { replace: true });
+        }
         return;
       }
-      if (userRole === "service_provider") {
-        navigate("/agency-onboarding", { replace: true });
+
+      if (profile?.onboarding_completed || isLocalCompleted) {
+        navigate("/dashboard/feed", { replace: true });
         return;
       }
     }
@@ -498,11 +509,23 @@ export default function Onboarding() {
         console.warn("refreshProfile warning:", rErr);
       }
 
-      // Always proceed to dashboard feed upon completing launch
-      navigate("/dashboard/feed", { replace: true });
+      // Proceed to appropriate dashboard based on user role
+      if (profile?.role === "service_provider") {
+        navigate("/agency-dashboard/rfps", { replace: true });
+      } else if (profile?.role === "investor") {
+        navigate("/investor-dashboard/deals", { replace: true });
+      } else {
+        navigate("/dashboard/feed", { replace: true });
+      }
     } catch (err: any) {
       console.error("Error launching onboarding:", err);
-      navigate("/dashboard/feed", { replace: true });
+      if (profile?.role === "service_provider") {
+        navigate("/agency-dashboard/rfps", { replace: true });
+      } else if (profile?.role === "investor") {
+        navigate("/investor-dashboard/deals", { replace: true });
+      } else {
+        navigate("/dashboard/feed", { replace: true });
+      }
     } finally {
       setIsSubmitting(false);
     }
