@@ -127,6 +127,9 @@ export async function getPublicLaunches(
     const snap = await getDocs(q);
     let items = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as LaunchItem[];
 
+    // Only publicly launched listings (legacy docs without a status are kept).
+    items = items.filter((i) => i.status === 'launched' || !i.status);
+
     // Category filter
     if (category && category !== 'All') {
       items = items.filter((i) => i.category.toLowerCase() === category.toLowerCase());

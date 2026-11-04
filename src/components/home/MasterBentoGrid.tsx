@@ -1,5 +1,5 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -22,102 +22,56 @@ import {
   CheckCircle2,
   Rocket,
   Flame,
-  LayoutGrid
+  LayoutGrid,
+  Newspaper,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { NumberTicker } from "../ui/NumberTicker";
+import { useAuth } from "../../contexts/AuthContext";
+import { useLandingData } from "../../hooks/useLandingData";
 
 interface MasterBentoGridProps {
   className?: string;
 }
 
+const SUBSTACK_URL = "https://akashkumarjha.substack.com/";
+const HIRE_INC_URL = "https://www.hireincrypto.com";
+const PR_URL = "https://www.yourweb3guy.com";
+
 export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
-  // 3 Curated projects for Image 3 ("Curated Deal Flow" card)
-  const curatedDeals = [
-    {
-      id: "neurochain-ai",
-      name: "NeuroChain AI",
-      sector: "AI & AGENTS",
-      stage: "Seed Lead",
-      size: "$1.5M @ $7.5M Cap",
-      metric: "Score 96 • Ex-DeepMind Team",
-      tagColor: "bg-[#0070F3]",
-      slug: "neurochain-ai"
-    },
-    {
-      id: "go-protocol",
-      name: "Go! Protocol",
-      sector: "RWA & ASSETS",
-      stage: "Strategic",
-      size: "$5M Cap",
-      metric: "Delaware C-Corp • Tier-1 Custody",
-      tagColor: "bg-amber-400",
-      slug: "secantx-protocol"
-    },
-    {
-      id: "hyperscale-db",
-      name: "HyperScale DB",
-      sector: "INFRASTRUCTURE",
-      stage: "Seed Round",
-      size: "$2.0M @ $10M Cap",
-      metric: "YC W24 • $42k MRR (+28% MoM)",
-      tagColor: "bg-emerald-500",
-      slug: "hyperscale-db"
-    },
-  ];
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // Real Grants from product data
-  const curatedGrants = [
-    { network: "LAYER-1", title: "Solana Foundation Grants", status: "Open", amount: "Up to $100k" },
-    { network: "LAYER-2", title: "Arbitrum Foundation Grants", status: "Active", amount: "Up to $150k" },
-  ];
+  // Live data from the database (with seed fallbacks) — FOMO elements rotate
+  // real content: grants, deal flow, credits, trending launches, investors.
+  const { deals: curatedDeals, grants: curatedGrants, credits: realCredits, projects: directoryProjects, investorsCount, launchesCount } = useLandingData();
 
-  // Real Startup Perks from product data
-  const realCredits = [
-    { company: "Google Cloud", value: "Up to $350k", desc: "Cloud & Gemini AI Credits", badge: "AI Cloud" },
-    { company: "AWS Activate", value: "$100,000", desc: "Compute, Bedrock & Architecture", badge: "Compute" },
-    { company: "Deel Global", value: "20% Off", desc: "International Payroll & Compliance", badge: "HR Ops" },
-    { company: "Cloudflare", value: "Up to $250k", desc: "Workers, Pages & Enterprise Security", badge: "DevPlatform" },
-  ];
-
-  // Real Directory Projects (Launches) from product data
-  const directoryProjects = [
-    {
-      name: "NeuroChain AI",
-      founder: "Elena Rostova",
-      category: "AI",
-      votes: 142,
-      tagline: "Autonomous multi-agent orchestration for on-chain data & inference.",
-      badge: "Spotlight",
-      slug: "neurochain-ai"
-    },
-    {
-      name: "SecantX Protocol",
-      founder: "Marcus Vance",
-      category: "Web3",
-      votes: 118,
-      tagline: "ZK institutional settlement engine for cross-chain liquidity & SAFEs.",
-      badge: "Premium",
-      slug: "secantx-protocol"
-    },
-    {
-      name: "HyperScale DB",
-      founder: "David Chen",
-      category: "Infra",
-      votes: 96,
-      tagline: "Distributed time-series engine with sub-millisecond vector query.",
-      badge: "Spotlight",
-      slug: "hyperscale-db"
-    },
-    {
-      name: "Fasqon Fintech",
-      founder: "Alexandre Silva",
-      category: "Fintech",
-      votes: 91,
-      tagline: "Crypto-native neobank bridging Web3 liquidity and SEPA banking.",
-      badge: "Verified",
-      slug: "promptpilot-saas"
-    },
-  ];
+  const handleDirectoryCheckout = async () => {
+    if (!user) {
+      navigate("/login?redirect=/launch");
+      return;
+    }
+    setCheckoutBusy(true);
+    setCheckoutError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ packageId: "directory_listing", amountUsd: 20, credits: 0 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.checkout_url) throw new Error(data?.error || "Checkout unavailable");
+      window.location.href = data.checkout_url;
+    } catch (err: any) {
+      setCheckoutError(err?.message || "Payment processing is unavailable right now.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
 
   return (
     <div className={`w-full max-w-5xl mx-auto space-y-4 sm:space-y-5 ${className}`}>
@@ -367,7 +321,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
                 INVESTORS &amp; CAPITAL ALLOCATORS
               </span>
               <span className="font-mono text-[10px] font-bold text-black dark:text-white bg-neutral-100 dark:bg-[#1e1f26] px-2.5 py-0.5 rounded-full border border-neutral-200/80 dark:border-white/5">
-                180+ Check-Writers
+                {investorsCount}+ Check-Writers
               </span>
             </div>
 
@@ -465,7 +419,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
             to="/launch"
             className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
           >
-            <span>Explore All 42+ Launches</span>
+            <span>Explore All {launchesCount}+ Launches</span>
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -513,7 +467,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
       {/* ══════════════════════════════════════════════════════════
           5. ROW 5: STARTUP CREDITS + COMMERCIAL SPONSOR / HIRING
          ══════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
         {/* CARD 5A: Free Credits ($500k Perks) */}
         <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
@@ -555,32 +509,57 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
           </Link>
         </div>
 
-        {/* CARD 5B: Market your Web3 product */}
+        {/* CARD 5B: Substack / Market your Web3 product */}
         <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
           <div>
             <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
               <Megaphone size={18} />
             </div>
 
-            <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-              3,000+ READERS
-            </div>
+            <a
+              href={SUBSTACK_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2 hover:opacity-80 transition-opacity"
+            >
+              6,000+ READERS ↗
+            </a>
 
             <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
               Market your Web3 product
             </h3>
 
             <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-              Get in front of a highly targeted audience of builders, check-writers, and ecosystem scouts.
+              Get listed in our Substack + directory audience of builders, check-writers, and ecosystem scouts for a one-time $20 listing fee.
             </p>
+
+            {checkoutError && (
+              <div className="mb-3 flex items-start gap-1.5 text-[10px] font-mono text-red-600 dark:text-red-400">
+                <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                <span>{checkoutError}</span>
+              </div>
+            )}
           </div>
 
-          <Link
-            to="/service-providers"
-            className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
-          >
-            Sponsor Now ↗
-          </Link>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleDirectoryCheckout}
+              disabled={checkoutBusy}
+              className="w-full py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {checkoutBusy ? <Loader2 size={13} className="animate-spin" /> : <DollarSign size={13} />}
+              <span>{checkoutBusy ? "Opening secure checkout..." : "List your launch — $20"}</span>
+            </button>
+            <a
+              href={SUBSTACK_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
+            >
+              Read on Substack ↗
+            </a>
+          </div>
         </div>
 
         {/* CARD 5C: Hire in Web3 */}
@@ -603,12 +582,44 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
             </p>
           </div>
 
-          <Link
-            to="/service-providers"
+          <a
+            href={HIRE_INC_URL}
+            target="_blank"
+            rel="noreferrer"
             className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
           >
-            Explore Talent ↗
-          </Link>
+            Hire in Web3 ↗
+          </a>
+        </div>
+
+        {/* CARD 5D: PR & News */}
+        <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
+          <div>
+            <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
+              <Newspaper size={18} />
+            </div>
+
+            <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-[#1e1f26] text-neutral-600 dark:text-neutral-300 font-mono text-[9px] font-black uppercase tracking-wider mb-2">
+              PR &amp; PRESS
+            </div>
+
+            <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
+              Get your product in news
+            </h3>
+
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
+              Launch PR campaigns, guest features, and press outreach to get your Web3 product covered by tier-1 outlets.
+            </p>
+          </div>
+
+          <a
+            href={PR_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
+          >
+            Get PR ↗
+          </a>
         </div>
 
       </div>

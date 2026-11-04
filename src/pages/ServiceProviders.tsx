@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -16,13 +16,36 @@ import {
   Share2,
   CheckCircle2,
   Clock,
-  Layers
+  Layers,
+  Users
 } from "lucide-react";
 import { LiveActivityMarquee } from "../components/ui/LiveActivityMarquee";
 import { NumberTicker } from "../components/ui/NumberTicker";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { collection, getDocs, query, limit } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { SEEDED_AGENCIES } from "../data/seededAgencies";
 
 export default function ServiceProviders() {
+  // Real provider names registered on the platform (manual/onboarding forms).
+  const [providerNames, setProviderNames] = useState<string[]>(() =>
+    SEEDED_AGENCIES.slice(0, 8).map((a) => a.company || a.title || "").filter(Boolean)
+  );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "service_providers"), limit(12)));
+        if (!snap.empty) {
+          const names = snap.docs
+            .map((d) => String(d.data().agency_name || d.data().contact_name || d.data().name || "").trim())
+            .filter(Boolean)
+            .slice(0, 8);
+          if (names.length) setProviderNames(names);
+        }
+      } catch (_) {}
+    })();
+  }, []);
   usePageMeta({
     title: "Service Providers - Raisequity | Close Funded Startups",
     description: "Stop pitching cold leads that never close. Connect directly with vetted Web2 & Web3 startups that just closed seed rounds and have confirmed budgets for dev, audit, legal, and growth.",
@@ -167,6 +190,52 @@ export default function ServiceProviders() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════
+            1.5. ROW: TRUSTED PROVIDER NETWORK (live registrations)
+           ══════════════════════════════════════════════════════════ */}
+        <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 sm:p-7">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono text-[10px] font-black uppercase tracking-[1.5px] text-emerald-600 dark:text-emerald-400">
+                  PARTNER NETWORK
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-heading font-black text-black dark:text-white tracking-tight">
+                Verified providers working with us
+              </h2>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Users size={18} />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {providerNames.map((name, i) => (
+              <span
+                key={`${name}_${i}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 text-xs font-bold text-black dark:text-white"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                {name}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-[11px] font-mono text-neutral-400">
+              {providerNames.length}+ agencies registered — join them to receive funded RFP work.
+            </span>
+            <Link
+              to="/login?role=agency"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-black text-white dark:bg-white dark:text-black font-extrabold text-xs transition-all active:scale-95 cursor-pointer"
+            >
+              List your agency <ArrowRight size={13} />
+            </Link>
           </div>
         </div>
 
@@ -439,9 +508,14 @@ export default function ServiceProviders() {
                 <Megaphone size={18} />
               </div>
 
-              <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                3,000+ READERS
-              </div>
+              <a
+                href="https://akashkumarjha.substack.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2 hover:opacity-80 transition-opacity"
+              >
+                6,000+ READERS ↗
+              </a>
 
               <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
                 Market your Web3 product
@@ -452,12 +526,14 @@ export default function ServiceProviders() {
               </p>
             </div>
 
-            <Link
-              to="/login?role=agency"
+            <a
+              href="https://akashkumarjha.substack.com/"
+              target="_blank"
+              rel="noreferrer"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              Sponsor Now ↗
-            </Link>
+              Read on Substack ↗
+            </a>
           </div>
 
           {/* CARD 5B: Hire in Web3 */}

@@ -236,7 +236,7 @@ export default function AdminLaunches() {
         maker_comment: form.maker_comment || "",
         launch_tier: form.launch_tier || "standard",
         scheduled_date: form.scheduled_date || new Date().toISOString().split("T")[0],
-        status: form.status || "queue",
+        status: form.status || "launched",
         badgeVerified: !!form.badgeVerified,
         votes_count: form.votes_count ? Number(form.votes_count) : 1,
         created_at: form.created_at || new Date().toISOString(),

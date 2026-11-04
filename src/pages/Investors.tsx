@@ -584,9 +584,14 @@ export default function Investors() {
                 <Megaphone size={18} />
               </div>
 
-              <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                3,000+ READERS
-              </div>
+              <a
+                href="https://akashkumarjha.substack.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2 hover:opacity-80 transition-opacity"
+              >
+                6,000+ READERS ↗
+              </a>
 
               <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
                 Market your Web3 product
@@ -597,12 +602,14 @@ export default function Investors() {
               </p>
             </div>
 
-            <Link
-              to="/service-providers"
+            <a
+              href="https://akashkumarjha.substack.com/"
+              target="_blank"
+              rel="noreferrer"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              Sponsor Now ↗
-            </Link>
+              Read on Substack ↗
+            </a>
           </div>
 
           {/* CARD 6C: Hire in Web3 */}

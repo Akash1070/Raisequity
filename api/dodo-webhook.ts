@@ -145,8 +145,24 @@ async function activateSubscription(admin: any, userId: string, paymentId: strin
       amount: CREDIT_REWARD,
       balanceAfter: newBalance,
       timestamp: new Date().toISOString(),
-      metadata: { paymentId, packageId: metadata?.packageId || 'pack_200_credits', webhookEventId },
+      metadata: { paymentId, packageId: metadata.packageId, webhookEventId },
     });
+
+    // Paid directory listing: record the entitlement so the team can list
+    // the founder's product in the Substack + directory audience.
+    if (metadata.packageId === 'directory_listing') {
+      const dirRef = db.doc(`directory_listings/${userId}`);
+      tx.set(dirRef, {
+        userId,
+        paymentId,
+        packageId: 'directory_listing',
+        amountUsd: Number(metadata.amountUsd) || 20,
+        paidAt: new Date().toISOString(),
+        status: 'paid',
+        webhookEventId,
+      }, { merge: true });
+      tx.update(userRef, { directory_listing_paid: true, last_directory_listing_payment_id: paymentId });
+    }
 
     tx.set(db.doc(`transactions/${paymentId}`), {
       userId,
