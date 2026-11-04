@@ -24,16 +24,21 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && request.resource.data.get('role', 'founder') in ['founder', 'investor', 'service_provider', 'scout']
         && request.resource.data.get('is_approved', false) == (request.resource.data.get('role', 'founder') != 'investor');
-      // Self may edit profile, but never own role / approval / subscription state.
+      // Self may edit profile, but never own role / approval / subscription
+      // state, and never balances — balance mutations happen ONLY server-side
+      // via /api/credits or the Dodo webhook (Admin SDK).
       allow update: if isAdmin()
         || (isSelf(uid) && unchanged('role') && unchanged('is_approved')
-            && unchanged('has_active_subscription') && unchanged('subscription_status'));
+            && unchanged('has_active_subscription') && unchanged('subscription_status')
+            && unchanged('credit_balance') && unchanged('credits'));
       allow delete: if isAdmin();
     }
 
     match /founder_profiles/{uid} {
       allow read: if signedIn();
-      allow create, update: if isSelf(uid) || isAdmin();
+      // credits mirror field is server-managed only.
+      allow create: if isSelf(uid) || isAdmin();
+      allow update: if isAdmin() || (isSelf(uid) && unchanged('credits'));
       allow delete: if isAdmin();
     }
     match /investor_preferences/{uid} {

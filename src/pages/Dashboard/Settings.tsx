@@ -469,15 +469,19 @@ export default function Settings() {
         check_size_max: ""
       });
 
-      // 4. Award 100 credits to the founder (ledger-backed)
-      try {
-        await earnCredits(activeUid, 'referral', 100, {
-          action: 'investor_contact_contribution',
-          investor: newContact.investor_name,
-          fund: newContact.fund_name || "Private Angel"
-        });
-      } catch (earnErr) {
-        console.warn("Contact reward credit error:", earnErr);
+      // 4. Award 100 credits to the founder (server-verified claim against the
+      //    newly created contact doc — prevents self-minting or double-claims).
+      if (addRes?.id) {
+        try {
+          await earnCredits(activeUid, 'referral', 100, {
+            action: 'investor_contact_contribution',
+            investor: newContact.investor_name,
+            fund: newContact.fund_name || "Private Angel",
+            proof: { contactId: addRes.id },
+          });
+        } catch (earnErr) {
+          console.warn("Contact reward credit error:", earnErr);
+        }
       }
 
       await refetchProfile?.();

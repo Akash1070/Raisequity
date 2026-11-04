@@ -100,13 +100,6 @@ export default function CreditPackageModal({
         note: 'Purchased 200 Credits Pack ($20 USD)'
       });
 
-      // Also ensure user document reflects updated balance
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        credit_balance: currentBalance + creditsToAdd,
-        credits: currentBalance + creditsToAdd
-      }).catch(() => {});
-
       await refreshProfile();
       setPurchaseSuccess(creditsToAdd);
       setTimeout(() => {

@@ -14,7 +14,7 @@ const getEnv = (key: string, fallback: string) => {
 };
 
 const firebaseConfig = {
-  apiKey: getEnv('VITE_FIREBASE_API_KEY', 'AIzaSyDA2sTTcOvZFvlA0h3Tf1echp84saV82iQ'),
+  apiKey: getEnv('VITE_FIREBASE_API_KEY', ''),
   authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN', 'raisequity-5d862.firebaseapp.com'),
   projectId: getEnv('VITE_FIREBASE_PROJECT_ID', 'raisequity-5d862'),
   storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET', 'raisequity-5d862.firebasestorage.app'),

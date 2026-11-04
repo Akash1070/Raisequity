@@ -3,15 +3,13 @@ import {
   doc, 
   getDoc, 
   setDoc,
-  updateDoc, 
   collection, 
-  addDoc, 
   query, 
   where, 
   orderBy, 
-  getDocs, 
-  runTransaction 
+  getDocs 
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { CreditTransaction, CreditTxSource, CreditCostsConfig } from '../types';
 import { getGlobalConfig } from './config';
 
@@ -130,7 +128,39 @@ export async function validateCreditSpend(
 }
 
 /**
- * Earn credits and log to credit_transactions ledger (Atomic)
+ * Server-authorized credit mutation. All balance changes for a user now flow
+ * through /api/credits (Firebase ID token required), which runs an atomic
+ * Firestore transaction and enforces earn-proofs and spend caps. The browser
+ * can no longer modify balances directly — closing the self-mint vector.
+ */
+async function creditApiCall(
+  action: 'earn' | 'spend',
+  source: CreditTxSource | string,
+  amountCredits: number,
+  metadata: Record<string, any>
+): Promise<{ success: boolean; newBalance?: number; error?: string }> {
+  try {
+    const auth = getAuth();
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+    const res = await fetch('/api/credits', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ action, source, amount: Math.floor(amountCredits), metadata }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return data as { success: boolean; newBalance?: number; error?: string };
+  } catch (err: any) {
+    console.warn('[Credits] API call failed:', err);
+    return { success: false, error: err?.message || 'Credits service unreachable.' };
+  }
+}
+
+/**
+ * Earn credits via the server-authoritative API. Earn sources are verified
+ * server-side (e.g. referral claims require a real, unrewarded contact id).
  */
 export async function earnCredits(
   userId: string,
@@ -140,46 +170,22 @@ export async function earnCredits(
 ): Promise<number> {
   if (!userId || amountCredits <= 0) return 0;
 
-  const userRef = doc(db, 'users', userId);
-  const ledgerRef = collection(db, 'credit_transactions');
-
-  const resultBalance = await runTransaction(db, async (tx) => {
-    const userDoc = await tx.get(userRef);
-    const currentBalance = userDoc.exists() ? (userDoc.data().credit_balance || 0) : 0;
-    const newBalance = currentBalance + amountCredits;
-
-    // Update user profile credit balance
-    tx.set(userRef, { credit_balance: newBalance }, { merge: true });
-    const founderRef = doc(db, 'founder_profiles', userId);
-    tx.set(founderRef, { credits: newBalance, updated_at: new Date().toISOString() }, { merge: true });
-
-    // Append to credit_transactions ledger
-    const ledgerEntry: Omit<CreditTransaction, 'id'> = {
-      userId,
-      type: 'earn',
-      source,
-      amount: amountCredits,
-      balanceAfter: newBalance,
-      timestamp: new Date().toISOString(),
-      metadata,
-    };
-    const newTxRef = doc(ledgerRef);
-    tx.set(newTxRef, ledgerEntry);
-
-    return newBalance;
-  });
-
+  const data = await creditApiCall('earn', source, amountCredits, metadata);
+  if (!data.success) {
+    console.warn('[Credits] earn declined:', data?.error);
+    return 0;
+  }
+  const newBalance = Number(data.newBalance ?? 0);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('rq_credits_updated', {
-      detail: { userId, newBalance: resultBalance, diff: amountCredits, type: 'earn' }
+      detail: { userId, newBalance, diff: amountCredits, type: 'earn' }
     }));
   }
-
-  return resultBalance;
+  return newBalance;
 }
 
 /**
- * Spend credits according to rule validation (Atomic)
+ * Spend credits via the server-authoritative API (atomic, capped per action).
  */
 export async function spendCredits(
   userId: string,
@@ -192,65 +198,29 @@ export async function spendCredits(
     return { success: false, newBalance: 0, error: 'Invalid parameters.' };
   }
 
-  // Pre-validate hard rules
+  // Client-side pre-validation mirrors the server rules (best-effort UX).
   const validation = await validateCreditSpend(userId, targetType, amountCredits);
   if (!validation.allowed && targetType !== 'success_fee') {
     return { success: false, newBalance: await getCreditBalance(userId), error: validation.reason };
   }
 
-  const userRef = doc(db, 'users', userId);
-  const ledgerRef = collection(db, 'credit_transactions');
-
-  try {
-    const newBalance = await runTransaction(db, async (tx) => {
-      const userDoc = await tx.get(userRef);
-      if (!userDoc.exists()) {
-        throw new Error('User profile does not exist.');
-      }
-
-      const currentBalance = userDoc.data().credit_balance || 0;
-      if (currentBalance < amountCredits) {
-        throw new Error(`Insufficient credit balance. Required: ${amountCredits}, Current: ${currentBalance}`);
-      }
-
-      const updatedBalance = currentBalance - amountCredits;
-
-      // Deduct balance on user profile
-      tx.update(userRef, { credit_balance: updatedBalance });
-      const founderRef = doc(db, 'founder_profiles', userId);
-      tx.set(founderRef, { credits: updatedBalance, updated_at: new Date().toISOString() }, { merge: true });
-
-      // Append ledger entry
-      const ledgerEntry: Omit<CreditTransaction, 'id'> = {
-        userId,
-        type: 'spend',
-        source,
-        amount: amountCredits,
-        balanceAfter: updatedBalance,
-        timestamp: new Date().toISOString(),
-        metadata,
-      };
-      const newTxRef = doc(ledgerRef);
-      tx.set(newTxRef, ledgerEntry);
-
-      return updatedBalance;
-    });
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('rq_credits_updated', {
-        detail: { userId, newBalance, diff: -amountCredits, type: 'spend' }
-      }));
-    }
-
-    return { success: true, newBalance };
-  } catch (err: any) {
-    console.error('[Credits] Spend credits transaction failed:', err);
-    return { 
-      success: false, 
-      newBalance: await getCreditBalance(userId), 
-      error: err.message || 'Failed to process credit transaction.' 
+  const data = await creditApiCall('spend', source, amountCredits, { ...metadata, targetType });
+  if (!data.success) {
+    return {
+      success: false,
+      newBalance: Number(data.newBalance ?? (await getCreditBalance(userId))),
+      error: data?.error || 'Failed to process credit transaction.',
     };
   }
+
+  const newBalance = Number(data.newBalance ?? 0);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('rq_credits_updated', {
+      detail: { userId, newBalance, diff: -amountCredits, type: 'spend' }
+    }));
+  }
+
+  return { success: true, newBalance };
 }
 
 /**

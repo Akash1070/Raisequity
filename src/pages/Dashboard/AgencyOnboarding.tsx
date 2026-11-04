@@ -226,9 +226,9 @@ export default function AgencyOnboarding() {
         console.warn("Could not sync experts doc:", expErr);
       }
 
-      // 2. Update user profile - ensure strictly 50 starter credits
+      // 2. Update user profile (balances are server-managed; starter credits
+      //    were already granted at signup).
       const userDocRef = doc(db, "users", uid);
-      const targetCredits = Math.max(profile?.credit_balance || 0, 50);
       await updateDoc(userDocRef, {
         role: "service_provider",
         company_name: formData.agency_name,
@@ -236,8 +236,6 @@ export default function AgencyOnboarding() {
         linkedin_url: formData.linkedin_url,
         bio: formData.bio,
         onboarding_completed: true,
-        credit_balance: targetCredits,
-        credits: targetCredits,
         updated_at: now,
       });
 
