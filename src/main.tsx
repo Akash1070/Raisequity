@@ -7,6 +7,16 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import { ThemeProvider } from './contexts/ThemeContext.tsx';
 import './index.css';
 
+// Umami Analytics (100% Free & Privacy-Friendly)
+const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID || '2c78d732-4e5a-4e3e-91df-8b3c7b2307aa';
+if (typeof document !== 'undefined' && umamiWebsiteId) {
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = 'https://cloud.umami.is/script.js';
+  script.setAttribute('data-website-id', umamiWebsiteId);
+  document.head.appendChild(script);
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

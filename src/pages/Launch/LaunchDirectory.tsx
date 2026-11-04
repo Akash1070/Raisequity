@@ -184,21 +184,6 @@ export default function LaunchDirectory() {
       }
     } catch (err) {
       console.error('[LaunchDirectory] Error loading real data:', err);
-      const fallbackList = SEEDED_LAUNCHES.map((s) => ({
-        ...s,
-        product_stage: s.product_stage || s.stage || 'Mainnet Live',
-        stage: s.product_stage || s.stage || 'Mainnet Live',
-        chain: (s.ecosystem_chain && s.ecosystem_chain[0]) || s.chain || 'Cross-Chain',
-        ecosystem_chain: s.ecosystem_chain || [s.chain || 'Cross-Chain'],
-        rating: 5.0,
-        review_count: Math.max(2, Number(s.votes_count || 0) % 7),
-        comments_count: Math.max(1, Number(s.votes_count || 0) % 4),
-        icon_symbol: s.company_name?.slice(0, 2).toUpperCase() || 'RQ',
-        icon_bg: 'bg-black text-white',
-        status: 'launched' as const,
-        badgeVerified: true,
-      }));
-      setLaunches(fallbackList as any);
     } finally {
       setLoading(false);
     }

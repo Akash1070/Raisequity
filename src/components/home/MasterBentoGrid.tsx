@@ -41,7 +41,7 @@ const HIRE_INC_URL = "https://www.hireincrypto.com";
 const PR_URL = "https://www.yourweb3guy.com";
 
 export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
-  const { user, getIdToken } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -86,15 +86,10 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
     setCheckoutBusy(true);
     setCheckoutError(null);
     try {
-      let token = '';
-      if (typeof getIdToken === 'function') {
-        token = await getIdToken().catch(() => '');
-      } else if (user && typeof (user as any).getIdToken === 'function') {
-        token = await (user as any).getIdToken().catch(() => '');
-      }
+      const token = await user.getIdToken();
       const res = await fetch("/api/create-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ packageId: "directory_listing", amountUsd: 20, credits: 0 }),
       });
       const data = await res.json().catch(() => ({}));

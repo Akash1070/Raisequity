@@ -108,20 +108,6 @@
         errBox.innerHTML = '<strong>[Unhandled Rejection]</strong> ' + (e.reason ? (e.reason.stack || e.reason.message || e.reason) : 'Promise rejection');
       });
     </script>
-
-    <!-- Umami Analytics (Loaded via VITE_UMAMI_WEBSITE_ID env var) -->
-    <script>
-      (function() {
-        var id = "%VITE_UMAMI_WEBSITE_ID%";
-        if (id && id.indexOf("%") === -1 && id.length > 5) {
-          var el = document.createElement("script");
-          el.defer = true;
-          el.src = "https://cloud.umami.is/script.js";
-          el.setAttribute("data-website-id", id);
-          document.head.appendChild(el);
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

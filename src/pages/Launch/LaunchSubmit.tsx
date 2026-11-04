@@ -121,7 +121,7 @@ function getUpcomingWeeks(count = 8) {
 }
 
 export default function LaunchSubmit() {
-  const { user, profile, getIdToken } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   usePageMeta({
@@ -437,15 +437,10 @@ export default function LaunchSubmit() {
     // Cash (Direct Pay) tiers must be paid via Dodo checkout — never free.
     if (paymentMethod !== 'credits' && requiredCredits > 0) {
       try {
-        let token = '';
-        if (typeof getIdToken === 'function') {
-          token = await getIdToken().catch(() => '');
-        } else if (user && typeof (user as any).getIdToken === 'function') {
-          token = await (user as any).getIdToken().catch(() => '');
-        }
+        const token = await user.getIdToken();
         const res = await fetch('/api/create-checkout', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             packageId: `launch_${formData.launch_tier}`,
             amountUsd: formData.launch_tier === 'spotlight' ? 39 : 20,
