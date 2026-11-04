@@ -737,12 +737,14 @@ export default function LaunchDirectory() {
                   </p>
                 </div>
 
-                <Link
-                  to="/service-providers"
+                <a
+                  href="https://akashkumarjha.substack.com/"
+                  target="_blank"
+                  rel="noreferrer"
                   className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
                 >
                   Sponsor Now ↗
-                </Link>
+                </a>
               </div>
 
               {/* CARD 6B: Hire in Web3 */}
@@ -765,12 +767,14 @@ export default function LaunchDirectory() {
                   </p>
                 </div>
 
-                <Link
-                  to="/service-providers"
+                <a
+                  href="https://www.hireincrypto.com"
+                  target="_blank"
+                  rel="noreferrer"
                   className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
                 >
-                  Explore Talent ↗
-                </Link>
+                  Hire in Web3 ↗
+                </a>
               </div>
 
               {/* CARD 6C: SEO Dofollow Authority Backlinks */}

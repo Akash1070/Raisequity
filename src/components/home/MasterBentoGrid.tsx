@@ -65,6 +65,10 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
   const grantsOffset = (cycleIndex * 2) % Math.max(curatedGrants.length - 1, 1);
   const displayedGrants = curatedGrants.slice(grantsOffset, grantsOffset + 2);
 
+  const displayedCredits = (cycleIndex % 2 === 0)
+    ? realCredits.slice(0, 2)
+    : realCredits.slice(2, 4);
+
   const activeFund = ventureFunds[cycleIndex % ventureFunds.length] || ventureFunds[0];
 
   const handleDirectoryCheckout = async () => {
@@ -289,42 +293,36 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
               </Link>
             </div>
 
-            {/* Sub-card 2: Partnerships */}
+            {/* Sub-card 2: Free Credits & Perks (Rotating dynamically) */}
             <div className="p-4 rounded-[20px] bg-neutral-50/70 dark:bg-[#18191e]/60 border border-neutral-200/70 dark:border-white/5 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-heading font-black text-sm text-black dark:text-white">Partnerships</span>
-                  <Building2 size={13} className="text-neutral-400" />
+                  <span className="font-heading font-black text-sm text-black dark:text-white">Free Credits</span>
+                  <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 flex items-center justify-center">
+                    <Star size={12} fill="currentColor" />
+                  </div>
                 </div>
 
                 <div className="space-y-2 mb-3">
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/10 flex items-center gap-2.5 text-xs">
-                    <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-                      <Award size={15} />
+                  {displayedCredits.map((c, i) => (
+                    <div key={i} className="p-2.5 rounded-xl bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/10 flex items-center justify-between gap-2 text-xs transition-all duration-300">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-black dark:text-white text-xs truncate">{c.company}</div>
+                        <div className="text-[10px] font-mono text-neutral-400 truncate">{c.desc}</div>
+                      </div>
+                      <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
+                        {c.value}
+                      </span>
                     </div>
-                    <div className="overflow-hidden">
-                      <div className="font-bold text-black dark:text-white text-xs truncate">Google Cloud</div>
-                      <div className="text-[10px] font-mono text-neutral-400">$200k AI Credits</div>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/10 flex items-center gap-2.5 text-xs">
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                      <ShieldCheck size={15} />
-                    </div>
-                    <div className="overflow-hidden">
-                      <div className="font-bold text-black dark:text-white text-xs truncate">AWS Activate</div>
-                      <div className="text-[10px] font-mono text-neutral-400">$100k Tier 1 Support</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               <Link
-                to="/service-providers"
+                to="/founders"
                 className="w-full py-2 rounded-full bg-white dark:bg-[#1f2026] border border-neutral-300 dark:border-white/10 text-black dark:text-white font-extrabold text-[11px] text-center transition-all hover:border-black active:scale-95 block"
               >
-                Explore Partners
+                Claim $500k+ Perks →
               </Link>
             </div>
           </div>
@@ -425,7 +423,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
             <div className="grid grid-cols-2 gap-2 mb-5 font-mono text-xs">
               <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
                 <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-0.5">Welcome Grant</span>
-                <span className="font-black text-emerald-600 dark:text-emerald-400">150 Free Credits</span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400">50 Free Credits</span>
               </div>
               <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
                 <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-0.5">Default Rate</span>
@@ -513,49 +511,9 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          5. ROW 5: STARTUP CREDITS + COMMERCIAL SPONSOR / HIRING
+          5. ROW 5: COMMERCIAL SPONSOR / HIRING / PRESS (3 Clean Equal Bento Cards)
          ══════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-
-        {/* CARD 5A: Free Credits ($500k Perks) */}
-        <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
-          <div>
-            <div className="flex items-center justify-between mb-3.5">
-              <h3 className="text-xl font-heading font-black text-black dark:text-white tracking-tight">
-                Free Credits
-              </h3>
-              <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 flex items-center justify-center">
-                <Star size={13} fill="currentColor" />
-              </div>
-            </div>
-
-            {/* Real Perks Stack */}
-            <div className="space-y-2 mb-4">
-              {realCredits.map((c, i) => (
-                <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-heading font-black text-xs text-black dark:text-white truncate">
-                      {c.company}
-                    </div>
-                    <div className="text-[10px] font-mono text-neutral-400 truncate">
-                      {c.desc}
-                    </div>
-                  </div>
-                  <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
-                    {c.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Link
-            to="/founders"
-            className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
-          >
-            Claim $500k+ Perks →
-          </Link>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
 
         {/* CARD 5B: Substack / Market your Web3 product */}
         <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">

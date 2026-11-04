@@ -285,7 +285,8 @@ export function useLandingData() {
               })
               .filter(Boolean) as LandingVentureFund[];
             if (dbFunds.length) {
-              setVentureFunds([...dbFunds, ...TOP_VC_FUNDS].slice(0, 8));
+              const validFunds = dbFunds.filter(f => !['Waseem', 'TN', 'Vomi', 'Brandon', 'Shounak', 'Piyush', 'Gabri'].includes(f.category));
+              setVentureFunds([...TOP_VC_FUNDS, ...validFunds]);
             }
           }
         } catch (_) {}
@@ -370,11 +371,26 @@ export function useLandingData() {
     },
   ];
 
-  // Dynamic slices for rotating cards (strictly 4 items to keep UI compact)
-  const activeGrants = grants.slice((cycleIndex * 4) % Math.max(grants.length - 3, 1), ((cycleIndex * 4) % Math.max(grants.length - 3, 1)) + 4);
-  const activeCredits = credits.slice((cycleIndex * 4) % Math.max(credits.length - 3, 1), ((cycleIndex * 4) % Math.max(credits.length - 3, 1)) + 4);
-  const activeDeals = deals.slice((cycleIndex * 3) % Math.max(deals.length - 2, 1), ((cycleIndex * 3) % Math.max(deals.length - 2, 1)) + 3);
-  const activeFunds = ventureFunds.slice((cycleIndex * 4) % Math.max(ventureFunds.length - 3, 1), ((cycleIndex * 4) % Math.max(ventureFunds.length - 3, 1)) + 4);
+  // Dynamic batched slices for rotating cards (strictly 4 items, visibly switching every 3.5s)
+  const activeGrants = (cycleIndex % 3 === 0)
+    ? grants.slice(0, 4)
+    : (cycleIndex % 3 === 1)
+    ? grants.slice(4, 8)
+    : grants.slice(8, 12);
+
+  const activeCredits = (cycleIndex % 3 === 0)
+    ? credits.slice(0, 4)
+    : (cycleIndex % 3 === 1)
+    ? credits.slice(4, 8)
+    : credits.slice(8, 12);
+
+  const activeDeals = (cycleIndex % 2 === 0)
+    ? deals.slice(0, 3)
+    : deals.slice(3, 6);
+
+  const activeFunds = (cycleIndex % 2 === 0)
+    ? TOP_VC_FUNDS.slice(0, 4)
+    : TOP_VC_FUNDS.slice(4, 8);
 
   return {
     deals,

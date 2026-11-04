@@ -22,12 +22,17 @@ import {
 import { LiveActivityMarquee } from "../components/ui/LiveActivityMarquee";
 import { NumberTicker } from "../components/ui/NumberTicker";
 import { usePageMeta } from "../hooks/usePageMeta";
+import { useLandingData } from "../hooks/useLandingData";
 import { collection, getDocs, query, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { SEEDED_AGENCIES } from "../data/seededAgencies";
 
+const SUBSTACK_URL = "https://akashkumarjha.substack.com/";
+const HIRE_INC_URL = "https://www.hireincrypto.com";
+
 export default function ServiceProviders() {
   // Real provider names registered on the platform (manual/onboarding forms).
+  const { cycleIndex } = useLandingData();
   const [providerNames, setProviderNames] = useState<string[]>(() =>
     SEEDED_AGENCIES.slice(0, 8).map((a) => a.company || a.title || "").filter(Boolean)
   );
@@ -61,7 +66,7 @@ export default function ServiceProviders() {
     { name: "Cloud & AI Compute Infrastructure", count: "14 Partners", budget: "$100k Credits", tags: ["AWS Activate", "Google Cloud", "Alchemy RPC", "QuickNode"] },
   ];
 
-  const activeRfps = [
+  const ALL_RFPS = [
     {
       id: "rfp-fasqon",
       client: "Fasqon Fintech",
@@ -91,8 +96,55 @@ export default function ServiceProviders() {
       deadline: "10 Days",
       category: "AI & Infra",
       deliverable: "High-throughput RPC load-balancing package & docs"
-    }
+    },
+    {
+      id: "rfp-aethernode",
+      client: "AetherNode DePIN",
+      title: "Distributed GPU Node Engine & Cluster Orchestrator",
+      budget: "$40,000 USDC",
+      escrowLocked: true,
+      deadline: "18 Days",
+      category: "DePIN / Infra",
+      deliverable: "Rust DePIN client & worker node scheduler"
+    },
+    {
+      id: "rfp-zeroshield",
+      client: "ZeroShield ZK",
+      title: "Cross-Chain Liquidity & Bridge Contract Audit",
+      budget: "$50,000 USDC",
+      escrowLocked: true,
+      deadline: "25 Days",
+      category: "Security & Audits",
+      deliverable: "Full smart contract static analysis & fuzz testing"
+    },
+    {
+      id: "rfp-promptpilot",
+      client: "PromptPilot SaaS",
+      title: "Enterprise SOC2 Compliance & Tokenomics Model",
+      budget: "$30,000 USDC",
+      escrowLocked: true,
+      deadline: "12 Days",
+      category: "Tokenomics & Compliance",
+      deliverable: "Dual token ecosystem modeling & governance architecture"
+    },
   ];
+
+  const currentRfps = (cycleIndex % 2 === 0) ? ALL_RFPS.slice(0, 3) : ALL_RFPS.slice(3, 6);
+
+  const ALL_AGENCY_SERVICES = [
+    { name: "KOL & Growth Blitz", type: "Active Client RFPs", budget: "$10k - $50k/mo" },
+    { name: "Smart Contract Audits", type: "Security & ZK Protocols", budget: "$15k - $80k" },
+    { name: "Exchange & Market Making", type: "Verified Retainer", budget: "$25k+" },
+    { name: "Tokenomics Structuring", type: "High-Intent Seed Teams", budget: "$12k - $30k" },
+    { name: "Full-Stack dApp Dev", type: "Next.js & Rust Engineers", budget: "$20k - $75k" },
+    { name: "Delaware & Cayman Legal", type: "Entity & SAFE Structuring", budget: "$10k - $35k" },
+    { name: "Tier-1 Crypto PR Blitz", type: "Media Coverage & Outlets", budget: "$15k - $40k/mo" },
+    { name: "Formal Verification", type: "Halo2 & Circom Proofs", budget: "$25k - $90k" },
+  ];
+
+  const currentAgencyServices = (cycleIndex % 2 === 0)
+    ? ALL_AGENCY_SERVICES.slice(0, 4)
+    : ALL_AGENCY_SERVICES.slice(4, 8);
 
   const realCredits = [
     { company: "Google Cloud", value: "Up to $350k", desc: "Cloud & Gemini AI Credits" },
@@ -182,7 +234,7 @@ export default function ServiceProviders() {
                 </div>
                 <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
                   <span className="text-neutral-500">Starter Bonus:</span>
-                  <span className="text-[#0070F3] font-black">150 Free Credits</span>
+                  <span className="text-[#0070F3] font-black">50 Free Credits</span>
                 </div>
                 <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
                   <span className="text-neutral-500">Default Rate:</span>
@@ -264,9 +316,9 @@ export default function ServiceProviders() {
 
               {/* 3 Real RFPs */}
               <div className="space-y-3 mb-4">
-                {activeRfps.map((rfp) => (
+                {currentRfps.map((rfp) => (
                   <div
-                    key={rfp.id}
+                    key={`${rfp.id}-${rfp.client}`}
                     className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group"
                   >
                     <div>
@@ -297,7 +349,7 @@ export default function ServiceProviders() {
 
             <div className="flex items-center justify-between pt-4 border-t border-neutral-100 dark:border-white/5">
               <span className="font-mono text-xs text-neutral-400">
-                Agency Starter Bonus: <strong className="text-emerald-600 dark:text-emerald-400">150 Free Platform Credits</strong>
+                Agency Starter Bonus: <strong className="text-emerald-600 dark:text-emerald-400">50 Free Welcome Credits</strong>
               </span>
               <Link
                 to="/login?role=agency"
@@ -481,13 +533,8 @@ export default function ServiceProviders() {
               </p>
 
               <div className="space-y-2 mb-4">
-                {[
-                  { name: "KOL & Growth Blitz", type: "Active Client RFPs", budget: "$10k - $50k/mo" },
-                  { name: "Smart Contract Audits", type: "Security & ZK Protocols", budget: "$15k - $80k" },
-                  { name: "Exchange & Market Making", type: "Verified Retainer", budget: "$25k+" },
-                  { name: "Tokenomics Structuring", type: "High-Intent Seed Teams", budget: "$12k - $30k" },
-                ].map((c, i) => (
-                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+                {currentAgencyServices.map((c, i) => (
+                  <div key={`${i}-${c.name}`} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0 flex-1">
                       <div className="font-heading font-black text-xs text-black dark:text-white truncate">{c.name}</div>
                       <div className="text-[10px] font-mono text-neutral-400 truncate">{c.type}</div>
@@ -515,35 +562,42 @@ export default function ServiceProviders() {
            ══════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           
-          {/* CARD 5A: Launch Directory & Inbound RFPs */}
+          {/* CARD 5A: Market your Web3 product */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
                 <Megaphone size={18} />
               </div>
 
-              <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                4,800+ FOUNDERS & VCs
-              </div>
+              <a
+                href={SUBSTACK_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2 hover:opacity-80 transition-opacity"
+              >
+                6,000+ READERS ↗
+              </a>
 
               <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
-                Feature in Directory
+                Market your Web3 product
               </h3>
 
               <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Get permanent dofollow backlinks and direct inbound client inquiries from funded Web3 startups.
+                Get in front of a highly targeted audience of builders, check-writers, and ecosystem scouts.
               </p>
             </div>
 
-            <Link
-              to="/launch"
+            <a
+              href={SUBSTACK_URL}
+              target="_blank"
+              rel="noreferrer"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              List in Launch Directory ↗
-            </Link>
+              Read on Substack ↗
+            </a>
           </div>
 
-          {/* CARD 5B: Vetted Talent & Agencies */}
+          {/* CARD 5B: Hire in Web3 */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
@@ -551,24 +605,26 @@ export default function ServiceProviders() {
               </div>
 
               <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-[#1e1f26] text-neutral-600 dark:text-neutral-300 font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                CLIENT RFPs &amp; TALENT
+                TALENT RECRUITING
               </div>
 
               <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
-                Service Provider Directory
+                Hire in Web3
               </h3>
 
               <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Browse open client RFPs, submit service proposals, and manage milestone disbursements securely.
+                Access vetted crypto engineers, token designers, and full-stack growth leads for your protocol.
               </p>
             </div>
 
-            <Link
-              to="/service-providers"
+            <a
+              href={HIRE_INC_URL}
+              target="_blank"
+              rel="noreferrer"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              Browse RFPs &amp; Talent ↗
-            </Link>
+              Hire in Web3 ↗
+            </a>
           </div>
 
           {/* CARD 5C: Active Cohort Quick Access */}
@@ -584,9 +640,9 @@ export default function ServiceProviders() {
               </div>
 
               <div className="space-y-2 mb-4">
-                {trendingLaunches.slice(0, 2).map((p, idx) => (
+                {(cycleIndex % 2 === 0 ? trendingLaunches.slice(0, 2) : trendingLaunches.slice(2, 4)).map((p, idx) => (
                   <Link
-                    key={idx}
+                    key={`${idx}-${p.name}`}
                     to={`/launch/${p.slug}`}
                     className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between block group"
                   >

@@ -434,7 +434,7 @@ export default function Founders() {
 
               <div className="space-y-2.5 mb-5">
                 {activeGrants.map((g, i) => (
-                  <div key={i} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between text-xs transition-all duration-300">
+                  <div key={`${i}-${g.title}`} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between text-xs transition-all duration-300">
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#805ad5] animate-pulse" />
@@ -476,7 +476,7 @@ export default function Founders() {
 
               <div className="space-y-2.5 mb-5">
                 {activeCredits.map((c, i) => (
-                  <div key={i} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs transition-all duration-300">
+                  <div key={`${i}-${c.company}`} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs transition-all duration-300">
                     <div className="min-w-0 flex-1">
                       <div className="font-heading font-black text-black dark:text-white truncate">{c.company}</div>
                       <div className="text-[10px] font-mono text-neutral-400 truncate">{c.desc}</div>
@@ -530,7 +530,7 @@ export default function Founders() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {activeFunds.map((m, idx) => (
               <div
-                key={idx}
+                key={`${idx}-${m.name}`}
                 className="p-4 rounded-[20px] bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>

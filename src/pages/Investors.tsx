@@ -41,7 +41,7 @@ export default function Investors() {
     { name: "Fasqon Fintech", category: "Fintech", votes: 91, founder: "Alexandre Silva", tagline: "Crypto-native neobank bridging Web3 liquidity and SEPA banking.", slug: "promptpilot-saas" },
   ]);
   const [votedMap, setVotedMap] = useState<Record<number, boolean>>({});
-  const { activeDeals } = useLandingData();
+  const { activeDeals, cycleIndex } = useLandingData();
 
   const handleUpvote = (e: React.MouseEvent, idx: number) => {
     e.preventDefault();
@@ -137,6 +137,36 @@ export default function Investors() {
   const syndicatePartners = [
     "Pantera", "a16z Scouts", "YC Alumni", "Sequoia Scouts", "Coinbase V.", "Polygon Wild", "OpenZeppelin", "Delaware Inc."
   ];
+
+  const ALL_INVESTOR_STARTUPS = [
+    { name: "NeuroChain AI", sector: "AI & Agents", round: "$1.5M Seed", badge: "96 Readiness" },
+    { name: "SecantX Protocol", sector: "DeFi / ZK", round: "$2.2M Round", badge: "Institutional" },
+    { name: "HyperScale DB", sector: "Infrastructure", round: "$800k SAFE", badge: "YC W24" },
+    { name: "YourWeb3Guy", sector: "Growth / PR", round: "Cohort Live", badge: "Spotlight" },
+    { name: "Fasqon Fintech", sector: "Fintech / Banking", round: "$1.8M Seed", badge: "Fast-Pass" },
+    { name: "ZeroShield ZK", sector: "Privacy & ZK", round: "$2.5M Round", badge: "Audited" },
+    { name: "AetherNode", sector: "DePIN & Cloud", round: "$1.2M SAFE", badge: "Mainnet Live" },
+    { name: "PromptPilot SaaS", sector: "AI DevTools", round: "$950k Round", badge: "Top 1% MRR" },
+  ];
+
+  const ALL_VERIFIED_PROVIDERS = [
+    { name: "OmniShield Security", type: "Smart Contract & ZK Audit", metric: "100% SLA" },
+    { name: "Web3 Growth Labs", type: "Token Launch & GTM Blitz", metric: "Tier 1 PR" },
+    { name: "Nexus Legal Advisory", type: "Delaware C-Corp & SAFEs", metric: "Specialist" },
+    { name: "LiquidAlpha Trading", type: "CEX/DEX Liquidity & MM", metric: "Institutional" },
+    { name: "CertiK Core", type: "Formal Verification & Audit", metric: "Tier 1 Lead" },
+    { name: "HyperScale Studio", type: "Full-Stack dApp & Mobile SDK", metric: "Top Rated" },
+    { name: "Cayman Entity Counsel", type: "Foundation & Token Legal", metric: "Accredited" },
+    { name: "Apex Market Solutions", type: "Order Book Depth & Listings", metric: "Global" },
+  ];
+
+  const currentStartups = (cycleIndex % 2 === 0)
+    ? ALL_INVESTOR_STARTUPS.slice(0, 4)
+    : ALL_INVESTOR_STARTUPS.slice(4, 8);
+
+  const currentProviders = (cycleIndex % 2 === 0)
+    ? ALL_VERIFIED_PROVIDERS.slice(0, 4)
+    : ALL_VERIFIED_PROVIDERS.slice(4, 8);
 
   return (
     <div className="min-h-screen bg-[#faf9f7] dark:bg-[#090a0d] text-black dark:text-white font-sans flex flex-col justify-start transition-colors duration-150 selection:bg-[#3bd3fd]">
@@ -567,13 +597,8 @@ export default function Investors() {
               </p>
 
               <div className="space-y-2 mb-4">
-                {[
-                  { name: "NeuroChain AI", sector: "AI & Agents", round: "$1.5M Seed", badge: "96 Readiness" },
-                  { name: "SecantX Protocol", sector: "DeFi / ZK", round: "$2.2M Round", badge: "Institutional" },
-                  { name: "HyperScale DB", sector: "Infrastructure", round: "$800k SAFE", badge: "YC W24" },
-                  { name: "YourWeb3Guy", sector: "Growth / PR", round: "Cohort Live", badge: "Spotlight" },
-                ].map((s, i) => (
-                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+                {currentStartups.map((s, i) => (
+                  <div key={`${i}-${s.name}`} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0 flex-1">
                       <div className="font-heading font-black text-xs text-black dark:text-white truncate">{s.name}</div>
                       <div className="text-[10px] font-mono text-neutral-400 truncate">{s.sector} • {s.round}</div>
@@ -616,13 +641,8 @@ export default function Investors() {
               </p>
 
               <div className="space-y-2 mb-4">
-                {[
-                  { name: "OmniShield Security", type: "Smart Contract & ZK Audit", metric: "100% SLA" },
-                  { name: "Web3 Growth Labs", type: "Token Launch & GTM Blitz", metric: "Tier 1 PR" },
-                  { name: "Nexus Legal Advisory", type: "Delaware C-Corp & SAFEs", metric: "Specialist" },
-                  { name: "LiquidAlpha Trading", type: "CEX/DEX Liquidity & MM", metric: "Institutional" },
-                ].map((p, i) => (
-                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+                {currentProviders.map((p, i) => (
+                  <div key={`${i}-${p.name}`} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0 flex-1">
                       <div className="font-heading font-black text-xs text-black dark:text-white truncate">{p.name}</div>
                       <div className="text-[10px] font-mono text-neutral-400 truncate">{p.type}</div>
