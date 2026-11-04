@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom';
 import { FileText, Search, Sparkles, Calendar, Tag, ArrowRight, Building2 } from 'lucide-react';
 import { getPublishedPosts } from '../../lib/content';
 import { ContentPost, PostType } from '../../types/content';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 export default function BlogIndex() {
+  usePageMeta({
+    title: 'Blog - Raisequity | Venture Insights & Funding News',
+    description: 'Official announcements, Web3 funding trends, and founder resources published directly by Raisequity partners.',
+    canonicalPath: '/blog',
+    mdAlternate: '/blog.md',
+  });
   const [posts, setPosts] = useState<ContentPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState<string>('all');

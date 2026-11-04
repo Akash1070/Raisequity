@@ -26,6 +26,7 @@ import { db } from "../lib/firebase";
 import { collection, query, getDocs, limit } from "firebase/firestore";
 import { LiveActivityMarquee } from "../components/ui/LiveActivityMarquee";
 import { NumberTicker } from "../components/ui/NumberTicker";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 const DEFAULT_MATCHES = [
   {
@@ -92,6 +93,12 @@ const TRENDING_LAUNCHES = [
 ];
 
 export default function Founders() {
+  usePageMeta({
+    title: "Founders - Raisequity | 3 Guaranteed VC Meetings in 30 Days",
+    description: "Skip 1,000 cold DMs. Get matched directly with check-size and thesis-aligned VCs backed by our 100% money-back SLA guarantee.",
+    canonicalPath: "/founders",
+    mdAlternate: "/founders.md",
+  });
   const [matches, setMatches] = useState(DEFAULT_MATCHES);
   const [activeFilter, setActiveFilter] = useState("All");
   const [launches, setLaunches] = useState(TRENDING_LAUNCHES);

@@ -14,10 +14,17 @@ import {
 } from "lucide-react";
 
 import { EXPERTS } from "../data/experts";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 export default function ExpertProfile() {
   const { id } = useParams();
   const expert = EXPERTS.find(e => e.id === id) || EXPERTS[0];
+
+  usePageMeta({
+    title: `${expert.name} - Raisequity Experts`,
+    description: expert.aboutMe.slice(0, 155),
+    canonicalPath: `/expert/${id || ''}`,
+  });
 
   return (
     <div className="bg-[#F8FAFB] min-h-screen">

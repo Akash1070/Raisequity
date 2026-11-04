@@ -28,6 +28,7 @@ import { safeStorage } from '../../lib/storage';
 import MyLaunch from '../Dashboard/MyLaunch';
 import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { NumberTicker } from '../../components/ui/NumberTicker';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 const CORE_NARRATIVES = ['All', 'AI', 'Web3', 'SaaS', 'Infrastructure'];
 
@@ -130,6 +131,12 @@ const REAL_CREDITS = [
 ];
 
 export default function LaunchDirectory() {
+  usePageMeta({
+    title: 'Launch Directory - Raisequity | Discover Top Startups',
+    description: 'Vote for the top AI agents, SaaS tools, and Web3 protocols. Winning teams unlock guaranteed partner meetings, $50k angel syndication, and dofollow backlinks.',
+    canonicalPath: '/launch',
+    mdAlternate: '/launch.md',
+  });
   const { user } = useAuth();
   const uid = user?.uid || (user as any)?.id || '';
   const navigate = useNavigate();

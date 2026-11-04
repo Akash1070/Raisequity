@@ -4,6 +4,7 @@ import { Building2, Lock, ShieldCheck, DollarSign, Calendar, ArrowLeft } from 'l
 import { getInvestorProfile } from '../../lib/investors';
 import { InvestorProfile } from '../../types/investor';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 export default function InvestorTeaser() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,12 @@ export default function InvestorTeaser() {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  usePageMeta({
+    title: profile ? `${profile.full_name} - Raisequity Investors` : 'Investor Teaser - Raisequity',
+    description: `${profile?.full_name || ''}${profile?.fund_name ? ` - ${profile.fund_name}` : ''}`.trim().slice(0, 155) || 'Active investor funding early-stage Web3, AI, and decentralized infrastructure.',
+    canonicalPath: `/investors/teaser/${id || ''}`,
+  });
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">Loading Investor Teaser...</div>;

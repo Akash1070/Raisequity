@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { FileText, ArrowLeft, Calendar, Tag, Share2, Check, User } from 'lucide-react';
 import { getPostBySlug } from '../../lib/content';
 import { ContentPost } from '../../types/content';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 export default function BlogDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -22,6 +23,21 @@ export default function BlogDetail() {
       })
       .finally(() => setLoading(false));
   }, [slug]);
+
+  usePageMeta({
+    title: post ? `${post.title} - Raisequity Blog` : 'Raisequity Blog',
+    description: post?.summary,
+    canonicalPath: post ? `/blog/${post.slug}` : '/blog',
+    jsonLd: post
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.title,
+          datePublished: post.publishedAt,
+          author: { '@type': 'Person', name: post.authorName || 'Raisequity' },
+        }
+      : undefined,
+  });
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);

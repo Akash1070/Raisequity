@@ -23,8 +23,15 @@ import {
 } from "lucide-react";
 import { LiveActivityMarquee } from "../components/ui/LiveActivityMarquee";
 import { NumberTicker } from "../components/ui/NumberTicker";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 export default function Investors() {
+  usePageMeta({
+    title: "Investors - Raisequity | Curated Dealflow & Syndication",
+    description: "Front-run high-conviction AI, SaaS, FinTech, and Web3 rounds with verified GitHub traction, automated 1-page Fast-Pass tear sheets, and direct partner calendars.",
+    canonicalPath: "/investors",
+    mdAlternate: "/investors.md",
+  });
   const [launches, setLaunches] = useState([
     { name: "NeuroChain AI", category: "AI", votes: 142, founder: "Elena Rostova", tagline: "Autonomous multi-agent orchestration for on-chain data & inference.", slug: "neurochain-ai" },
     { name: "SecantX Protocol", category: "Web3", votes: 118, founder: "Marcus Vance", tagline: "ZK institutional settlement engine for cross-chain liquidity & SAFEs.", slug: "secantx-protocol" },

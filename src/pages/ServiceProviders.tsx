@@ -20,8 +20,15 @@ import {
 } from "lucide-react";
 import { LiveActivityMarquee } from "../components/ui/LiveActivityMarquee";
 import { NumberTicker } from "../components/ui/NumberTicker";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 export default function ServiceProviders() {
+  usePageMeta({
+    title: "Service Providers - Raisequity | Close Funded Startups",
+    description: "Stop pitching cold leads that never close. Connect directly with vetted Web2 & Web3 startups that just closed seed rounds and have confirmed budgets for dev, audit, legal, and growth.",
+    canonicalPath: "/service-providers",
+    mdAlternate: "/service-providers.md",
+  });
   const categories = [
     { name: "Full-Stack Dev & Smart Contracts", count: "28 Partners", budget: "$25k - $120k", tags: ["dApp Engineering", "Solidity/Rust", "ZK Circuits", "Web3 UI/UX"] },
     { name: "Smart Contract Audits & Security", count: "18 Partners", budget: "$15k - $80k", tags: ["CertiK", "Halborn", "Trail of Bits", "Formal Verification"] },

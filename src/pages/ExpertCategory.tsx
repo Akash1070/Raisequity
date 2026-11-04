@@ -14,10 +14,17 @@ import {
 } from "lucide-react";
 
 import { EXPERT_CATEGORIES } from "../data/experts";
+import { usePageMeta } from "../hooks/usePageMeta";
 
 export default function ExpertCategory() {
   const { categoryId } = useParams();
   const category = EXPERT_CATEGORIES[categoryId as keyof typeof EXPERT_CATEGORIES] || EXPERT_CATEGORIES["marketing-gtm"];
+
+  usePageMeta({
+    title: `${category.title} Experts - Raisequity`,
+    description: category.tagline,
+    canonicalPath: `/experts/category/${categoryId || ''}`,
+  });
 
   return (
     <div className="bg-[#F8FAFB] min-h-screen pb-32">

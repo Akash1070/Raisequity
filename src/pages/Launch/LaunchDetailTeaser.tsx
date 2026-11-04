@@ -33,6 +33,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import EmbedBadgeModal from '../../components/launch/EmbedBadgeModal';
 import { BorderBeam } from '../../components/ui/BorderBeam';
 import { SEEDED_DEAL_FLOW } from '../../data/dealFlowData';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
   'neurochain-ai': {
@@ -278,6 +279,23 @@ export default function LaunchDetailTeaser() {
     loadSponsor();
   }, []);
 
+  const launchSlug = launch?.slug || '';
+
+  usePageMeta({
+    title: `${launch?.company_name || 'Launch'} - Raisequity Launch Directory`,
+    description: (launch?.tagline || launch?.description || '').slice(0, 155),
+    canonicalPath: `/launch/${launchSlug}`,
+    mdAlternate: launchSlug ? `/launch/${launchSlug}.md` : '/launch.md',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://raisequity.com/' },
+        { '@type': 'ListItem', position: 2, name: 'Launch Directory', item: 'https://raisequity.com/launch' },
+        { '@type': 'ListItem', position: 3, name: launch?.company_name || 'Launch', item: `https://raisequity.com/launch/${launchSlug}` },
+      ],
+    },
+  });
 
   const handleVote = async () => {
     if (!uid) {

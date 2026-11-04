@@ -2,11 +2,18 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Lock, ShieldCheck, ArrowLeft, Star, Briefcase } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePageMeta } from '../../hooks/usePageMeta';
 
 export default function ServiceTeaser() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const uid = user?.uid || (user as any)?.id;
+
+  usePageMeta({
+    title: 'Service Partner - Raisequity',
+    description: 'Specialized Web3 service provider delivering token design, audit reports, and go-to-market acceleration for top platform founders.',
+    canonicalPath: `/services/teaser/${id || ''}`,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50/50 py-12 px-4 sm:px-6 font-sans pb-24">
