@@ -1,26 +1,9 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-
-interface ActivityItem {
-  tag: string;
-  badgeColor: string;
-  title: string;
-  metric: string;
-  timeAgo: string;
-}
-
-const ACTIVITIES: ActivityItem[] = [
-  { tag: 'SAFE Executed', badgeColor: 'bg-[#0070F3]/10 text-[#0070F3] border-[#0070F3]/25', title: 'CogniMesh AI ($1.5M Round)', metric: '$100k Check Issued (OpenSign)', timeAgo: '4m ago' },
-  { tag: 'Partner SLA', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-[#00F5A0] border-emerald-500/25', title: 'Decentralized Identity Protocol', metric: '3/3 Partner Calls Completed', timeAgo: '12m ago' },
-  { tag: 'Syndicate Anchor', badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25', title: 'NeuroChain Robotics', metric: '$50k Angel Anchor Reserved', timeAgo: '28m ago' },
-  { tag: 'Fast-Pass Memo', badgeColor: 'bg-[#0070F3]/10 text-[#0070F3] border-[#0070F3]/25', title: 'HyperScale DB (Seed)', metric: 'Delaware C-Corp & GitHub Verified', timeAgo: '41m ago' },
-  { tag: 'Escrow Milestone', badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/25', title: 'Smart Contract Audit Handoff', metric: '$15,000 Milestone Funded', timeAgo: '1h ago' },
-  { tag: 'Grant Claimed', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-[#00F5A0] border-emerald-500/25', title: 'Google Cloud Web3 Program', metric: '$200,000 Infra Credits Unlocked', timeAgo: '1h ago' },
-  { tag: 'Telegram Alert', badgeColor: 'bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/25', title: 'Apex Ventures Partner Feed', metric: '96% Fit Deal Pushed', timeAgo: '2h ago' },
-];
+import { useLandingData } from '../../hooks/useLandingData';
 
 export function LiveActivityMarquee() {
-  const duplicatedActivities = [...ACTIVITIES, ...ACTIVITIES];
+  const { fomoActivities } = useLandingData();
+  const duplicatedActivities = [...fomoActivities, ...fomoActivities];
 
   return (
     <div className="w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#0A0A0A] border-y border-slate-200 dark:border-[#262626] py-3 relative group transition-colors duration-150">

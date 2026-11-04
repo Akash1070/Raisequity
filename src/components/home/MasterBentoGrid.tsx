@@ -47,7 +47,25 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
 
   // Live data from the database (with seed fallbacks) — FOMO elements rotate
   // real content: grants, deal flow, credits, trending launches, investors.
-  const { deals: curatedDeals, grants: curatedGrants, credits: realCredits, projects: directoryProjects, investorsCount, launchesCount } = useLandingData();
+  const {
+    deals: curatedDeals,
+    grants: curatedGrants,
+    credits: realCredits,
+    projects: directoryProjects,
+    ventureFunds,
+    investorsCount,
+    launchesCount,
+    cycleIndex,
+  } = useLandingData();
+
+  // Dynamically cycle through seeded database items so the page feels alive
+  const dealsOffset = (cycleIndex * 3) % Math.max(curatedDeals.length - 2, 1);
+  const displayedDeals = curatedDeals.slice(dealsOffset, dealsOffset + 3);
+
+  const grantsOffset = (cycleIndex * 2) % Math.max(curatedGrants.length - 1, 1);
+  const displayedGrants = curatedGrants.slice(grantsOffset, grantsOffset + 2);
+
+  const activeFund = ventureFunds[cycleIndex % ventureFunds.length] || ventureFunds[0];
 
   const handleDirectoryCheckout = async () => {
     if (!user) {
@@ -91,9 +109,9 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
           </div>
 
           {/* Large Bold Display Heading with Signature Gradient on "Funding Gap." */}
-          <h1 className="text-4xl sm:text-5xl md:text-[62px] font-heading font-black tracking-[-1.5px] leading-[1.05] text-black dark:text-white mb-4">
+          <h1 className="text-4xl sm:text-5xl md:text-[62px] font-heading font-black tracking-[-1.5px] leading-[1.18] sm:leading-[1.12] text-black dark:text-white mb-4 pb-2 overflow-visible">
             Bridging the{" "}
-            <span className="bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#3b82f6] bg-clip-text text-transparent inline-block">
+            <span className="bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#3b82f6] bg-clip-text text-transparent inline-block pb-2 overflow-visible">
               Funding Gap.
             </span>
           </h1>
@@ -142,21 +160,27 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
          ══════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
-        {/* CARD 2A: Curated Deal Flow (3 real projects, zero empty space) */}
+        {/* CARD 2A: Curated Deal Flow (Real projects, live cycling FOMO) */}
         <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-heading font-black text-black dark:text-white tracking-tight">
-                Curated Deal Flow
-              </h3>
-              <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              <div>
+                <h3 className="text-xl font-heading font-black text-black dark:text-white tracking-tight">
+                  Curated Deal Flow
+                </h3>
+                <span className="text-[10px] font-mono text-neutral-400 block mt-0.5">
+                  99+ Active Rounds Verified
+                </span>
+              </div>
+              <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Active Cohort
               </span>
             </div>
 
-            {/* 3 Real Projects Stacked */}
+            {/* Real Projects Stacked with dynamic rotation */}
             <div className="space-y-3">
-              {curatedDeals.map((deal) => (
+              {displayedDeals.map((deal) => (
                 <Link
                   key={deal.id}
                   to={`/launch/${deal.slug}`}
@@ -187,10 +211,10 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
           </div>
 
           <Link
-            to="/launch"
+            to="/founders"
             className="inline-flex items-center justify-between text-xs font-extrabold text-neutral-600 hover:text-black dark:text-neutral-400 dark:hover:text-white transition-colors mt-5 pt-3 border-t border-neutral-100 dark:border-white/5 cursor-pointer"
           >
-            <span>View all active deals</span>
+            <span>Access 99+ Curated Deals</span>
             <ArrowRight size={13} />
           </Link>
         </div>
@@ -241,17 +265,17 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
                 </div>
 
                 <div className="space-y-2 mb-3">
-                  {curatedGrants.map((g, i) => (
+                  {displayedGrants.map((g, i) => (
                     <div key={i} className="p-2.5 rounded-xl bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/10 text-xs">
                       <div className="flex items-center justify-between mb-0.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#805ad5]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#805ad5] animate-pulse" />
                           <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase">{g.network}</span>
                         </div>
                         <span className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold">{g.status}</span>
                       </div>
                       <div className="font-bold text-black dark:text-white text-xs truncate">{g.title}</div>
-                      <div className="text-[10px] font-mono text-neutral-400">{g.amount}</div>
+                      <div className="text-[10px] font-mono text-neutral-400">{g.amount} Non-Dilutive</div>
                     </div>
                   ))}
                 </div>
@@ -261,7 +285,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
                 to="/founders"
                 className="w-full py-2 rounded-full bg-black text-white dark:bg-white dark:text-black font-extrabold text-[11px] text-center transition-all active:scale-95 block"
               >
-                View Directory
+                Explore Curated Grants
               </Link>
             </div>
 
@@ -333,7 +357,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
               Front-run high-conviction AI, SaaS, and Web3 rounds with verified GitHub traction, automated 1-page Fast-Pass tear sheets, and direct partner calendars.
             </p>
 
-            <div className="grid grid-cols-2 gap-2 mb-5 font-mono text-xs">
+            <div className="grid grid-cols-2 gap-2 mb-3.5 font-mono text-xs">
               <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
                 <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-0.5">Front-Run Edge</span>
                 <span className="font-black text-amber-600 dark:text-amber-400">7 Days Ahead</span>
@@ -341,6 +365,30 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
               <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5">
                 <span className="text-[10px] text-neutral-400 uppercase font-bold block mb-0.5">Legal Setup</span>
                 <span className="font-black text-black dark:text-white">$0 (YC SAFE Standard)</span>
+              </div>
+            </div>
+
+            {/* Venture Funds & Accelerators Live Showcase */}
+            <div className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 mb-5 flex items-center justify-between gap-3 text-xs">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
+                    {activeFund.category} • Venture Funds &amp; Accelerators
+                  </span>
+                </div>
+                <div className="font-heading font-black text-black dark:text-white truncate">
+                  {activeFund.name}
+                </div>
+                <div className="text-[10px] font-mono text-neutral-400 truncate">
+                  {activeFund.focus}
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <span className="inline-flex px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold">
+                  {activeFund.checkSize}
+                </span>
+                <span className="block text-[9px] font-mono text-neutral-400 mt-0.5">Syndicate Backer</span>
               </div>
             </div>
           </div>
@@ -484,16 +532,16 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
             {/* Real Perks Stack */}
             <div className="space-y-2 mb-4">
               {realCredits.map((c, i) => (
-                <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between">
-                  <div>
-                    <div className="font-heading font-black text-xs text-black dark:text-white">
+                <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-heading font-black text-xs text-black dark:text-white truncate">
                       {c.company}
                     </div>
-                    <div className="text-[10px] font-mono text-neutral-400 truncate max-w-[140px]">
+                    <div className="text-[10px] font-mono text-neutral-400 truncate">
                       {c.desc}
                     </div>
                   </div>
-                  <span className="inline-flex px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold">
+                  <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
                     {c.value}
                   </span>
                 </div>

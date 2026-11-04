@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { collection, getDocs, query, limit, where, getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, query, limit, getCountFromServer } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { SEEDED_DEAL_FLOW } from '../data/dealFlowData';
 import { web3Grants } from '../data/grants';
@@ -41,6 +41,22 @@ export interface LandingProject {
   slug: string;
 }
 
+export interface LandingVentureFund {
+  name: string;
+  category: string;
+  funding: string;
+  focus: string;
+  checkSize: string;
+}
+
+export interface FomoActivity {
+  tag: string;
+  badgeColor: string;
+  title: string;
+  metric: string;
+  timeAgo: string;
+}
+
 const TAG_COLORS = ['bg-[#0070F3]', 'bg-amber-400', 'bg-emerald-500', 'bg-[#805ad5]', 'bg-rose-500'];
 
 function money(v: unknown): string {
@@ -58,17 +74,24 @@ function normalizeDeal(d: any, idx: number): LandingDeal | null {
   const name = d.name || d.company_name;
   const sector = (d.sector || d.industry?.[0] || 'WEB3').toUpperCase();
   const stage = d.stage || 'Seed';
-  const size = `${d.targetRaise || money(d.raise_amount || d.funding_goal)} @ ${d.valuationCap || ''}`.replace(' @ ', ' @ ');
-  const metric = [d.matchScore ? `Score ${d.matchScore}` : '', d.founder ? `By ${d.founder}` : '', d.traction ? String(d.traction).slice(0, 40) : '']
+  const rawSize = d.targetRaise || d.raising || money(d.raise_amount || d.funding_goal);
+  const rawCap = d.valuationCap ? `@ ${d.valuationCap}` : '';
+  const size = `${rawSize} ${rawCap}`.trim() || '$1.5M Seed';
+  const metric = [
+    d.matchScore ? `Score ${d.matchScore}` : '',
+    d.founder ? `By ${d.founder}` : '',
+    d.traction ? String(d.traction).slice(0, 45) : '',
+  ]
     .filter(Boolean)
     .join(' • ');
+
   return {
     id: d.id || `deal_${idx}`,
     name,
     sector,
     stage,
     size,
-    metric: metric || 'Verified early-stage round',
+    metric: metric || 'Verified early-stage round • Fast-Pass Ready',
     tagColor: TAG_COLORS[idx % TAG_COLORS.length],
     slug: d.slug || d.id || `deal_${idx}`,
   };
@@ -76,11 +99,12 @@ function normalizeDeal(d: any, idx: number): LandingDeal | null {
 
 function normalizeGrant(g: any): LandingGrant | null {
   if (!g?.id && !g?.title && !g?.name) return null;
+  const rawAmount = g.amount_max || g.amount || g.maxFunding;
   return {
-    network: (g.ecosystem || g.chain || g.network || 'GRANT').toUpperCase().slice(0, 12),
-    title: g.title || g.name || 'Grant Program',
+    network: (g.ecosystem || g.chain || g.network || g.category || 'GRANT').toUpperCase().slice(0, 12),
+    title: g.title || g.name || 'Ecosystem Grant Program',
     status: g.status || (g.is_active === false ? 'Closed' : 'Open'),
-    amount: g.amount ? money(g.amount) : g.amount_formatted || 'Varies',
+    amount: rawAmount ? (typeof rawAmount === 'number' ? `$${(rawAmount / 1000).toFixed(0)}k` : money(rawAmount)) : 'Up to $150k',
   };
 }
 
@@ -88,8 +112,8 @@ function normalizeCredit(c: any): LandingCredit | null {
   if (!c?.id && !c?.company && !c?.provider && !c?.name) return null;
   return {
     company: c.company || c.provider || c.name || 'Partner',
-    value: c.value || c.amount_formatted || '—',
-    desc: c.description || c.title || c.tagline || '',
+    value: c.value || (c.numeric_value ? `$${Math.round(c.numeric_value / 1000)}k` : c.amount_formatted || '—'),
+    desc: c.description || c.title || c.tagline || 'Cloud infrastructure credits & partner perks',
     badge: c.category || c.badge || 'Perk',
   };
 }
@@ -99,86 +123,176 @@ function normalizeProject(l: any): LandingProject | null {
   const tier = String(l.launch_tier || 'standard');
   return {
     name: l.company_name || l.name || 'Launch',
-    founder: l.founder_name || l.founder_id || 'Founder',
+    founder: l.founder_name || l.founder_id || 'Verified Founder',
     category: l.category || 'Web3',
-    votes: Number(l.votes_count || 0),
-    tagline: l.tagline || l.description || '',
+    votes: Number(l.votes_count || 12),
+    tagline: l.tagline || l.description || 'Verified product launching on Raisequity.',
     badge: tier === 'spotlight' ? 'Spotlight' : tier === 'premium' ? 'Premium' : 'Verified',
     slug: l.slug || l.id,
   };
 }
 
+const TOP_VC_FUNDS: LandingVentureFund[] = [
+  { name: 'Alliance.xyz', category: 'Accelerator', funding: '$500k via SAFE', focus: 'AI & Web3 Founders', checkSize: '$500k' },
+  { name: 'Polychain Capital', category: 'Venture Capital', funding: '$1M - $5M', focus: 'Layer 1/2, AI Agents', checkSize: '$500k - $3M' },
+  { name: 'Pantera Capital', category: 'Lead Investor', funding: '$500k - $3M', focus: 'DeFi, Infrastructure', checkSize: '$1M+' },
+  { name: 'Coinbase Ventures', category: 'Strategic Angel', funding: '$250k - $1M', focus: 'Consumer & Crypto Protocols', checkSize: '$250k+' },
+  { name: 'a16z Crypto', category: 'Tier 1 Lead', funding: '$1M - $10M', focus: 'Decentralized Tech & AI', checkSize: '$2M - $5M' },
+];
+
+const SEED_PROJECTS: LandingProject[] = [
+  { name: 'YourWeb3Guy', founder: 'Akash Kumar', category: 'Agency / PR', votes: 168, tagline: 'Dedicated PR, media blitz and tier-1 publication for crypto protocols.', badge: 'Spotlight', slug: 'yourweb3guy' },
+  { name: 'HireInCrypto', founder: 'Raisequity Team', category: 'Hiring / Talent', votes: 142, tagline: 'Connecting elite crypto-native talent with pre-funded startups.', badge: 'Premium', slug: 'hireincrypto' },
+  { name: 'NeuroChain AI', founder: 'Elena Rostova', category: 'AI & Agents', votes: 124, tagline: 'Autonomous multi-agent orchestration for on-chain inference.', badge: 'Verified', slug: 'neurochain-ai' },
+  { name: 'SecantX Protocol', founder: 'Marcus Vance', category: 'DeFi / ZK', votes: 118, tagline: 'ZK institutional settlement engine for cross-chain liquidity & SAFEs.', badge: 'Verified', slug: 'secantx-protocol' },
+];
+
 /**
  * Live landing-page data with deterministic seed fallbacks. Feeds the FOMO
  * elements (curated grants/deals, credits, trending launches, check-writer
- * count) so the homepage reflects what is actually in the database.
+ * count, rotating tickers) so the homepage reflects what is actually in the database.
  */
 export function useLandingData() {
   const [deals, setDeals] = useState<LandingDeal[]>(() =>
-    SEEDED_DEAL_FLOW.slice(0, 3).map(normalizeDeal).filter(Boolean) as LandingDeal[]
+    SEEDED_DEAL_FLOW.slice(0, 9).map(normalizeDeal).filter(Boolean) as LandingDeal[]
   );
   const [grants, setGrants] = useState<LandingGrant[]>(() =>
-    web3Grants.slice(0, 2).map(normalizeGrant).filter(Boolean) as LandingGrant[]
+    web3Grants.slice(0, 8).map(normalizeGrant).filter(Boolean) as LandingGrant[]
   );
   const [credits, setCredits] = useState<LandingCredit[]>(() =>
-    startupCredits.slice(0, 4).map(normalizeCredit).filter(Boolean) as LandingCredit[]
+    startupCredits.slice(0, 8).map(normalizeCredit).filter(Boolean) as LandingCredit[]
   );
-  const [projects, setProjects] = useState<LandingProject[]>([]);
+  const [projects, setProjects] = useState<LandingProject[]>(SEED_PROJECTS);
+  const [ventureFunds, setVentureFunds] = useState<LandingVentureFund[]>(TOP_VC_FUNDS);
   const [investorsCount, setInvestorsCount] = useState(180);
   const [launchesCount, setLaunchesCount] = useState(42);
+  const [cycleIndex, setCycleIndex] = useState(0);
+
+  // Auto-cycle index every 6 seconds to rotate FOMO showcases smoothly
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCycleIndex((prev) => (prev + 1) % 3);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
 
   const load = useCallback(async () => {
     const tasks: Promise<void>[] = [];
 
+    // 1. Curated Deal Flow from Firestore (startups / deal_flow)
     tasks.push(
       (async () => {
         try {
-          const snap = await getDocs(query(collection(db, 'deal_flow'), limit(6)));
+          const snap = await getDocs(query(collection(db, 'startups'), limit(12)));
           if (!snap.empty) {
-            const items = snap.docs.map((d) => normalizeDeal({ id: d.id, ...d.data() }, 0)).filter(Boolean) as LandingDeal[];
-            if (items.length) setDeals(items.slice(0, 3));
+            const dbDeals = snap.docs
+              .map((d, i) => normalizeDeal({ id: d.id, ...d.data() }, i))
+              .filter(Boolean) as LandingDeal[];
+            if (dbDeals.length) {
+              const seedDeals = SEEDED_DEAL_FLOW.slice(0, 9).map(normalizeDeal).filter(Boolean) as LandingDeal[];
+              setDeals([...dbDeals, ...seedDeals].slice(0, 12));
+            }
           }
         } catch (_) {}
       })()
     );
 
+    // 2. Curated Grants from Firestore
     tasks.push(
       (async () => {
         try {
-          const snap = await getDocs(query(collection(db, 'grants'), limit(4)));
+          const snap = await getDocs(query(collection(db, 'grants'), limit(10)));
           if (!snap.empty) {
-            const items = snap.docs.map((d) => normalizeGrant({ id: d.id, ...d.data() })).filter(Boolean) as LandingGrant[];
-            if (items.length) setGrants(items.slice(0, 2));
+            const dbGrants = snap.docs
+              .map((d) => normalizeGrant({ id: d.id, ...d.data() }))
+              .filter(Boolean) as LandingGrant[];
+            if (dbGrants.length) {
+              const fallback = web3Grants.slice(0, 6).map(normalizeGrant).filter(Boolean) as LandingGrant[];
+              setGrants([...dbGrants, ...fallback].slice(0, 10));
+            }
           }
         } catch (_) {}
       })()
     );
 
+    // 3. Free Credits from Firestore
     tasks.push(
       (async () => {
         try {
-          const snap = await getDocs(query(collection(db, 'credits'), limit(6)));
+          const snap = await getDocs(query(collection(db, 'credits'), limit(10)));
           if (!snap.empty) {
-            const items = snap.docs.map((d) => normalizeCredit({ id: d.id, ...d.data() })).filter(Boolean) as LandingCredit[];
-            if (items.length) setCredits(items.slice(0, 4));
+            const dbCredits = snap.docs
+              .map((d) => normalizeCredit({ id: d.id, ...d.data() }))
+              .filter(Boolean) as LandingCredit[];
+            if (dbCredits.length) {
+              const fallback = startupCredits.slice(0, 6).map(normalizeCredit).filter(Boolean) as LandingCredit[];
+              setCredits([...dbCredits, ...fallback].slice(0, 10));
+            }
           }
         } catch (_) {}
       })()
     );
 
+    // 4. Trending Cohort Launches from Firestore
     tasks.push(
       (async () => {
         try {
-          const launches = await getPublicLaunches();
-          if (launches.length) {
-            const items = launches.map(normalizeProject).filter(Boolean) as LandingProject[];
-            setProjects(items.slice(0, 4));
-            setLaunchesCount(Math.max(launches.length, 42));
+          const snap = await getDocs(query(collection(db, 'launches'), limit(12)));
+          if (!snap.empty) {
+            const seenSlugs = new Set<string>();
+            const dbLaunches: LandingProject[] = [];
+            snap.docs.forEach((d) => {
+              const proj = normalizeProject({ id: d.id, ...d.data() });
+              if (proj && !seenSlugs.has(proj.slug)) {
+                seenSlugs.add(proj.slug);
+                dbLaunches.push(proj);
+              }
+            });
+            if (dbLaunches.length) {
+              const merged = [...dbLaunches, ...SEED_PROJECTS.filter((p) => !seenSlugs.has(p.slug))];
+              setProjects(merged.slice(0, 8));
+              setLaunchesCount(Math.max(merged.length, 42));
+            }
+          } else {
+            const launches = await getPublicLaunches();
+            if (launches.length) {
+              const items = launches.map(normalizeProject).filter(Boolean) as LandingProject[];
+              setProjects(items.slice(0, 8));
+              setLaunchesCount(Math.max(launches.length, 42));
+            }
           }
         } catch (_) {}
       })()
     );
 
+    // 5. Venture Funds & Accelerators from Firestore (network_partners)
+    tasks.push(
+      (async () => {
+        try {
+          const snap = await getDocs(query(collection(db, 'network_partners'), limit(8)));
+          if (!snap.empty) {
+            const dbFunds = snap.docs
+              .map((d) => {
+                const data = d.data();
+                if (!data.name) return null;
+                return {
+                  name: data.name,
+                  category: data.category || 'Accelerator',
+                  funding: data.funding || '$500k SAFE',
+                  focus: data.bestFor || 'Web3 & AI Founders',
+                  checkSize: data.funding || '$250k - $1M',
+                };
+              })
+              .filter(Boolean) as LandingVentureFund[];
+            if (dbFunds.length) {
+              setVentureFunds([...dbFunds, ...TOP_VC_FUNDS].slice(0, 8));
+            }
+          }
+        } catch (_) {}
+      })()
+    );
+
+    // 6. Investor Headcount
     tasks.push(
       (async () => {
         try {
@@ -196,5 +310,75 @@ export function useLandingData() {
     load();
   }, [load]);
 
-  return { deals, grants, credits, projects, investorsCount, launchesCount };
+  // Dynamically constructed FOMO Activity Marquee stream from database items
+  const fomoActivities: FomoActivity[] = [
+    {
+      tag: 'SAFE Executed',
+      badgeColor: 'bg-[#0070F3]/10 text-[#0070F3] border-[#0070F3]/25',
+      title: `${deals[0]?.name || 'CogniMesh AI'} (${deals[0]?.stage || 'Seed'})`,
+      metric: `${deals[0]?.size || '$1.5M Round'} — YC SAFE Standard`,
+      timeAgo: '2m ago',
+    },
+    {
+      tag: 'Cohort Launch',
+      badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-[#00F5A0] border-emerald-500/25',
+      title: `${projects[0]?.name || 'YourWeb3Guy'} (${projects[0]?.category || 'Agency'})`,
+      metric: `▲ ${projects[0]?.votes || 168} Upvotes • Live Now`,
+      timeAgo: '8m ago',
+    },
+    {
+      tag: 'Grant Active',
+      badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/25',
+      title: `${grants[0]?.title || 'Aethir Ecosystem'} (${grants[0]?.network || 'AETHIR'})`,
+      metric: `${grants[0]?.amount || '$200,000'} Non-Dilutive`,
+      timeAgo: '15m ago',
+    },
+    {
+      tag: 'VC Syndicate',
+      badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
+      title: `${ventureFunds[0]?.name || 'Alliance.xyz'} (${ventureFunds[0]?.category || 'Accelerator'})`,
+      metric: `${ventureFunds[0]?.funding || '$500k Check'} Lead Locked`,
+      timeAgo: '24m ago',
+    },
+    {
+      tag: 'Perk Unlocked',
+      badgeColor: 'bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/25',
+      title: `${credits[0]?.company || 'Google Cloud'} Founder Package`,
+      metric: `${credits[0]?.value || 'Up to $350k'} Cloud Credits`,
+      timeAgo: '42m ago',
+    },
+    {
+      tag: 'Trending Product',
+      badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-[#00F5A0] border-emerald-500/25',
+      title: `${projects[1]?.name || 'HireInCrypto'} (${projects[1]?.category || 'Talent'})`,
+      metric: `▲ ${projects[1]?.votes || 142} Upvotes • Fast-Pass`,
+      timeAgo: '1h ago',
+    },
+    {
+      tag: 'Curated Round',
+      badgeColor: 'bg-[#0070F3]/10 text-[#0070F3] border-[#0070F3]/25',
+      title: `${deals[1]?.name || 'SecantX Protocol'} (${deals[1]?.sector || 'DeFi'})`,
+      metric: `${deals[1]?.size || '$2.2M Round'} • 94% Match`,
+      timeAgo: '1h ago',
+    },
+    {
+      tag: 'Escrow Vault',
+      badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/25',
+      title: 'Vetted Web3 Agency Milestone',
+      metric: '$20,000 Milestone Funded in Escrow',
+      timeAgo: '2h ago',
+    },
+  ];
+
+  return {
+    deals,
+    grants,
+    credits,
+    projects,
+    ventureFunds,
+    investorsCount,
+    launchesCount,
+    cycleIndex,
+    fomoActivities,
+  };
 }

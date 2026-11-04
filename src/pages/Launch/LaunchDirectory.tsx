@@ -689,12 +689,12 @@ export default function LaunchDirectory() {
 
                   <div className="space-y-2 mb-4">
                     {REAL_CREDITS.map((c, i) => (
-                      <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between">
-                        <div>
-                          <div className="font-heading font-black text-xs text-black dark:text-white">{c.company}</div>
-                          <div className="text-[10px] font-mono text-neutral-400 truncate max-w-[140px]">{c.desc}</div>
+                      <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-heading font-black text-xs text-black dark:text-white truncate">{c.company}</div>
+                          <div className="text-[10px] font-mono text-neutral-400 truncate ">{c.desc}</div>
                         </div>
-                        <span className="inline-flex px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold">
+                        <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
                           {c.value}
                         </span>
                       </div>
