@@ -73,20 +73,34 @@ export default async function handler(req: any, res: any) {
           return res.status(403).json({ error: 'earn_source_forbidden' });
         }
       } else if (source === 'referral') {
+        // Two valid proof shapes:
+        //  a) contactId — founder contributed investor contact reward (100 cr)
+        //  b) referralId — referrer rewarded for a verified referral (30 cr)
         const contactId = str(metadata?.proof?.contactId, 128);
-        if (!contactId) return res.status(400).json({ error: 'proof_required' });
-        const contactSnap = await db.doc(`founder_investor_contacts/${contactId}`).get().catch(() => null);
-        if (!contactSnap?.exists) return res.status(400).json({ error: 'proof_invalid' });
-        if (contactSnap.data().founder_id !== uid) return res.status(403).json({ error: 'proof_not_owned' });
-        if (contactSnap.data().rewarded_at) return res.status(409).json({ error: 'already_rewarded' });
+        const referralId = str(metadata?.proof?.referralId, 128);
+        if (contactId) {
+          const contactSnap = await db.doc(`founder_investor_contacts/${contactId}`).get().catch(() => null);
+          if (!contactSnap?.exists) return res.status(400).json({ error: 'proof_invalid' });
+          if (contactSnap.data().founder_id !== uid) return res.status(403).json({ error: 'proof_not_owned' });
+          if (contactSnap.data().rewarded_at) return res.status(409).json({ error: 'already_rewarded' });
+        } else if (referralId) {
+          const refSnap = await db.doc(`referrals/${referralId}`).get().catch(() => null);
+          if (!refSnap?.exists) return res.status(400).json({ error: 'proof_invalid' });
+          const refData = refSnap.data();
+          if (refData.referrerUid !== uid) return res.status(403).json({ error: 'proof_not_owned' });
+          if (refData.status === 'rewarded') return res.status(409).json({ error: 'already_rewarded' });
+        } else {
+          return res.status(400).json({ error: 'proof_required' });
+        }
       } else {
         // Only verified earn sources are accepted from clients.
         return res.status(403).json({ error: 'earn_source_forbidden' });
       }
 
-      const claimId = source === 'referral'
-        ? `tx_claim_${uid}_referral_${str(metadata?.proof?.contactId, 128)}`
+      const proofTarget = source === 'referral'
+        ? (metadata?.proof?.contactId ? `contact_${str(metadata.proof.contactId, 128)}` : `referral_${str(metadata?.proof?.referralId, 128)}`)
         : null;
+      const claimId = proofTarget ? `tx_claim_${uid}_${proofTarget}` : null;
 
       const result = await db.runTransaction(async (tx: any) => {
         if (claimId) {
@@ -110,8 +124,10 @@ export default async function handler(req: any, res: any) {
           metadata,
         });
 
-        if (source === 'referral' && claimId) {
+        if (metadata?.proof?.contactId) {
           tx.update(db.doc(`founder_investor_contacts/${metadata.proof.contactId}`), { rewarded_at: new Date().toISOString() });
+        } else if (metadata?.proof?.referralId) {
+          tx.update(db.doc(`referrals/${metadata.proof.referralId}`), { status: 'rewarded', rewardedAt: new Date().toISOString() });
         }
         return next;
       });

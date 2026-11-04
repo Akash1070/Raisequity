@@ -84,17 +84,12 @@ export async function awardReferralCredits(referralId: string): Promise<boolean>
     const config = await getGlobalConfig();
     const rewardAmount = config.investor_referral_credits || 30;
 
-    // Award credits to referrer
+    // Award credits to referrer — server-verified claim against this referral
+    // record (prevents double-claims and self-minting).
     await earnCredits(data.referrerUid, 'referral', rewardAmount, {
       note: `Earned ${rewardAmount} credits for verified ${data.inviteeRole} referral (${data.inviteeEmail})`,
-      referralId: data.id
-    });
-
-    const now = new Date().toISOString();
-    await updateDoc(refDoc, {
-      status: 'rewarded',
-      verifiedAt: data.verifiedAt || now,
-      rewardedAt: now
+      referralId: data.id,
+      proof: { referralId: data.id }
     });
 
     return true;
