@@ -160,11 +160,6 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
               icon={<Share2 size={16} />}
               label="Community Feed / Socials"
             />
-            <AgencySidebarItem
-              to="/agency-dashboard/grants"
-              icon={<Award size={16} />}
-              label="Ecosystem Grants"
-            />
           </nav>
         </div>
 
@@ -343,7 +338,7 @@ export default function AgencyDashboardLayout({ children }: { children: React.Re
         </header>
 
         {/* Dashboard Page View */}
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 custom-scrollbar relative">
           {children}
         </main>
       </div>

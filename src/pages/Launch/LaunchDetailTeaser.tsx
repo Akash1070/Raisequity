@@ -199,7 +199,49 @@ export default function LaunchDetailTeaser() {
         item = CURATED_INSTITUTIONAL_LAUNCHES[slug];
       }
 
-      // Fallback: If slug matches a startup deal in SEEDED_DEAL_FLOW, synthesize launch profile so 404 never occurs
+      // 1. Fallback: Check real founder_profiles collection in Firestore
+      if (!item) {
+        try {
+          const fpSnap = await getDocs(query(collection(db, 'founder_profiles'), limit(30)));
+          for (const docSnap of fpSnap.docs) {
+            const d = docSnap.data();
+            const cName = (d.company_name || '').trim();
+            const candSlug = cName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+            if (candSlug === slug.toLowerCase() || docSnap.id === slug || d.user_id === slug) {
+              const web = d.company_website || 'https://raisequity.com';
+              const cleanDomain = web.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+              const faviconUrl = cleanDomain ? `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=256` : '';
+              item = {
+                id: 'founder_comp_' + docSnap.id,
+                slug: slug,
+                founder_id: d.user_id || docSnap.id,
+                founder_name: d.full_name || 'Founder',
+                company_name: cName,
+                tagline: d.what_company_does || d.company_blurb?.slice(0, 70) || (cName + ' — Institutional Protocol'),
+                description: d.company_blurb || d.what_company_does || (cName + ' built for high-throughput ecosystem growth.'),
+                website_url: web,
+                logo_url: faviconUrl,
+                screenshots: [],
+                category: d.sector || 'Web3',
+                twitter_handle: d.twitter_url || '',
+                maker_comment: d.team_credential ? `Credentials: ${d.team_credential}` : 'Verified Raisequity Founder Profile.',
+                launch_tier: 'standard',
+                scheduled_date: new Date().toISOString(),
+                status: 'launched',
+                badgeVerified: true,
+                votes_count: Number(d.votes_count || d.upvotes || 0),
+                created_at: d.created_at || new Date().toISOString(),
+                target_keywords: [d.sector || 'Web3', 'Founder', 'Raisequity'],
+              };
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn('[LaunchDetail] Error querying founder_profiles:', e);
+        }
+      }
+
+      // 2. Fallback: If slug matches a startup deal in SEEDED_DEAL_FLOW, synthesize launch profile so 404 never occurs
       if (!item) {
         const slugLower = slug.toLowerCase();
         const matched = SEEDED_DEAL_FLOW.find(d => 
@@ -207,6 +249,7 @@ export default function LaunchDetailTeaser() {
           d.name.toLowerCase().replace(/\s+/g, '-') === slugLower ||
           d.name.toLowerCase() === slugLower ||
           d.id.toLowerCase() === slugLower ||
+          d.id.toLowerCase().replace(/[^a-z0-9]/g, '-') === slugLower ||
           ((d as any).slug && (d as any).slug.toLowerCase() === slugLower)
         );
         if (matched) {

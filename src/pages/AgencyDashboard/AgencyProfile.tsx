@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
+  Camera,
+  Upload,
   Briefcase,
   ShieldCheck,
   Award,
@@ -53,7 +55,27 @@ export default function AgencyProfile() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("Image must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      setForm((prev) => ({ ...prev, logo_url: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [form, setForm] = useState({
+    logo_url: "",
     agency_name: "",
     contact_name: "",
     work_email: "",
@@ -78,6 +100,7 @@ export default function AgencyProfile() {
         if (providerSnap.exists()) {
           const data = providerSnap.data();
           setForm({
+            logo_url: data.logo_url || data.profile_photo_url || profile?.profile_photo_url || "",
             agency_name: data.agency_name || profile?.company_name || "",
             contact_name: data.contact_name || profile?.full_name || "",
             work_email: data.work_email || user?.email || "",
@@ -139,6 +162,8 @@ export default function AgencyProfile() {
       const providerRef = doc(db, "service_providers", uid);
       await setDoc(providerRef, {
         id: uid,
+        logo_url: form.logo_url || "",
+        profile_photo_url: form.logo_url || "",
         agency_name: form.agency_name,
         contact_name: form.contact_name,
         work_email: form.work_email,
@@ -155,6 +180,35 @@ export default function AgencyProfile() {
         is_verified_partner: true,
         updated_at: now
       }, { merge: true });
+
+      try {
+        await setDoc(doc(db, "agency_profiles", uid), {
+          id: uid,
+          logo_url: form.logo_url || "",
+          profile_photo_url: form.logo_url || "",
+          agency_name: form.agency_name,
+          contact_name: form.contact_name,
+          work_email: form.work_email,
+          website_url: form.website_url,
+          location: form.location,
+          linkedin_url: form.linkedin_url,
+          selected_tracks: form.selected_tracks,
+          hourly_rate: form.average_budget,
+          payout_address: form.payout_address,
+          bio: form.bio,
+          updated_at: now
+        }, { merge: true });
+
+        await updateDoc(doc(db, "users", uid), {
+          profile_photo_url: form.logo_url || "",
+          photoURL: form.logo_url || "",
+          avatar_url: form.logo_url || "",
+          company_name: form.agency_name,
+          full_name: form.contact_name
+        }).catch(() => {});
+      } catch (agErr) {
+        console.warn("Error updating agency_profiles/users:", agErr);
+      }
 
       // Sync to experts collection so updates immediately reflect in Services Directory
       try {
@@ -315,6 +369,71 @@ export default function AgencyProfile() {
             <h3 className="font-heading font-black text-base text-black dark:text-white">
               Studio &amp; Legal Identity
             </h3>
+          </div>
+
+          {/* Logo Upload */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-xl bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/5">
+            <div className="relative group shrink-0">
+              <div className="w-16 h-16 rounded-xl bg-white dark:bg-[#121316] border-2 border-dashed border-slate-300 dark:border-white/20 overflow-hidden flex items-center justify-center shadow-xs">
+                {form.logo_url ? (
+                  <img
+                    src={form.logo_url}
+                    alt="Agency Logo"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-purple-500 font-mono font-black text-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10">
+                    {form.agency_name?.charAt(0) || "A"}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 p-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg shadow-md transition-all cursor-pointer"
+                title="Change Logo"
+              >
+                <Camera size={12} />
+              </button>
+            </div>
+
+            <input
+              type="file"
+              ref={logoInputRef}
+              onChange={handleLogoFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+
+            <div className="flex-1 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-lg bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Upload size={12} />
+                  <span>Upload Agency Logo</span>
+                </button>
+                {form.logo_url && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, logo_url: "" }))}
+                    className="px-2.5 py-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 text-xs font-mono font-bold transition-all cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] font-mono text-slate-500">
+                Supports JPG, PNG, WebP up to 2MB. Visible across RFP bids and client dealflow.
+              </p>
+              {logoError && (
+                <p className="text-xs font-mono text-rose-500 font-bold">
+                  {logoError}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

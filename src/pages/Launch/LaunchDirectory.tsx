@@ -38,7 +38,6 @@ import MyLaunch from '../Dashboard/MyLaunch';
 import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 import { usePageMeta } from '../../hooks/usePageMeta';
-import { SEEDED_DEAL_FLOW, DealItem } from '../../data/dealFlowData';
 import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
@@ -121,69 +120,6 @@ const REAL_CREDITS = [
   { company: "Cloudflare", value: "Up to $250k", desc: "Workers, Pages & Enterprise Security" },
 ];
 
-/**
- * Converts a verified DealFlow item from Raisequity's real pipeline into a directory LaunchItem
- */
-function convertDealToLaunch(deal: DealItem, index: number): ExtendedLaunchItem {
-  const website = deal.website_url || 'https://raisequity.com';
-  const cleanDomain = website.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
-  const faviconUrl = cleanDomain ? `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=256` : '';
-  
-  // Normalize category from sector / industry
-  let category = 'Web3';
-  const sector = (deal.sector || '').toLowerCase();
-  const ind = (deal.industry || []).join(' ').toLowerCase();
-  if (sector.includes('ai') || ind.includes('ai')) category = 'AI';
-  else if (sector.includes('defi') || ind.includes('defi')) category = 'DeFi';
-  else if (sector.includes('fintech') || ind.includes('bank')) category = 'Fintech';
-  else if (sector.includes('depin') || ind.includes('energy')) category = 'DePIN';
-  else if (sector.includes('infra') || ind.includes('sequencer') || ind.includes('rollup')) category = 'Infrastructure';
-  else if (sector.includes('saas') || ind.includes('software')) category = 'SaaS';
-  else if (sector.includes('consumer') || ind.includes('social') || ind.includes('game') || ind.includes('gaming')) category = 'Consumer';
-  else if (sector.includes('security') || ind.includes('audit')) category = 'Security';
-
-  // Normalize stage
-  const rawStage = (deal.stage || deal.roundType || '').toLowerCase();
-  let normalizedStage = 'Raising Seed';
-  if (rawStage.includes('pre-seed') || rawStage.includes('angel')) normalizedStage = 'Pre-Seed';
-  else if (rawStage.includes('live') || rawStage.includes('mainnet') || rawStage.includes('otc')) normalizedStage = 'Mainnet Live';
-  else if (rawStage.includes('beta') || rawStage.includes('mvp') || rawStage.includes('testnet') || deal.isPreLaunch) normalizedStage = 'Public Beta';
-
-  // Normalize chain
-  const rawChain = deal.chain && deal.chain !== '—' ? deal.chain : 'Cross-Chain';
-
-  return {
-    id: deal.id,
-    slug: deal.id.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-    founder_id: deal.founder_id || 'deal_founder_' + deal.id,
-    founder_name: deal.founder || 'Founding Team',
-    company_name: deal.name,
-    tagline: deal.tagline || (deal.name + ' — Decentralized Web3 Protocol'),
-    description: deal.description || (deal.name + ' building verified next-generation technology.'),
-    website_url: website,
-    logo_url: faviconUrl,
-    screenshots: [],
-    category,
-    twitter_handle: deal.twitter_handle?.replace(/^https?:\/\/x\.com\//, '@') || '',
-    maker_comment: deal.leadAnchor ? `Backed by ${deal.leadAnchor}` : 'Verified Raisequity Dealflow cohort.',
-    launch_tier: index < 5 ? 'spotlight' : index < 15 ? 'premium' : 'standard',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: Math.max(8, Math.floor((deal.matchScore || 85) / 2.5) - (index % 5)),
-    created_at: new Date(Date.now() - 3600000 * (12 + index * 4)).toISOString(),
-    target_keywords: [...(deal.keywords || []), category, rawChain],
-    product_stage: normalizedStage,
-    stage: normalizedStage,
-    chain: rawChain,
-    ecosystem_chain: [rawChain],
-    rating: 5.0,
-    review_count: Math.max(1, Math.floor((deal.githubCommits || 60) / 25)),
-    comments_count: Math.floor((deal.authenticityScore || 90) / 35),
-    icon_symbol: deal.name.slice(0, 1).toUpperCase(),
-    icon_bg: 'bg-neutral-900 text-white'
-  };
-}
 
 export default function LaunchDirectory() {
   usePageMeta({
@@ -224,18 +160,10 @@ export default function LaunchDirectory() {
       for (const item of publicItems) {
         let normalizedStage = item.product_stage || 'Mainnet Live';
         let chain = (item.ecosystem_chain && item.ecosystem_chain[0]) || 'Cross-Chain';
-        let votes = item.votes_count || 1;
+        let votes = Number(item.votes_count ?? (item as any).upvotes ?? 0);
 
         // Give rightful priority to real flagship products
-        if (item.company_name?.toLowerCase().includes('yourweb3guy') || item.slug === 'yourweb3guy') {
-          votes = Math.max(votes, 48);
-          normalizedStage = 'Mainnet Live';
-          chain = 'Base / Ethereum';
-        } else if (item.company_name?.toLowerCase().includes('hireincrypto') || item.slug === 'hireincrypto') {
-          votes = Math.max(votes, 42);
-          normalizedStage = 'Public Beta';
-          chain = 'Solana / Ethereum';
-        }
+        // Respect real votes count from Firestore
 
         combined.push({
           ...item,
@@ -282,7 +210,7 @@ export default function LaunchDirectory() {
               scheduled_date: new Date().toISOString(),
               status: 'launched',
               badgeVerified: true,
-              votes_count: 36,
+              votes_count: (d.votes_count || d.upvotes || 0),
               created_at: d.created_at || new Date().toISOString(),
               target_keywords: [d.sector || 'Web3', 'Founder', 'Raisequity'],
               product_stage: d.stage || 'Seed',
@@ -301,13 +229,7 @@ export default function LaunchDirectory() {
         // Silently continue with launches if founder_profiles query hits permission boundaries
       }
 
-      // 3. Supplement with real deals from Raisequity verified pipeline (SEEDED_DEAL_FLOW: Fasqon, SecantX, Noah AI, etc.)
-      SEEDED_DEAL_FLOW.forEach((deal, idx) => {
-        if (!combined.some(c => c.company_name?.toLowerCase() === deal.name.toLowerCase() || c.slug === deal.id.toLowerCase())) {
-          combined.push(convertDealToLaunch(deal, idx));
-        }
-      });
-
+      
       // Default initial sort by votes
       combined.sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0));
       setLaunches(combined);

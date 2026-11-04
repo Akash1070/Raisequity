@@ -209,7 +209,7 @@ export default function App() {
             <Route path="messages" element={<Messages />} />
             <Route path="escrows" element={<ActiveEscrows />} />
             <Route path="profile" element={<AgencyProfile />} />
-            <Route path="grants" element={<Grants />} />
+            <Route path="grants" element={<Navigate to="/agency-dashboard/startups" replace />} />
             <Route path="credits" element={<AgencyCredits />} />
             <Route path="settings" element={<Settings />} />
           </Route>

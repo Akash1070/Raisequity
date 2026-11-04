@@ -75,7 +75,27 @@ export default function Settings() {
   };
 
   // Investor Profile State
+  const investorAvatarInputRef = React.useRef<HTMLInputElement>(null);
+  const [investorAvatarError, setInvestorAvatarError] = useState<string | null>(null);
+
+  const handleInvestorAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setInvestorAvatarError(null);
+    if (file.size > 2 * 1024 * 1024) {
+      setInvestorAvatarError("Image must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      setInvestorForm((prev) => ({ ...prev, profile_photo_url: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [investorForm, setInvestorForm] = useState({
+    profile_photo_url: "",
     full_name: "",
     firm_name: "",
     role_title: "Managing Partner",
@@ -92,7 +112,27 @@ export default function Settings() {
   });
 
   // Agency Profile State
+  const agencyAvatarInputRef = React.useRef<HTMLInputElement>(null);
+  const [agencyAvatarError, setAgencyAvatarError] = useState<string | null>(null);
+
+  const handleAgencyAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAgencyAvatarError(null);
+    if (file.size > 2 * 1024 * 1024) {
+      setAgencyAvatarError("Image must be under 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      setAgencyForm((prev) => ({ ...prev, profile_photo_url: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [agencyForm, setAgencyForm] = useState({
+    profile_photo_url: "",
     agency_name: "",
     contact_name: "",
     website_url: "",
@@ -151,6 +191,7 @@ export default function Settings() {
         const minAbs = Number(prefData.min_check_size || invData.min_check_size || 50000);
         const maxAbs = Number(prefData.max_check_size || invData.max_check_size || 250000);
         setInvestorForm({
+          profile_photo_url: invData.profile_photo_url || (profile as any)?.profile_photo_url || (user as any)?.photoURL || "",
           full_name: invData.full_name || profile?.full_name || user?.displayName || "",
           firm_name: invData.fund_name || profile?.company_name || "",
           role_title: invData.investor_type || "Partner / Angel",
@@ -174,6 +215,7 @@ export default function Settings() {
           if (spSnap.exists()) agData = spSnap.data();
         }
         setAgencyForm({
+          profile_photo_url: agData.profile_photo_url || agData.logo_url || (profile as any)?.profile_photo_url || (user as any)?.photoURL || "",
           agency_name: agData.agency_name || profile?.company_name || "ChainCraft Labs",
           contact_name: agData.contact_name || profile?.full_name || user?.displayName || "",
           website_url: agData.website_url || "",
@@ -259,6 +301,7 @@ export default function Settings() {
 
         await setDoc(doc(db, "investor_profiles", uid), {
           id: uid,
+          profile_photo_url: investorForm.profile_photo_url || "",
           full_name: investorForm.full_name,
           fund_name: investorForm.firm_name,
           investor_type: investorForm.role_title,
@@ -287,6 +330,9 @@ export default function Settings() {
         }, { merge: true });
 
         await updateDoc(doc(db, "users", uid), {
+          profile_photo_url: investorForm.profile_photo_url || "",
+          photoURL: investorForm.profile_photo_url || "",
+          avatar_url: investorForm.profile_photo_url || "",
           full_name: investorForm.full_name,
           company_name: investorForm.firm_name,
           linkedin_url: investorForm.linkedin_url,
@@ -299,6 +345,8 @@ export default function Settings() {
       } else if (userRole === "service_provider") {
         const agencyData = {
           id: uid,
+          profile_photo_url: agencyForm.profile_photo_url || "",
+          logo_url: agencyForm.profile_photo_url || "",
           agency_name: agencyForm.agency_name,
           contact_name: agencyForm.contact_name,
           website_url: agencyForm.website_url,
@@ -317,6 +365,9 @@ export default function Settings() {
         await setDoc(doc(db, "service_providers", uid), agencyData, { merge: true });
 
         await updateDoc(doc(db, "users", uid), {
+          profile_photo_url: agencyForm.profile_photo_url || "",
+          photoURL: agencyForm.profile_photo_url || "",
+          avatar_url: agencyForm.profile_photo_url || "",
           full_name: agencyForm.contact_name,
           company_name: agencyForm.agency_name,
           linkedin_url: agencyForm.linkedin_url,
@@ -544,6 +595,71 @@ export default function Settings() {
                 </span>
               </div>
 
+              {/* Investor Avatar Upload Component */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5 rounded-2xl bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/5">
+                <div className="relative group shrink-0">
+                  <div className="w-20 h-20 rounded-2xl bg-white dark:bg-[#121316] border-2 border-dashed border-slate-300 dark:border-white/20 overflow-hidden flex items-center justify-center shadow-xs">
+                    {investorForm.profile_photo_url ? (
+                      <img
+                        src={investorForm.profile_photo_url}
+                        alt="Investor Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-emerald-500 font-mono font-black text-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10">
+                        {investorForm.full_name?.charAt(0) || "I"}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => investorAvatarInputRef.current?.click()}
+                    className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-md transition-all cursor-pointer"
+                    title="Change Photo"
+                  >
+                    <Camera size={13} />
+                  </button>
+                </div>
+
+                <input
+                  type="file"
+                  ref={investorAvatarInputRef}
+                  onChange={handleInvestorAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => investorAvatarInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Upload size={13} />
+                      <span>Upload Profile Picture</span>
+                    </button>
+                    {investorForm.profile_photo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setInvestorForm((p) => ({ ...p, profile_photo_url: "" }))}
+                        className="px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 text-xs font-mono font-bold transition-all cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] font-mono text-slate-500">
+                    Supports JPG, PNG, WebP up to 2MB. Displayed across check-writer network and warm introductions.
+                  </p>
+                  {investorAvatarError && (
+                    <p className="text-xs font-mono text-rose-500 font-bold">
+                      {investorAvatarError}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className={labelCls}>Full Name *</label>
@@ -689,6 +805,71 @@ export default function Settings() {
                 <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/30">
                   Escrow Verified
                 </span>
+              </div>
+
+              {/* Agency Logo / Avatar Upload Component */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5 rounded-2xl bg-slate-50 dark:bg-[#18191e] border border-slate-200 dark:border-white/5">
+                <div className="relative group shrink-0">
+                  <div className="w-20 h-20 rounded-2xl bg-white dark:bg-[#121316] border-2 border-dashed border-slate-300 dark:border-white/20 overflow-hidden flex items-center justify-center shadow-xs">
+                    {agencyForm.profile_photo_url ? (
+                      <img
+                        src={agencyForm.profile_photo_url}
+                        alt="Agency Logo"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-purple-500 font-mono font-black text-2xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10">
+                        {agencyForm.agency_name?.charAt(0) || "A"}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => agencyAvatarInputRef.current?.click()}
+                    className="absolute -bottom-1.5 -right-1.5 p-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl shadow-md transition-all cursor-pointer"
+                    title="Change Logo"
+                  >
+                    <Camera size={13} />
+                  </button>
+                </div>
+
+                <input
+                  type="file"
+                  ref={agencyAvatarInputRef}
+                  onChange={handleAgencyAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => agencyAvatarInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Upload size={13} />
+                      <span>Upload Agency Logo</span>
+                    </button>
+                    {agencyForm.profile_photo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setAgencyForm((p) => ({ ...p, profile_photo_url: "" }))}
+                        className="px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 text-xs font-mono font-bold transition-all cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] font-mono text-slate-500">
+                    Supports JPG, PNG, WebP up to 2MB. Displayed across the agency directory, RFP responses, and portfolio.
+                  </p>
+                  {agencyAvatarError && (
+                    <p className="text-xs font-mono text-rose-500 font-bold">
+                      {agencyAvatarError}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
