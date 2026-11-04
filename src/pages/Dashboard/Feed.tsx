@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Loader2, Coins, Users, Gift, MessageSquare, AlertCircle, 
-  ArrowUpRight, Plus, ThumbsUp, FileText, Send, Sparkles, Filter, 
-  CheckCircle2, Search, Calendar, ChevronRight, ShieldCheck, Flame, 
+import {
+  Loader2, Coins, Users, Gift, MessageSquare, AlertCircle,
+  ArrowUpRight, Plus, ThumbsUp, FileText, Send, Sparkles, Filter,
+  CheckCircle2, Search, Calendar, ChevronRight, ShieldCheck, Flame,
   ExternalLink, Building2, Clock, Check, Share2, DollarSign, Trophy
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -15,12 +15,12 @@ import CreatePostModal from "../../components/dashboard/CreatePostModal";
 import CommunityBroadcastFeed from "../../components/dashboard/CommunityBroadcastFeed";
 import { buildInstitutionalMemo } from "../../lib/institutionalMemo";
 import { useFounderStartups } from "../../hooks/useFounderStartups";
-import { 
-  getFeedPosts, 
-  toggleLikePost, 
-  addPostComment, 
-  getPostComments, 
-  FeedPost 
+import {
+  getFeedPosts,
+  toggleLikePost,
+  addPostComment,
+  getPostComments,
+  FeedPost
 } from "../../lib/posts";
 import { getMonthlyIntroRequestUsage, MonthlyIntroQuotaStatus } from "../../lib/quota";
 import { collection, query, where, getDocs, addDoc, orderBy, limit } from "firebase/firestore";
@@ -198,7 +198,7 @@ export default function Feed() {
           const completed = snap.docs.filter((d) => d.data().status === "completed").length;
           setCompletedCallsCount(completed);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [user?.uid]);
 
@@ -337,7 +337,7 @@ export default function Feed() {
 
   return (
     <div className="space-y-5 pb-24 text-slate-900 dark:text-slate-100 font-sans">
-      
+
       {/* Warm Intro Confirmation Notification Banner */}
       {introNotice && (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2">
@@ -359,7 +359,7 @@ export default function Feed() {
           <button onClick={() => setIntroError(null)} className="text-red-600 hover:text-red-800 ml-4">✕</button>
         </div>
       )}
-      
+
       {/* ══════════════════════════════════════════════════════════
           1. HIREINCRYPTO TOP HORIZONTAL CATEGORY PILL BAR
          ══════════════════════════════════════════════════════════ */}
@@ -386,18 +386,16 @@ export default function Feed() {
                     setActiveCategoryPill(pill.id);
                   }
                 }}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  isSelected || isBroadcast
+                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${isSelected || isBroadcast
                     ? "bg-black text-white dark:bg-white dark:text-black shadow-xs border border-neutral-800 dark:border-white/20"
                     : "bg-slate-100 dark:bg-[#18191e] text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white"
-                }`}
+                  }`}
               >
                 <span>{pill.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                  isSelected || isBroadcast
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${isSelected || isBroadcast
                     ? "bg-neutral-800 text-neutral-200 dark:bg-neutral-200 dark:text-black"
                     : "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-slate-300"
-                }`}>
+                  }`}>
                   {pill.count}
                 </span>
               </button>
@@ -474,219 +472,217 @@ export default function Feed() {
         <CommunityBroadcastFeed
           userRole="founder"
           userCredits={userCredits}
-          onPostSuccess={() => {}}
+          onPostSuccess={() => { }}
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
-        {/* ── LEFT MASTER LIST: OPPORTUNITY CARDS (7 Cols) ── */}
-        <div className="lg:col-span-7 space-y-3.5">
-          {/* Quick Search & Sub-Filter Bar */}
-          <div className="flex items-center gap-2 bg-white dark:bg-[#111111] p-2.5 rounded-2xl border border-slate-200 dark:border-[#262626] shadow-xs">
-            <Search size={15} className="text-slate-400 ml-2 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search check-writers, partner names, thesis keywords..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-none text-xs font-medium text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400"
-            />
-            <span className="text-[11px] font-mono text-slate-400 px-2 shrink-0">
-              {filteredOpportunities.length} matches
-            </span>
-          </div>
 
-          {/* Cards List */}
-          <div className="space-y-3">
-            {filteredOpportunities.map((opp) => {
-              const isSelected = selectedOpportunity.id === opp.id;
-              const hasRequested = introRequested[opp.id];
-
-              return (
-                <div
-                  key={opp.id}
-                  onClick={() => setSelectedOpportunity(opp)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${
-                    isSelected
-                      ? "bg-slate-50 dark:bg-[#16171b] border-[#0070F3] dark:border-[#0070F3] shadow-md ring-1 ring-[#0070F3]/30"
-                      : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#262626] hover:border-slate-300 dark:hover:border-[#383838] shadow-xs"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-[#1c1d22] border border-slate-200 dark:border-white/10 flex items-center justify-center font-mono font-black text-sm text-[#0070F3] shrink-0">
-                        {opp.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
-                            {opp.name}
-                          </h3>
-                          {opp.verified && (
-                            <CheckCircle2 size={13} className="text-[#0070F3] shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                          {opp.partnerName} • <span className="font-bold text-slate-700 dark:text-slate-300">{opp.partnerRole}</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[10px] font-bold ${
-                        opp.matchScore >= 92
-                          ? "bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/25"
-                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25"
-                      }`}>
-                        {opp.matchScore}% FIT
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Badges / Metrics Row */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
-                      Check: {opp.checkSize}
-                    </span>
-                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
-                      {opp.stage}
-                    </span>
-                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
-                      SLA: {opp.responseSla}
-                    </span>
-                  </div>
-
-                  {/* Sectors */}
-                  <div className="flex flex-wrap items-center gap-1">
-                    {opp.sectors.map((sec) => (
-                      <span
-                        key={sec}
-                        className="px-2 py-0.2 rounded text-[9px] font-mono font-medium bg-slate-50 dark:bg-[#1a1b20] text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-white/5"
-                      >
-                        {sec}
-                      </span>
-                    ))}
-                  </div>
-
-                  {opp.warmIntroAvailable && opp.warmIntroFounder && (
-                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] font-mono text-emerald-600 dark:text-[#00F5A0] font-bold">
-                      <span className="flex items-center gap-1">
-                        <Sparkles size={11} /> Warm intro available via {opp.warmIntroFounder}
-                      </span>
-                      <span className="text-[10px] uppercase text-slate-400 font-bold">Double-Blind ✓</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── RIGHT DETAIL COLUMN: INSPECTION PANE (5 Cols - Sticky) ── */}
-        <div className="lg:col-span-5 sticky top-24">
-          <div className="rounded-3xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] p-6 shadow-sm space-y-5">
-            
-            {/* Header info */}
-            <div className="flex items-start justify-between border-b border-slate-200 dark:border-[#262626] pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#0070F3]/10 border border-[#0070F3]/30 flex items-center justify-center text-[#0070F3] font-mono font-black text-lg shadow-xs">
-                  {selectedOpportunity.name.charAt(0)}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                      {selectedOpportunity.name}
-                    </h2>
-                    <CheckCircle2 size={14} className="text-[#0070F3]" />
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    {selectedOpportunity.partnerName} • {selectedOpportunity.partnerRole}
-                  </p>
-                </div>
-              </div>
-
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] font-mono text-[10px] font-black uppercase border border-emerald-500/30">
-                {selectedOpportunity.matchLevel}
+          {/* ── LEFT MASTER LIST: OPPORTUNITY CARDS (7 Cols) ── */}
+          <div className="lg:col-span-7 space-y-3.5">
+            {/* Quick Search & Sub-Filter Bar */}
+            <div className="flex items-center gap-2 bg-white dark:bg-[#111111] p-2.5 rounded-2xl border border-slate-200 dark:border-[#262626] shadow-xs">
+              <Search size={15} className="text-slate-400 ml-2 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search check-writers, partner names, thesis keywords..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none text-xs font-medium text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400"
+              />
+              <span className="text-[11px] font-mono text-slate-400 px-2 shrink-0">
+                {filteredOpportunities.length} matches
               </span>
             </div>
 
-            {/* Match Diagnosis Metric Box */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#16171b] border border-slate-200 dark:border-white/5 space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-500 font-bold">Algorithmic Thesis Match</span>
-                <span className="text-emerald-600 dark:text-[#00F5A0] font-black text-sm">
-                  {selectedOpportunity.matchScore}%
+            {/* Cards List */}
+            <div className="space-y-3">
+              {filteredOpportunities.map((opp) => {
+                const isSelected = selectedOpportunity.id === opp.id;
+                const hasRequested = introRequested[opp.id];
+
+                return (
+                  <div
+                    key={opp.id}
+                    onClick={() => setSelectedOpportunity(opp)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${isSelected
+                        ? "bg-slate-50 dark:bg-[#16171b] border-[#0070F3] dark:border-[#0070F3] shadow-md ring-1 ring-[#0070F3]/30"
+                        : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#262626] hover:border-slate-300 dark:hover:border-[#383838] shadow-xs"
+                      }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-[#1c1d22] border border-slate-200 dark:border-white/10 flex items-center justify-center font-mono font-black text-sm text-[#0070F3] shrink-0">
+                          {opp.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                              {opp.name}
+                            </h3>
+                            {opp.verified && (
+                              <CheckCircle2 size={13} className="text-[#0070F3] shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                            {opp.partnerName} • <span className="font-bold text-slate-700 dark:text-slate-300">{opp.partnerRole}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[10px] font-bold ${opp.matchScore >= 92
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/25"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25"
+                          }`}>
+                          {opp.matchScore}% FIT
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Badges / Metrics Row */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                        Check: {opp.checkSize}
+                      </span>
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                        {opp.stage}
+                      </span>
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                        SLA: {opp.responseSla}
+                      </span>
+                    </div>
+
+                    {/* Sectors */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {opp.sectors.map((sec) => (
+                        <span
+                          key={sec}
+                          className="px-2 py-0.2 rounded text-[9px] font-mono font-medium bg-slate-50 dark:bg-[#1a1b20] text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-white/5"
+                        >
+                          {sec}
+                        </span>
+                      ))}
+                    </div>
+
+                    {opp.warmIntroAvailable && opp.warmIntroFounder && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] font-mono text-emerald-600 dark:text-[#00F5A0] font-bold">
+                        <span className="flex items-center gap-1">
+                          <Sparkles size={11} /> Warm intro available via {opp.warmIntroFounder}
+                        </span>
+                        <span className="text-[10px] uppercase text-slate-400 font-bold">Double-Blind ✓</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── RIGHT DETAIL COLUMN: INSPECTION PANE (5 Cols - Sticky) ── */}
+          <div className="lg:col-span-5 sticky top-24">
+            <div className="rounded-3xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] p-6 shadow-sm space-y-5">
+
+              {/* Header info */}
+              <div className="flex items-start justify-between border-b border-slate-200 dark:border-[#262626] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#0070F3]/10 border border-[#0070F3]/30 flex items-center justify-center text-[#0070F3] font-mono font-black text-lg shadow-xs">
+                    {selectedOpportunity.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                        {selectedOpportunity.name}
+                      </h2>
+                      <CheckCircle2 size={14} className="text-[#0070F3]" />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      {selectedOpportunity.partnerName} • {selectedOpportunity.partnerRole}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] font-mono text-[10px] font-black uppercase border border-emerald-500/30">
+                  {selectedOpportunity.matchLevel}
                 </span>
               </div>
-              <div className="w-full bg-slate-200 dark:bg-white/10 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-[#0070F3] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${selectedOpportunity.matchScore}%` }}
-                />
+
+              {/* Match Diagnosis Metric Box */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#16171b] border border-slate-200 dark:border-white/5 space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-500 font-bold">Algorithmic Thesis Match</span>
+                  <span className="text-emerald-600 dark:text-[#00F5A0] font-black text-sm">
+                    {selectedOpportunity.matchScore}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-white/10 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[#0070F3] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${selectedOpportunity.matchScore}%` }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                  <div>Response SLA: <strong className="text-slate-800 dark:text-white">{selectedOpportunity.responseSla}</strong></div>
+                  <div>Location: <strong className="text-slate-800 dark:text-white">{selectedOpportunity.location}</strong></div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                <div>Response SLA: <strong className="text-slate-800 dark:text-white">{selectedOpportunity.responseSla}</strong></div>
-                <div>Location: <strong className="text-slate-800 dark:text-white">{selectedOpportunity.location}</strong></div>
+
+              {/* Investment Focus & Thesis */}
+              <div className="space-y-1.5">
+                <h4 className="text-[11px] font-mono font-bold uppercase text-slate-400 tracking-wider">
+                  Partner Investment Focus
+                </h4>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+                  {selectedOpportunity.thesisSummary}
+                </p>
               </div>
-            </div>
 
-            {/* Investment Focus & Thesis */}
-            <div className="space-y-1.5">
-              <h4 className="text-[11px] font-mono font-bold uppercase text-slate-400 tracking-wider">
-                Partner Investment Focus
-              </h4>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
-                {selectedOpportunity.thesisSummary}
-              </p>
-            </div>
-
-            {/* Key Term Specs */}
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-100 dark:border-white/5">
-                <span className="text-[10px] text-slate-400 uppercase block mb-0.5">Typical Check</span>
-                <span className="font-bold text-slate-900 dark:text-white">{selectedOpportunity.checkSize}</span>
+              {/* Key Term Specs */}
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-100 dark:border-white/5">
+                  <span className="text-[10px] text-slate-400 uppercase block mb-0.5">Typical Check</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedOpportunity.checkSize}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-100 dark:border-white/5">
+                  <span className="text-[10px] text-slate-400 uppercase block mb-0.5">Target Stage</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedOpportunity.stage}</span>
+                </div>
               </div>
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-100 dark:border-white/5">
-                <span className="text-[10px] text-slate-400 uppercase block mb-0.5">Target Stage</span>
-                <span className="font-bold text-slate-900 dark:text-white">{selectedOpportunity.stage}</span>
+
+              {/* Primary Action Buttons */}
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-[#262626]">
+                <button
+                  onClick={() => handleRequestIntro(selectedOpportunity)}
+                  disabled={introRequested[selectedOpportunity.id]}
+                  className="w-full py-3 px-4 bg-[#0070F3] hover:bg-[#0060DF] disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  {introRequested[selectedOpportunity.id] ? (
+                    <>
+                      <CheckCircle2 size={15} /> Intro Request Dispatched
+                    </>
+                  ) : (
+                    <>
+                      <Share2 size={15} /> Request Warm Intro (1 Credit / Quota)
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => navigate('/dashboard/bookings')}
+                  className="w-full py-3 px-4 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-900 dark:text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Calendar size={15} /> Book Partner Pitch Call (30-Day SLA)
+                </button>
+
+                <button
+                  onClick={() => setIsMemoOpen(true)}
+                  className="w-full py-2.5 px-4 text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs font-mono font-bold transition-all text-center cursor-pointer"
+                >
+                  Generate 1-Page Fast-Pass Memo →
+                </button>
               </div>
-            </div>
-
-            {/* Primary Action Buttons */}
-            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-[#262626]">
-              <button
-                onClick={() => handleRequestIntro(selectedOpportunity)}
-                disabled={introRequested[selectedOpportunity.id]}
-                className="w-full py-3 px-4 bg-[#0070F3] hover:bg-[#0060DF] disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-              >
-                {introRequested[selectedOpportunity.id] ? (
-                  <>
-                    <CheckCircle2 size={15} /> Intro Request Dispatched
-                  </>
-                ) : (
-                  <>
-                    <Share2 size={15} /> Request Warm Intro (1 Credit / Quota)
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={() => navigate('/dashboard/bookings')}
-                className="w-full py-3 px-4 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-900 dark:text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Calendar size={15} /> Book Partner Pitch Call (30-Day SLA)
-              </button>
-
-              <button
-                onClick={() => setIsMemoOpen(true)}
-                className="w-full py-2.5 px-4 text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs font-mono font-bold transition-all text-center cursor-pointer"
-              >
-                Generate 1-Page Fast-Pass Memo →
-              </button>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Due Diligence Memo Modal */}

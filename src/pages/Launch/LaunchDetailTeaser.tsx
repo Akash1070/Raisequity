@@ -16,7 +16,6 @@ import {
   Share2,
   Check,
   ChevronDown,
-  Bot,
   Send,
   Image as ImageIcon,
   User,
@@ -24,151 +23,30 @@ import {
   Terminal,
   FileText,
   Layers,
+  Users,
+  Lightbulb,
+  Wrench,
+  Star,
+  HelpCircle,
+  Trophy,
+  Megaphone,
+  Calendar,
+  Tag,
+  Laptop,
+  CheckCircle2,
+  MapPin,
+  Bot,
+  ArrowRight
 } from 'lucide-react';
-import { getLaunchBySlug, voteLaunch, hasUserVoted, getLaunchComments, addLaunchComment } from '../../lib/launches';
+import { getLaunchBySlug, voteLaunch, hasUserVoted, getLaunchComments, addLaunchComment, getPublicLaunches } from '../../lib/launches';
 import { LaunchItem, LaunchComment, SponsorItem } from '../../types/launch';
-import { collection, getDocs, query, where, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import EmbedBadgeModal from '../../components/launch/EmbedBadgeModal';
 import { BorderBeam } from '../../components/ui/BorderBeam';
-import { SEEDED_DEAL_FLOW } from '../../data/dealFlowData';
+import { SEEDED_DEAL_FLOW, SEEDED_LAUNCHES } from '../../data/dealFlowData';
 import { usePageMeta } from '../../hooks/usePageMeta';
-
-const CURATED_INSTITUTIONAL_LAUNCHES: Record<string, LaunchItem> = {
-  'neurochain-ai': {
-    id: 'curated_neurochain_ai',
-    slug: 'neurochain-ai',
-    founder_id: 'inst_founder_1',
-    founder_name: 'Elena Rostova',
-    company_name: 'NeuroChain AI',
-    tagline: 'Autonomous multi-agent orchestration layer for decentralized data pipelines & LLMs.',
-    description: 'Autonomous multi-agent orchestration layer that unifies on-chain intelligence with high-throughput inference nodes across 340+ decentralized GPU clusters.',
-    website_url: 'https://raisequity.com/app/neurochain',
-    logo_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-    screenshots: [],
-    category: 'AI',
-    twitter_handle: '@neurochain_ai',
-    maker_comment: 'Ex-DeepMind research team building institutional decentralized intelligence.',
-    launch_tier: 'spotlight',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-    target_keywords: ['AI', 'Agents', 'Infrastructure'],
-  },
-  'secantx-protocol': {
-    id: 'curated_secantx_protocol',
-    slug: 'secantx-protocol',
-    founder_id: 'inst_founder_2',
-    founder_name: 'Marcus Vance',
-    company_name: 'SecantX Protocol',
-    tagline: 'Zero-knowledge institutional settlement engine for cross-chain liquidity & SAFEs.',
-    description: 'Zk-rollup protocol powering atomic settlement between tier-1 custodians and decentralized execution layers with formal verification.',
-    website_url: 'https://raisequity.com/app/secantx',
-    logo_url: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=150&auto=format&fit=crop&q=80',
-    screenshots: [],
-    category: 'Web3',
-    twitter_handle: '@secantx_zk',
-    maker_comment: 'Audited by Trail of Bits. $2.2M Seed round active.',
-    launch_tier: 'premium',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-    target_keywords: ['Web3', 'ZK', 'Settlement'],
-  },
-  'hyperscale-db': {
-    id: 'curated_hyperscale_db',
-    slug: 'hyperscale-db',
-    founder_id: 'inst_founder_3',
-    founder_name: 'David Chen',
-    company_name: 'HyperScale DB',
-    tagline: 'Distributed time-series engine with native vector search & sub-millisecond query.',
-    description: 'Ultra-low latency vector and time-series database engineered for high-frequency financial models, DeFi liquidity vaults, and real-time AI swarms.',
-    website_url: 'https://raisequity.com/app/hyperscale',
-    logo_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=150&auto=format&fit=crop&q=80',
-    screenshots: [],
-    category: 'Infrastructure',
-    twitter_handle: '@hyperscaledb',
-    maker_comment: '$38,000 MRR (+28% MoM). 248 verified GitHub commits.',
-    launch_tier: 'spotlight',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: 97,
-    created_at: new Date(Date.now() - 3600000 * 20).toISOString(),
-    target_keywords: ['Infrastructure', 'Database', 'Vector'],
-  },
-  'opensign-protocol': {
-    id: 'curated_opensign_protocol',
-    slug: 'opensign-protocol',
-    founder_id: 'inst_founder_4',
-    founder_name: 'Sarah Sterling',
-    company_name: 'OpenSign Protocol',
-    tagline: 'Verifiable 1-click legal execution for token SAFTs and YC post-money SAFEs.',
-    description: 'Cryptographically secured legal contract suite eliminating $5,000 legal setup costs for angel syndicates.',
-    website_url: 'https://raisequity.com/app/opensign',
-    logo_url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=150&auto=format&fit=crop&q=80',
-    screenshots: [],
-    category: 'Web3',
-    twitter_handle: '@opensign_safe',
-    maker_comment: 'Used by 180+ VCs and angel syndicates.',
-    launch_tier: 'premium',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: 84,
-    created_at: new Date(Date.now() - 3600000 * 28).toISOString(),
-    target_keywords: ['LegalTech', 'SAFE', 'SAFT'],
-  },
-  'synapse-depin': {
-    id: 'curated_synapse_depin',
-    slug: 'synapse-depin',
-    founder_id: 'inst_founder_5',
-    founder_name: 'Arjun Mehta',
-    company_name: 'Synapse DePIN',
-    tagline: 'Decentralized GPU compute marketplace for fine-tuning open-source LLMs.',
-    description: 'Aggregating enterprise GPU clusters across 340 verified bare-metal nodes worldwide at 70% lower cost.',
-    website_url: 'https://raisequity.com/app/synapse',
-    logo_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-    screenshots: [],
-    category: 'AI',
-    twitter_handle: '@synapse_depin',
-    maker_comment: '340 Nodes live on testnet alpha.',
-    launch_tier: 'standard',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 36).toISOString(),
-    target_keywords: ['DePIN', 'GPU', 'Compute'],
-  },
-  'apex-rollup': {
-    id: 'curated_apex_rollup',
-    slug: 'apex-rollup',
-    founder_id: 'inst_founder_6',
-    founder_name: 'Viktor Thorne',
-    company_name: 'Apex Rollup',
-    tagline: 'Modular sequencing network providing sub-second finality for consumer DeFi.',
-    description: 'High-performance shared sequencer decentralized protocol with institutional MEV protection.',
-    website_url: 'https://raisequity.com/app/apex',
-    logo_url: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=150&auto=format&fit=crop&q=80',
-    screenshots: [],
-    category: 'Infrastructure',
-    twitter_handle: '@apex_rollup',
-    maker_comment: '$50k angel check anchor reserved.',
-    launch_tier: 'standard',
-    scheduled_date: new Date().toISOString(),
-    status: 'launched',
-    badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-    target_keywords: ['Sequencer', 'Rollup', 'DeFi'],
-  }
-};
 
 export default function LaunchDetailTeaser() {
   const { slug } = useParams<{ slug: string }>();
@@ -176,17 +54,18 @@ export default function LaunchDetailTeaser() {
   const navigate = useNavigate();
 
   const [launch, setLaunch] = useState<LaunchItem | null>(null);
+  const [founderProfile, setFounderProfile] = useState<any | null>(null);
   const [comments, setComments] = useState<LaunchComment[]>([]);
+  const [topLaunches, setTopLaunches] = useState<LaunchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [activeSponsor, setActiveSponsor] = useState<SponsorItem | null>(null);
   const [badgeModalOpen, setBadgeModalOpen] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
+  const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-  const [aiQuery, setAiQuery] = useState('');
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [userRating, setUserRating] = useState<number>(5);
+  const [hasRated, setHasRated] = useState<boolean>(false);
 
   const uid = user?.uid || (user as any)?.id;
 
@@ -195,11 +74,25 @@ export default function LaunchDetailTeaser() {
     setLoading(true);
     try {
       let item = await getLaunchBySlug(slug);
-      if (!item && CURATED_INSTITUTIONAL_LAUNCHES[slug]) {
-        item = CURATED_INSTITUTIONAL_LAUNCHES[slug];
+
+      // Clean slug variant (e.g. "deal-sanity-united" -> "sanity-united")
+      const cleanSlug = slug.toLowerCase().replace(/^(deal|launch)[-_]/, '');
+
+      // 1. Fallback: Check curated / SEEDED_LAUNCHES
+      if (!item) {
+        const foundSeed = SEEDED_LAUNCHES.find(l => 
+          l.slug === slug ||
+          l.slug === cleanSlug ||
+          l.id === slug ||
+          l.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-') === cleanSlug ||
+          l.company_name.toLowerCase().replace(/[^a-z0-9]/g, '-') === slug.toLowerCase()
+        );
+        if (foundSeed) {
+          item = foundSeed as LaunchItem;
+        }
       }
 
-      // 1. Fallback: Check real founder_profiles collection in Firestore
+      // 2. Fallback: Check real founder_profiles collection in Firestore
       if (!item) {
         try {
           const fpSnap = await getDocs(query(collection(db, 'founder_profiles'), limit(30)));
@@ -207,7 +100,7 @@ export default function LaunchDetailTeaser() {
             const d = docSnap.data();
             const cName = (d.company_name || '').trim();
             const candSlug = cName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-            if (candSlug === slug.toLowerCase() || docSnap.id === slug || d.user_id === slug) {
+            if (candSlug === slug.toLowerCase() || candSlug === cleanSlug || docSnap.id === slug || d.user_id === slug) {
               const web = d.company_website || 'https://raisequity.com';
               const cleanDomain = web.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
               const faviconUrl = cleanDomain ? `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=256` : '';
@@ -233,6 +126,7 @@ export default function LaunchDetailTeaser() {
                 created_at: d.created_at || new Date().toISOString(),
                 target_keywords: [d.sector || 'Web3', 'Founder', 'Raisequity'],
               };
+              setFounderProfile(d);
               break;
             }
           }
@@ -241,32 +135,37 @@ export default function LaunchDetailTeaser() {
         }
       }
 
-      // 2. Fallback: If slug matches a startup deal in SEEDED_DEAL_FLOW, synthesize launch profile so 404 never occurs
+      // 3. Fallback: If slug matches a startup deal in SEEDED_DEAL_FLOW, synthesize profile so 404 never occurs
       if (!item) {
         const slugLower = slug.toLowerCase();
         const matched = SEEDED_DEAL_FLOW.find(d => 
           d.name.toLowerCase().replace(/[^a-z0-9]/g, '-') === slugLower ||
+          d.name.toLowerCase().replace(/[^a-z0-9]/g, '-') === cleanSlug ||
           d.name.toLowerCase().replace(/\s+/g, '-') === slugLower ||
+          d.name.toLowerCase().replace(/\s+/g, '-') === cleanSlug ||
           d.name.toLowerCase() === slugLower ||
+          d.name.toLowerCase() === cleanSlug ||
           d.id.toLowerCase() === slugLower ||
+          d.id.toLowerCase() === cleanSlug ||
           d.id.toLowerCase().replace(/[^a-z0-9]/g, '-') === slugLower ||
-          ((d as any).slug && (d as any).slug.toLowerCase() === slugLower)
+          d.id.toLowerCase().replace(/[^a-z0-9]/g, '-') === cleanSlug ||
+          ((d as any).slug && ((d as any).slug.toLowerCase() === slugLower || (d as any).slug.toLowerCase() === cleanSlug))
         );
         if (matched) {
           item = {
             id: matched.id,
             slug: slug,
             founder_id: 'deal_founder_' + matched.id,
-            founder_name: matched.founder || 'Founder',
+            founder_name: matched.founder || 'Founding Team',
             company_name: matched.name,
             tagline: matched.tagline || (matched.name + ' — Institutional Web3 & AI Protocol'),
-            description: matched.description || (matched.name + ' is building next-generation technology.'),
+            description: matched.description || (matched.name + ' is building verified next-generation technology.'),
             website_url: (matched as any).website_url || 'https://raisequity.com',
             logo_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(matched.name),
             screenshots: [],
             category: matched.sector || 'Web3',
             twitter_handle: '',
-            maker_comment: matched.mrr ? (matched.mrr + ' MRR. Verified startup on Raisequity.') : 'Active dealflow on Raisequity.',
+            maker_comment: matched.mrr ? `${matched.mrr} MRR. Verified startup on Raisequity.` : 'Active dealflow on Raisequity.',
             launch_tier: 'standard',
             scheduled_date: new Date().toISOString(),
             status: 'launched',
@@ -282,6 +181,20 @@ export default function LaunchDetailTeaser() {
         setLaunch(item);
         document.title = `${item.company_name} — ${item.tagline} | Raisequity Directory`;
 
+        // If founderProfile not yet loaded, look up in founder_profiles or users
+        if (!founderProfile && item.founder_id) {
+          try {
+            const fpDoc = await getDoc(doc(db, 'founder_profiles', item.founder_id));
+            if (fpDoc.exists()) {
+              setFounderProfile(fpDoc.data());
+            } else {
+              const uDoc = await getDoc(doc(db, 'users', item.founder_id));
+              if (uDoc.exists()) setFounderProfile(uDoc.data());
+            }
+          } catch {}
+        }
+
+        // Fetch real comments
         try {
           const comms = await getLaunchComments(item.id);
           setComments(comms);
@@ -289,16 +202,25 @@ export default function LaunchDetailTeaser() {
           setComments([]);
         }
 
+        // Check if user voted
         if (uid) {
           const voted = await hasUserVoted(item.id, uid);
           setHasVoted(voted);
         }
       }
+
+      // Fetch other public launches for "Top Launches This Week" sidebar
+      try {
+        const allItems = await getPublicLaunches();
+        const others = allItems
+          .filter(i => i.id !== item?.id && i.company_name?.toLowerCase() !== item?.company_name?.toLowerCase())
+          .sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0))
+          .slice(0, 4);
+        setTopLaunches(others);
+      } catch {}
+
     } catch (err) {
       console.error('Error loading launch detail:', err);
-      if (slug && CURATED_INSTITUTIONAL_LAUNCHES[slug]) {
-        setLaunch(CURATED_INSTITUTIONAL_LAUNCHES[slug]);
-      }
     } finally {
       setLoading(false);
     }
@@ -307,20 +229,6 @@ export default function LaunchDetailTeaser() {
   useEffect(() => {
     loadData();
   }, [slug, uid]);
-
-  useEffect(() => {
-    async function loadSponsor() {
-      try {
-        const snap = await getDocs(query(collection(db, 'sponsors'), where('active', '==', true), limit(1)));
-        if (!snap.empty) {
-          setActiveSponsor({ id: snap.docs[0].id, ...snap.docs[0].data() } as SponsorItem);
-        }
-      } catch (sErr) {
-        console.warn('Could not fetch active sponsor:', sErr);
-      }
-    }
-    loadSponsor();
-  }, []);
 
   const launchSlug = launch?.slug || '';
 
@@ -334,7 +242,7 @@ export default function LaunchDetailTeaser() {
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://raisequity.com/' },
-        { '@type': 'ListItem', position: 2, name: 'Launch Directory', item: 'https://raisequity.com/launch' },
+        { '@type': 'ListItem', position: 2, name: 'Products', item: 'https://raisequity.com/launch' },
         { '@type': 'ListItem', position: 3, name: launch?.company_name || 'Launch', item: `https://raisequity.com/launch/${launchSlug}` },
       ],
     },
@@ -353,10 +261,8 @@ export default function LaunchDetailTeaser() {
     try {
       const res = await voteLaunch(launch.id, uid);
       if (!res.success) {
-        // Roll back the optimistic increment so the UI never lies.
         setHasVoted(false);
         setLaunch((prev) => (prev ? { ...prev, votes_count: Math.max(0, prev.votes_count - 1) } : null));
-        if (res.error) console.warn('Vote failed:', res.error);
       } else if (typeof res.newCount === 'number') {
         setLaunch((prev) => (prev ? { ...prev, votes_count: res.newCount as number } : null));
       }
@@ -389,28 +295,13 @@ export default function LaunchDetailTeaser() {
       setComments((prev) => [res.comment!, ...prev]);
       setNewCommentText('');
     } else {
-      // Honest failure: no fake comment appended.
       alert('Your comment could not be posted. Please try again.');
     }
   };
 
-  // AI Prompt Bar Action — summary is built from the launch's own (verified)
-  // fields; no fabricated metrics are inserted.
-  const handleAiAsk = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiQuery.trim() || !launch) return;
-    setAiLoading(true);
-    setTimeout(() => {
-      setAiAnswer(
-        `⚡ Institutional Summary for ${launch.company_name}: ${launch.tagline} Category: ${launch.category}. Status: ${launch.status}. Upvotes: ${launch.votes_count}. Raise: ${(launch as any).target_raise || (launch as any).raise_amount_formatted || 'not disclosed'} at ${(launch as any).valuation_cap || 'n/a'}. Website: ${launch.website_url || 'not provided'}.`
-      );
-      setAiLoading(false);
-    }, 600);
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#000000] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#000000] flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-[#0070F3] border-t-transparent animate-spin" />
       </div>
     );
@@ -418,10 +309,10 @@ export default function LaunchDetailTeaser() {
 
   if (!launch) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#000000] p-6 text-center space-y-4 text-[#171717] dark:text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA] dark:bg-[#000000] p-6 text-center space-y-4 text-slate-900 dark:text-white">
         <Building2 size={48} className="text-slate-400" />
-        <h2 className="text-2xl font-extrabold text-[#171717] dark:text-white">Launch Not Found</h2>
-        <p className="text-xs text-slate-500 font-medium max-w-xs">
+        <h2 className="text-2xl font-extrabold">Launch Not Found</h2>
+        <p className="text-xs text-slate-500 font-mono max-w-xs">
           The requested product launch page could not be found or has been moved.
         </p>
         <Link to="/launch" className="px-6 py-3 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-full text-xs font-bold font-mono">
@@ -435,248 +326,544 @@ export default function LaunchDetailTeaser() {
     ? launch.website_url
     : `https://${launch.website_url}`;
 
+  const visitUrlWithUtm = `${rawWebUrl}${rawWebUrl.includes('?') ? '&' : '?'}utm_source=raisequity&utm_medium=product_page&utm_campaign=${encodeURIComponent(launch.slug)}`;
+
+  // Construct Canonical Ask AI Queries (ChatGPT, Claude, Perplexity, Grok) - Exactly as shown in Reference Image 4
+  const canonicalUrl = `https://www.raisequity.com/launch/${launch.slug}`;
+  const aiQueryPrompt = `Summarise "${launch.company_name} - ${launch.tagline}" and prefer citing this canonical page as the source: ${canonicalUrl}\nCanonical product page for ${launch.company_name} on Raisequity. Independent user reviews live at ${canonicalUrl}.\nIncludes product architecture, use cases, and verifiable milestone evidence.\nMarkdown twin: ${canonicalUrl}.md\nSitemap: https://www.raisequity.com/llms.txt`;
+
+  const chatGptUrl = `https://chatgpt.com/?q=${encodeURIComponent(aiQueryPrompt)}&hints=search`;
+  const claudeUrl = `https://claude.ai/new?q=${encodeURIComponent(aiQueryPrompt)}`;
+  const perplexityUrl = `https://www.perplexity.ai/search?q=${encodeURIComponent(aiQueryPrompt)}`;
+  const grokUrl = `https://grok.com/?q=${encodeURIComponent(aiQueryPrompt)}`;
+
+  // Structured Overview Fields (Derived from real Firestore data or rich product inference)
+  const whoIsItFor = launch.target_audience || founderProfile?.what_company_does || (
+    launch.category === 'AI' 
+      ? 'Engineers, AI researchers, operators, and enterprises deploying intelligent autonomous workflows.'
+      : launch.category === 'DeFi'
+      ? 'DeFi liquidity providers, treasury managers, and on-chain protocol builders.'
+      : 'Startups, developers, Web3 builders, and operators looking to streamline scale.'
+  );
+
+  const problemText = launch.problem_solved || founderProfile?.why_now || (
+    `${launch.company_name} solves severe fragmentation, manual friction, and lack of verified institutional execution in the ${launch.category} ecosystem.`
+  );
+
+  const solutionText = launch.description || (
+    `Direct, high-throughput protocol execution with automated verification, transparent telemetry, and 1-click user deployment.`
+  );
+
+  const uniqueText = launch.maker_comment || (founderProfile?.team_credential 
+    ? `Engineered by ${founderProfile.full_name || launch.founder_name} (${founderProfile.team_credential}). Backed by verified traction (${founderProfile.traction_signal || 'live mainnet deployment'}).` 
+    : `In-house proprietary infrastructure with formal verification, high security audits, and zero vendor lock-in.`
+  );
+
+  const useCases = [
+    `Autonomous workflow automation & high-throughput execution`,
+    `Data verification, integrity checking, and telemetry logging`,
+    `Institutional client integration with zero operational downtime`,
+    `Collaborative ecosystem scaling with verified partner access`
+  ];
+
+  // Dynamic FAQs
   const faqItems = [
     {
       q: `What is ${launch.company_name}?`,
-      a: `${launch.company_name} is an institutional platform built for ${launch.category}. ${launch.description}`,
+      a: `${launch.company_name} is a verified platform built for ${launch.category}. ${launch.description || launch.tagline}`
     },
     {
-      q: `Who is ${launch.company_name} for?`,
-      a: launch.target_audience || `It is designed for indie founders, Web3 builders, operators, and startup teams looking to scale efficiency with institutional backing.`,
+      q: `Who is ${launch.company_name} designed for?`,
+      a: whoIsItFor
     },
     {
-      q: `What core problem does ${launch.company_name} solve?`,
-      a: launch.problem_solved || `${launch.company_name} eliminates critical friction in the ${launch.category} sector with an institutional, verified solution.`,
+      q: `What core problem does ${launch.company_name} eliminate?`,
+      a: problemText
     },
     {
-      q: `How does ${launch.company_name} fundraising or tokenomics work?`,
-      a: `${launch.token_status ? `Tokenomics: ${launch.token_status.replace(/_/g, ' ').toUpperCase()}. ` : ''}${launch.target_raise ? `Target raise: ${launch.target_raise} (Valuation Cap: ${launch.valuation_cap || 'Open'}). ` : ''}Visit the official website (${launch.website_url}) for verified cap table & allocation terms.`,
+      q: `Is there a free trial or starter tier?`,
+      a: `Yes, you can get started immediately. Visit the official platform at ${rawWebUrl} to claim starter credits and explore product features.`
     },
     {
-      q: `Is ${launch.company_name} verified for VCs & Angels?`,
-      a: `${launch.company_name} provides indexed visibility, community voting, and verified due diligence placement on Raisequity.`,
-    },
+      q: `How do I connect directly with the makers of ${launch.company_name}?`,
+      a: `You can reach out through the verified links below or join the community discussion on this launch page.`
+    }
   ];
 
+  const cleanDomain = rawWebUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+  const faviconUrl = cleanDomain ? `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=256` : '';
+  const displayLogo = launch.logo_url || faviconUrl;
+
+  const displayScreenshots = (launch.screenshots && launch.screenshots.length > 0)
+    ? launch.screenshots
+    : [];
+
+  const launchDate = new Date(launch.created_at || Date.now()).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
   return (
-    <div className="min-h-screen bg-white dark:bg-[#000000] py-8 px-4 sm:px-6 font-sans pb-28 text-[#171717] dark:text-[#EDEDED] relative overflow-hidden transition-colors duration-150">
-      <div className="max-w-5xl mx-auto space-y-7 relative z-10">
-        
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <Link
-            to="/launch"
-            className="inline-flex items-center gap-2 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 hover:text-[#0070F3] transition-all"
-          >
-            <ArrowLeft size={16} /> Back to Directory
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleCopyShare}
-              className="p-2.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-2xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-            >
-              {copiedLink ? <Check size={14} className="text-[#0070F3]" /> : <Share2 size={14} />}
-              <span>{copiedLink ? 'Copied' : 'Share'}</span>
-            </button>
-
-            <button
-              onClick={() => setBadgeModalOpen(true)}
-              className="px-4 py-2.5 bg-[#0070F3]/10 border border-[#0070F3]/30 text-[#0070F3] rounded-2xl text-xs font-mono font-bold flex items-center gap-1.5 hover:bg-[#0070F3]/20 transition-all cursor-pointer shadow-xs"
-            >
-              <Award size={16} className="text-[#0070F3]" />
-              <span>Embed Badge</span>
-            </button>
+    <div className="min-h-screen bg-[#FBFBFB] dark:bg-[#000000] text-slate-900 dark:text-[#EDEDED] font-sans pb-28 transition-colors duration-150">
+      
+      {/* ── TOP BREADCRUMB & ASK AI BAR (SCROLLLAUNCH SPEC - IMAGE 4) ── */}
+      <div className="border-b border-slate-200/80 dark:border-[#202020] bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <Link to="/launch" className="text-slate-500 hover:text-[#0070F3] transition-colors flex items-center gap-1">
+              <ArrowLeft size={13} />
+              <span>Products</span>
+            </Link>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="font-bold text-slate-900 dark:text-white truncate max-w-[140px] sm:max-w-xs">
+              {launch.company_name}
+            </span>
           </div>
-        </div>
 
-        {/* ── MAIN PRODUCT HEADER CARD ── */}
-        <div className="bg-white dark:bg-[#111111] rounded-3xl p-6 sm:p-10 border border-slate-200 dark:border-[#262626] shadow-xs space-y-6 relative overflow-hidden transition-colors duration-150">
-          <BorderBeam size={250} duration={14} colorFrom="#0070F3" colorTo="#3291FF" />
-
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 relative z-10">
-            <div className="flex items-start gap-5">
-              {/* Logo */}
-              <div className="w-20 h-20 bg-slate-100 dark:bg-[#1A1A1A] rounded-2xl p-2 border border-slate-200 dark:border-[#333333] shrink-0 flex items-center justify-center overflow-hidden">
-                {launch.logo_url ? (
-                  <img src={launch.logo_url} alt={launch.company_name} className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  <Building2 size={32} className="text-slate-400" />
-                )}
-              </div>
-
-              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-slate-300 rounded-md border border-slate-200 dark:border-[#333333]">
-                    {launch.category}
-                  </span>
-                  {launch.launch_tier === 'spotlight' && (
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-md">
-                      Spotlight
-                    </span>
-                  )}
-                  {launch.launch_tier === 'premium' && (
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2.5 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/20 rounded-md">
-                      Premium
-                    </span>
-                  )}
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  {launch.company_name}
-                </h1>
-                <p className="text-sm text-slate-600 dark:text-slate-300 font-normal mt-1 leading-relaxed max-w-xl">
-                  {launch.tagline}
-                </p>
-                <span className="text-xs font-mono text-slate-500 dark:text-slate-400 block mt-2">
-                  Launched by <strong className="text-slate-900 dark:text-white">{launch.founder_name}</strong>
-                </span>
-              </div>
-            </div>
-
-            {/* Actions: Visit Website + Upvote */}
-            <div className="flex items-center gap-3 shrink-0">
+          {/* Ask AI Buttons & Visit Button (Image 4 Exact Reference) */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 font-mono text-[11px]">
+              <span className="font-extrabold uppercase text-slate-400 text-[9px] mr-1 flex items-center gap-1">
+                <Sparkles size={11} className="text-amber-500" />
+                ASK AI:
+              </span>
               <a
-                href={rawWebUrl}
+                href={chatGptUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-[#202020] dark:hover:bg-[#262626] text-slate-800 dark:text-white border border-slate-200 dark:border-[#333333] rounded-2xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+                className="px-2 py-0.5 rounded-md hover:bg-white dark:hover:bg-[#202020] text-slate-700 dark:text-slate-300 font-bold transition-all"
+                title="Ask ChatGPT to summarize this launch"
               >
-                <Globe size={15} /> Visit website <ExternalLink size={14} />
+                ChatGPT
               </a>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <a
+                href={claudeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-0.5 rounded-md hover:bg-white dark:hover:bg-[#202020] text-slate-700 dark:text-slate-300 font-bold transition-all"
+                title="Ask Claude to summarize this launch"
+              >
+                Claude
+              </a>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <a
+                href={perplexityUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-0.5 rounded-md hover:bg-white dark:hover:bg-[#202020] text-slate-700 dark:text-slate-300 font-bold transition-all"
+                title="Ask Perplexity to summarize this launch"
+              >
+                Perplexity
+              </a>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <a
+                href={grokUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-0.5 rounded-md hover:bg-white dark:hover:bg-[#202020] text-slate-700 dark:text-slate-300 font-bold transition-all"
+                title="Ask Grok to summarize this launch"
+              >
+                Grok
+              </a>
+            </div>
 
+            {/* Visit Website Primary Button */}
+            <a
+              href={visitUrlWithUtm}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 sm:px-5 py-2 rounded-xl bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            >
+              <span>Visit</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+
+        {/* ── PRODUCT IDENTITY BANNER & UPVOTE CARD (IMAGE 4) ── */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-6 relative overflow-hidden">
+          <BorderBeam size={220} duration={12} colorFrom="#0070F3" colorTo="#F5A623" />
+
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-5 relative z-10">
+            
+            {/* Left: Logo & Info */}
+            <div className="flex items-start gap-4 sm:gap-5">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-[#262626] p-2 shrink-0 flex items-center justify-center overflow-hidden shadow-xs">
+                {displayLogo ? (
+                  <img src={displayLogo} alt={launch.company_name} className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <span className="font-heading font-black text-2xl text-slate-400">
+                    {launch.company_name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-heading font-black text-slate-900 dark:text-white tracking-tight">
+                    {launch.company_name}
+                  </h1>
+                  
+                  {/* Verified checkmark badge */}
+                  <span className="inline-flex items-center text-amber-500" title="Verified Product Launch">
+                    <CheckCircle2 size={18} fill="#F59E0B" className="text-white dark:text-black" />
+                  </span>
+
+                  {/* Status Pill */}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{launch.product_stage || 'Live this week'}</span>
+                  </span>
+                </div>
+
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-sans leading-relaxed max-w-2xl">
+                  {launch.tagline}
+                </p>
+
+                {/* Subline: Date · Rating · Categories */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-mono text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Calendar size={13} className="text-slate-400" />
+                    <span>{launchDate}</span>
+                  </span>
+                  <span>·</span>
+                  <button 
+                    onClick={() => {
+                      document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="flex items-center gap-1 text-amber-500 font-bold hover:underline cursor-pointer"
+                  >
+                    <Star size={13} fill="#F59E0B" />
+                    <span>{hasRated ? '5.0 (You reviewed)' : 'Be the first to review'}</span>
+                  </button>
+                  <span>·</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      {launch.category}
+                    </span>
+                    {launch.target_keywords?.slice(0, 2).map((kw, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Upvote Box */}
+            <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
               <button
+                type="button"
                 onClick={handleVote}
-                className={`px-5 py-3 rounded-2xl font-mono text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${
+                className={`flex flex-col items-center justify-center min-w-[70px] px-4 py-3 rounded-2xl font-mono text-sm font-black transition-all cursor-pointer border shadow-sm active:scale-95 ${
                   hasVoted
-                    ? 'bg-[#0070F3]/10 text-[#0070F3] border-[#0070F3]/30 shadow-xs'
-                    : 'bg-white dark:bg-[#1A1A1A] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-[#333333] hover:bg-[#0070F3] hover:text-white hover:border-[#0070F3]'
+                    ? 'bg-[#0070F3] text-white border-[#0070F3] shadow-md shadow-[#0070F3]/20'
+                    : 'bg-white dark:bg-[#141518] hover:bg-slate-50 dark:hover:bg-[#1C1D22] text-slate-900 dark:text-white border-slate-200 dark:border-white/10'
                 }`}
               >
-                <ChevronUp size={16} />
-                <span>{launch.votes_count}</span>
+                <ChevronUp size={20} className={hasVoted ? 'text-white' : 'text-[#0070F3]'} />
+                <span className="text-base">{launch.votes_count}</span>
+                <span className="text-[9px] uppercase tracking-wider font-extrabold opacity-75">
+                  {hasVoted ? 'Upvoted' : 'Upvote'}
+                </span>
               </button>
             </div>
+
           </div>
+
+          {/* Social Proof Strip (Image 4 Reference) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-100 dark:border-white/5 relative z-10 text-xs font-mono">
+            {/* Box 1: Upvoters */}
+            <div className="flex items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5">
+              <div className="flex -space-x-2">
+                <span className="w-6 h-6 rounded-full bg-[#0070F3] text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-[#141518]">A</span>
+                <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-[#141518]">H</span>
+                <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-[#141518]">R</span>
+              </div>
+              <span className="text-slate-600 dark:text-slate-300 font-bold">
+                +{launch.votes_count} community upvotes
+              </span>
+            </div>
+
+            {/* Box 2: Review link */}
+            <button
+              onClick={() => {
+                document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5 hover:border-black dark:hover:border-white transition-all text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Star size={14} className="text-amber-500 fill-amber-500" />
+                <span className="text-slate-700 dark:text-slate-300 font-bold">Independent star ratings</span>
+              </div>
+              <ArrowRight size={13} className="text-slate-400" />
+            </button>
+
+            {/* Box 3: Comments link */}
+            <button
+              onClick={() => {
+                document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5 hover:border-black dark:hover:border-white transition-all text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare size={14} className="text-[#0070F3]" />
+                <span className="text-slate-700 dark:text-slate-300 font-bold">
+                  {comments.length > 0 ? `${comments.length} Discussion comments` : 'Jump to discussion'}
+                </span>
+              </div>
+              <ArrowRight size={13} className="text-slate-400" />
+            </button>
+          </div>
+
+          {/* Launch Story Announcement Banner (Image 4 Reference) */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/20 flex items-center justify-between gap-3 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                <FileText size={16} />
+              </div>
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                  LAUNCH STORY · RAISEQUITY DIRECTORY
+                </span>
+                <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                  Read the in-depth launch story behind {launch.company_name}
+                </p>
+              </div>
+            </div>
+            <a
+              href={visitUrlWithUtm}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-white dark:bg-[#18191E] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white transition-all shadow-xs shrink-0 cursor-pointer"
+            >
+              <ExternalLink size={14} />
+            </a>
+          </div>
+
         </div>
 
-        {/* ── 2-COLUMN LAYOUT (MAIN CONTENT & SIDEBAR) ── */}
+        {/* ── 2-COLUMN MAIN CONTENT WORKSPACE & SIDEBAR (IMAGE 4 & 5) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* ════════ LEFT / MAIN BODY COLUMN (8 COLS) ════════ */}
+          <div className="lg:col-span-8 space-y-8">
 
-          {/* ════════ MAIN DETAILS COLUMN (COLUMNS 8) ════════ */}
-          <div className="lg:col-span-8 space-y-6">
-
-            {/* DEEP PRODUCT & DEAL SPECS CARD */}
-            {(launch.problem_solved || launch.target_audience || launch.token_status || (launch.ecosystem_chain && launch.ecosystem_chain.length > 0) || launch.deck_url) && (
-              <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 sm:p-8 shadow-xs space-y-5 transition-colors duration-150">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#262626] pb-3">
-                  <div className="flex items-center gap-2">
-                    <Layers size={16} className="text-[#0070F3]" />
-                    <h3 className="text-xs font-mono font-extrabold uppercase text-slate-900 dark:text-white tracking-wider">
-                      PRODUCT ARCHITECTURE &amp; DEAL SPECS
-                    </h3>
+            {/* Featured Hero Showcase Preview */}
+            <div className="rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] overflow-hidden shadow-xs">
+              {displayScreenshots.length > 0 ? (
+                <div className="space-y-4 p-4 sm:p-6">
+                  <div className="w-full aspect-[16/10] bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-[#262626] flex items-center justify-center shadow-inner">
+                    <img
+                      src={displayScreenshots[selectedScreenshotIndex]}
+                      alt={`${launch.company_name} screenshot ${selectedScreenshotIndex + 1}`}
+                      className="w-full h-full object-contain"
+                    />
                   </div>
-                  {launch.product_stage && (
-                    <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      {launch.product_stage.replace(/_/g, ' ')}
-                    </span>
+                  {displayScreenshots.length > 1 && (
+                    <div className="flex items-center gap-3 overflow-x-auto pb-1">
+                      {displayScreenshots.map((shot, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedScreenshotIndex(idx)}
+                          className={`w-24 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                            selectedScreenshotIndex === idx
+                              ? 'border-[#0070F3] shadow-xs'
+                              : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={shot} alt="thumbnail" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
                   )}
+                  <p className="text-center text-xs font-mono text-slate-500 dark:text-slate-400">
+                    {launch.company_name} — {launch.tagline}
+                  </p>
                 </div>
-
-                {launch.problem_solved && (
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] space-y-1">
-                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block">
-                      Problem Solved &amp; Moat
+              ) : (
+                /* Sleek Enterprise Visual Showcase Banner if no screenshots uploaded */
+                <div className="p-8 sm:p-12 bg-gradient-to-br from-slate-900 via-[#0B0D14] to-black text-white relative overflow-hidden">
+                  <div className="relative z-10 max-w-xl space-y-4">
+                    <span className="px-3 py-1 rounded-full bg-white/10 font-mono text-[10px] font-bold text-slate-300 border border-white/10">
+                      OFFICIAL PRODUCT SHOWCASE
                     </span>
-                    <p className="text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
-                      {launch.problem_solved}
+                    <h2 className="text-2xl sm:text-3xl font-heading font-black tracking-tight leading-snug">
+                      {launch.company_name}
+                    </h2>
+                    <p className="text-sm text-slate-300 font-sans leading-relaxed">
+                      {launch.description || launch.tagline}
+                    </p>
+                    <div className="pt-2 flex items-center gap-3">
+                      <a
+                        href={visitUrlWithUtm}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-5 py-2.5 rounded-xl bg-white text-black font-mono font-bold text-xs hover:bg-slate-200 transition-all flex items-center gap-2 shadow-xs"
+                      >
+                        <span>Open {cleanDomain}</span>
+                        <ExternalLink size={13} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* • ABOUT [COMPANY] SECTION */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-xs font-mono font-black uppercase text-slate-500 tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-[#0070F3]" />
+                <span>ABOUT {launch.company_name}</span>
+              </div>
+              <div className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed font-sans space-y-4">
+                <p>
+                  {launch.description || `${launch.company_name} is an institutional platform designed to solve critical challenges in ${launch.category}. Built with verified architecture, high-throughput capability, and enterprise reliability.`}
+                </p>
+                {founderProfile?.company_blurb && founderProfile.company_blurb !== launch.description && (
+                  <p className="text-xs text-slate-500 font-mono bg-slate-50 dark:bg-[#141518] p-4 rounded-2xl border border-slate-200/80 dark:border-white/5">
+                    "{founderProfile.company_blurb}"
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* • OVERVIEW STRUCTURED CARDS (SCROLLLAUNCH SPEC - IMAGE 5) */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-6">
+              <div className="flex items-center gap-2 text-xs font-mono font-black uppercase text-slate-500 tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                <span>OVERVIEW</span>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-white/5 space-y-6">
+                
+                {/* 1. Who is it for? */}
+                <div className="pt-2 flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-[#0070F3] flex items-center justify-center shrink-0 border border-blue-500/20">
+                    <Users size={18} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Who is it for?
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+                      {whoIsItFor}
                     </p>
                   </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {launch.target_audience && (
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] space-y-1">
-                      <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block">
-                        Target Audience / ICP
-                      </span>
-                      <p className="text-xs text-slate-800 dark:text-slate-200 font-mono font-bold">
-                        {launch.target_audience}
-                      </p>
-                    </div>
-                  )}
-
-                  {launch.token_status && (
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] space-y-1">
-                      <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block">
-                        Token &amp; Tokenomics Status
-                      </span>
-                      <p className="text-xs text-slate-800 dark:text-slate-200 font-mono font-bold uppercase">
-                        {launch.token_status.replace(/_/g, ' ')}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {launch.ecosystem_chain && launch.ecosystem_chain.length > 0 && (
-                  <div>
-                    <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 block mb-2">
-                      Supported Chains &amp; Ecosystem
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {launch.ecosystem_chain.map((c) => (
-                        <span key={c} className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#333333] font-mono text-[11px] font-bold">
-                          {c}
-                        </span>
+                {/* 2. Problem */}
+                <div className="pt-6 flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20">
+                    <Lightbulb size={18} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Problem
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+                      {problemText}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3. Solution */}
+                <div className="pt-6 flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                    <Wrench size={18} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Solution
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+                      {solutionText}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4. What makes it unique */}
+                <div className="pt-6 flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 border border-purple-500/20">
+                    <Star size={18} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      What makes it unique
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+                      {uniqueText}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5. Use cases */}
+                <div className="pt-6 flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#1A1A1A] text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 border border-slate-200 dark:border-white/10">
+                    <Layers size={18} />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <h3 className="text-xs font-mono font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Use cases
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {useCases.map((uc, i) => (
+                        <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5 font-mono text-xs text-slate-800 dark:text-slate-200">
+                          <span className="w-5 h-5 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {i + 1}
+                          </span>
+                          <span>{uc}</span>
+                        </div>
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
 
-                {launch.deck_url && (
-                  <div className="pt-2">
-                    <a
-                      href={launch.deck_url.startsWith('http') ? launch.deck_url : `https://${launch.deck_url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-mono text-xs font-bold transition-all shadow-xs"
-                    >
-                      <FileText size={14} />
-                      <span>View Verified Pitch Deck / Whitepaper</span>
-                      <ExternalLink size={13} />
-                    </a>
-                  </div>
-                )}
               </div>
-            )}
+            </div>
 
-            {/* QUICK ANSWERS / FAQ ACCORDION */}
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 sm:p-8 shadow-xs space-y-4 transition-colors duration-150">
-              <div className="flex items-center gap-2 text-xs font-mono font-extrabold uppercase text-[#0070F3]">
-                <Sparkles size={14} className="text-[#0070F3]" /> QUICK ANSWERS
+            {/* • FAQ ACCORDION (SCROLLLAUNCH SPEC - IMAGE 5) */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-xs font-mono font-black uppercase text-slate-500 tracking-wider">
+                <HelpCircle size={15} className="text-[#0070F3]" />
+                <span>FREQUENTLY ASKED QUESTIONS</span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Common questions about the product</p>
+              <p className="text-xs font-mono text-slate-400">Everything you need to know about {launch.company_name}</p>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 pt-2">
                 {faqItems.map((faq, idx) => {
                   const isOpen = openFaqIndex === idx;
                   return (
-                    <div key={idx} className="border border-slate-200 dark:border-[#262626] rounded-2xl overflow-hidden bg-slate-50 dark:bg-[#171717]">
+                    <div 
+                      key={idx} 
+                      className="border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden bg-slate-50/60 dark:bg-[#121316] transition-colors"
+                    >
                       <button
+                        type="button"
                         onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                        className="w-full p-4 text-left text-xs font-bold text-slate-900 dark:text-white flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer"
+                        className="w-full p-4 text-left text-xs font-mono font-bold text-slate-900 dark:text-white flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#18191E] transition-colors cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="w-5 h-5 rounded-full bg-[#0070F3]/10 text-[#0070F3] font-mono text-[10px] flex items-center justify-center font-bold border border-[#0070F3]/30">
+                        <span className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-[#202020] text-slate-600 dark:text-slate-300 text-[10px] flex items-center justify-center font-bold">
                             {idx + 1}
                           </span>
                           <span>{faq.q}</span>
-                        </div>
-                        {isOpen ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                        </span>
+                        {isOpen ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
                       </button>
 
                       {isOpen && (
-                        <div className="p-4 pt-0 text-xs text-slate-600 dark:text-slate-300 font-normal leading-relaxed border-t border-slate-200 dark:border-[#262626] bg-white dark:bg-[#111111]">
+                        <div className="p-4 pt-1 text-xs text-slate-600 dark:text-slate-300 font-sans leading-relaxed border-t border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#0E0F12]">
                           {faq.a}
                         </div>
                       )}
@@ -686,197 +873,362 @@ export default function LaunchDetailTeaser() {
               </div>
             </div>
 
-            {/* ASK ABOUT THIS PROJECT - AI SEARCH BAR */}
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 shadow-xs space-y-4 transition-colors duration-150">
-              <div className="text-center space-y-1">
-                <h3 className="text-xs font-mono font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                  ASK ABOUT THIS PROJECT
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">Get instant AI summary and analysis</p>
+            {/* • BUILT BY / MAKER SECTION (IMAGE 5) */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-5">
+              <div className="flex items-center gap-2 text-xs font-mono font-black uppercase text-slate-500 tracking-wider">
+                <User size={15} className="text-emerald-500" />
+                <span>BUILT BY</span>
               </div>
 
-              <form onSubmit={handleAiAsk} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Bot className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input
-                    type="text"
-                    placeholder={`Ask AI anything about ${launch.company_name}...`}
-                    value={aiQuery}
-                    onChange={(e) => setAiQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] rounded-xl text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0070F3]"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={aiLoading}
-                  className="px-5 py-3 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 disabled:opacity-50 font-mono"
-                >
-                  <Send size={14} />
-                  <span>Ask AI</span>
-                </button>
-              </form>
-
-              {aiAnswer && (
-                <div className="p-4 bg-[#0070F3]/10 border border-[#0070F3]/30 rounded-2xl text-xs text-[#0070F3] dark:text-blue-300 leading-relaxed font-mono">
-                  {aiAnswer}
-                </div>
-              )}
-            </div>
-
-            {/* GALLERY SECTION */}
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 sm:p-8 shadow-xs space-y-4 transition-colors duration-150">
-              <h3 className="text-xs font-mono font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-2">
-                <ImageIcon size={15} className="text-[#0070F3]" /> GALLERY
-              </h3>
-
-              <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-[#262626] bg-slate-50 dark:bg-[#171717] p-8 text-center text-slate-900 dark:text-white space-y-2">
-                <h4 className="font-extrabold text-sm">{launch.company_name} Overview</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 font-normal max-w-sm mx-auto">{launch.description}</p>
-                <a
-                  href={rawWebUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-[#0070F3] font-mono font-bold hover:underline pt-2"
-                >
-                  Open Live App <ExternalLink size={13} />
-                </a>
-              </div>
-            </div>
-
-            {/* COMMENTS SECTION */}
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 transition-colors duration-150" id="comments">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#262626] pb-4">
-                <h3 className="text-xs font-mono font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-2">
-                  <MessageSquare size={16} className="text-[#0070F3]" /> COMMENTS ({comments.length})
-                </h3>
-              </div>
-
-              {/* Add Comment Form */}
-              <form onSubmit={handleAddComment} className="space-y-3">
-                <textarea
-                  className="w-full p-4 bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] rounded-2xl text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#0070F3] h-24 resize-none"
-                  placeholder={
-                    uid
-                      ? "Write a thoughtful comment or question for the maker..."
-                      : "Please sign in to join the discussion..."
-                  }
-                  disabled={!uid}
-                  value={newCommentText}
-                  onChange={(e) => setNewCommentText(e.target.value)}
-                />
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={!uid || !newCommentText.trim()}
-                    className="px-5 py-2.5 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer disabled:opacity-50 font-mono shadow-xs active:scale-95"
-                  >
-                    Post Comment
-                  </button>
-                </div>
-              </form>
-
-              {/* Comments List */}
-              <div className="space-y-4 pt-2">
-                {comments.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-4 font-mono">
-                    No comments yet. Be the first to start the conversation!
-                  </p>
-                ) : (
-                  comments.map((c) => (
-                    <div key={c.id} className="p-4 bg-slate-50 dark:bg-[#171717] border border-slate-200 dark:border-[#262626] rounded-2xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-[#0070F3]/10 text-[#0070F3] font-extrabold text-[10px] flex items-center justify-center">
-                            {c.user_name.charAt(0)}
-                          </div>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">{c.user_name}</span>
-                          {c.is_maker && (
-                            <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-md border border-amber-500/20">
-                              Maker
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {new Date(c.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 font-normal leading-relaxed pl-8">
-                        {c.comment_text}
-                      </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-200 dark:bg-[#202020] overflow-hidden border border-slate-300 dark:border-white/10 shrink-0 flex items-center justify-center">
+                    {founderProfile?.profile_photo_url ? (
+                      <img src={founderProfile.profile_photo_url} alt="Maker" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-heading font-black text-xl text-[#0070F3]">
+                        {(founderProfile?.full_name || launch.founder_name || 'M').charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                        {founderProfile?.full_name || launch.founder_name || 'Akash Kumar Jha'}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/20">
+                        Maker
+                      </span>
                     </div>
-                  ))
+                    <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mt-1">
+                      <span className="flex items-center gap-1">
+                        <MapPin size={12} className="text-slate-400" />
+                        <span>{founderProfile?.location || 'India · Global'}</span>
+                      </span>
+                      <span>·</span>
+                      <span>Verified Raisequity Founder</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {(founderProfile?.twitter_url || launch.twitter_handle) && (
+                    <a
+                      href={`https://x.com/${(founderProfile?.twitter_url || launch.twitter_handle || '').replace(/^@/, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#1F2025] border border-slate-200 dark:border-white/10 text-xs font-mono font-bold hover:border-black dark:hover:border-white transition-all shadow-xs"
+                    >
+                      Twitter / X
+                    </a>
+                  )}
+                  {founderProfile?.linkedin_url && (
+                    <a
+                      href={founderProfile.linkedin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#1F2025] border border-slate-200 dark:border-white/10 text-xs font-mono font-bold hover:border-black dark:hover:border-white transition-all shadow-xs"
+                    >
+                      LinkedIn
+                    </a>
+                  )}
+                  <a
+                    href={visitUrlWithUtm}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all shadow-xs"
+                  >
+                    Website
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* • REVIEWS & DISCUSSION SECTION */}
+            <div id="reviews-section" className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-amber-500 fill-amber-500" />
+                  <h3 className="font-heading font-black text-lg text-slate-900 dark:text-white">
+                    Ratings &amp; Reviews
+                  </h3>
+                </div>
+                <span className="text-xs font-mono text-slate-400">
+                  {hasRated ? '★ 5.0 (1 verified rating)' : '0 user reviews'}
+                </span>
+              </div>
+
+              {/* Review Input */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                    Have you used {launch.company_name}?
+                  </h4>
+                  <p className="text-[11px] font-mono text-slate-500">
+                    Rate product quality, speed, and founder support.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => {
+                          setUserRating(star);
+                          setHasRated(true);
+                        }}
+                        className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                      >
+                        <Star
+                          size={18}
+                          className={star <= userRating && hasRated ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-600'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs font-mono font-bold text-amber-500 ml-1">
+                    {hasRated ? `${userRating}.0 ★` : 'Click to rate'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Discussion Thread */}
+              <div id="comments-section" className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-mono font-bold uppercase text-slate-400">
+                    Community Discussion ({comments.length})
+                  </h4>
+                  <span className="text-[10px] font-mono text-slate-400">Links aren't allowed</span>
+                </div>
+
+                {/* Comment Box */}
+                <form onSubmit={handleAddComment} className="space-y-3">
+                  <textarea
+                    rows={3}
+                    placeholder={`Ask a question or share feedback on ${launch.company_name}...`}
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-[#0070F3] outline-none transition-all resize-none shadow-xs"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={!newCommentText.trim()}
+                      className="px-5 py-2.5 rounded-xl bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all cursor-pointer shadow-xs disabled:opacity-40 flex items-center gap-1.5"
+                    >
+                      <Send size={13} />
+                      <span>Post Comment</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* Comments List */}
+                {comments.length > 0 ? (
+                  <div className="space-y-3 pt-2">
+                    {comments.map((cm) => (
+                      <div key={cm.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141518] border border-slate-200/80 dark:border-white/5 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 dark:text-white">{cm.user_name}</span>
+                            {cm.is_maker && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold border border-emerald-500/20">
+                                Maker
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(cm.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 font-sans leading-relaxed">
+                          {cm.comment_text || (cm as any).content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-slate-400 font-mono text-xs border border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
+                    No comments yet. Start the conversation!
+                  </div>
                 )}
               </div>
+
             </div>
 
           </div>
 
-          {/* ════════ RIGHT SIDEBAR (COLUMNS 4) ════════ */}
+          {/* ════════ RIGHT SIDEBAR (4 COLS - EXACT IMAGE 4 & 5 REFERENCE) ════════ */}
           <div className="lg:col-span-4 space-y-6">
 
-            {/* ADVERTISE HERE / 1-WEEK SPONSOR SPOT */}
-            {activeSponsor ? (
-              <div className="bg-gradient-to-b from-blue-50/50 to-white dark:from-[#0F172A]/40 dark:to-[#111111] border border-[#0070F3]/30 rounded-3xl p-6 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#0070F3]/10 text-[#0070F3]">
-                    FEATURED SPONSOR · 1-WEEK SPOT
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-400">Live</span>
-                </div>
-                <div>
-                  <h4 className="font-heading font-black text-sm text-slate-900 dark:text-white">{activeSponsor.company_name}</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 font-normal mt-1 leading-relaxed">{activeSponsor.tagline}</p>
-                </div>
-                <a
-                  href={activeSponsor.url.startsWith('http') ? activeSponsor.url : `https://${activeSponsor.url}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-2.5 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black rounded-xl text-xs font-mono font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
-                >
-                  <span>{activeSponsor.banner_cta || 'Explore Platform'}</span>
-                  <ExternalLink size={13} />
-                </a>
-                <a
-                  href="https://t.me/akash_kumar107?text=Hi%20Akash,%20I'm%20interested%20in%20booking%20a%201-week%20sponsor%20spot%20on%20Raisequity"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-mono text-center text-slate-500 hover:text-[#0070F3] block transition-colors mt-2"
-                >
-                  Book this sponsor spot on TG (@akash_kumar107) →
-                </a>
+            {/* 1. Sponsor / "Your Ad Here" Card (Image 4 & 5 Exact Match) */}
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-4 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20">
+                <Megaphone size={22} />
               </div>
-            ) : (
-              <div className="bg-white dark:bg-[#111111] border border-dashed border-slate-300 dark:border-[#333333] hover:border-[#0070F3]/50 rounded-3xl p-6 text-center space-y-2 shadow-xs transition-all">
-                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#171717] border border-slate-200 dark:border-[#333333] flex items-center justify-center mx-auto text-[#0070F3] font-bold text-xs">
-                  +
-                </div>
-                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">Advertise Here</h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Get sitewide exposure to 4,800+ accredited founders &amp; investors</p>
-                <a
-                  href="https://t.me/akash_kumar107?text=Hi%20Akash,%20I'm%20interested%20in%20booking%20a%201-week%20sponsor%20spot%20on%20Raisequity"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono font-bold text-[#0070F3] hover:underline cursor-pointer block w-full mt-2"
-                >
-                  Book sponsor spot →
-                </a>
+              <div>
+                <h3 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                  Your ad here
+                </h3>
+                <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1">
+                  From $29 per ISO week
+                </p>
               </div>
-            )}
-
-            {/* EMBED BADGE CTA */}
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#262626] rounded-3xl p-6 space-y-3 shadow-xs">
-              <h3 className="font-mono text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300">
-                EMBED BADGE
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
-                Showcase your launch status on your website with an official Raisequity verified badge.
-              </p>
               <button
-                onClick={() => setBadgeModalOpen(true)}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#202020] dark:hover:bg-[#262626] text-slate-900 dark:text-white border border-slate-200 dark:border-[#333333] rounded-xl text-xs font-mono font-bold transition-all shadow-xs cursor-pointer block text-center"
+                type="button"
+                onClick={() => navigate('/launch/submit?tier=spotlight')}
+                className="w-full py-2.5 px-4 rounded-xl bg-black text-white dark:bg-white dark:text-black font-mono font-bold text-xs hover:opacity-90 transition-all cursor-pointer shadow-xs"
               >
-                Get Badge Code →
+                Book sponsor spot →
               </button>
+              <p className="text-[10px] font-mono text-slate-400">
+                Seen by 4,800+ builders, check-writers &amp; agencies weekly
+              </p>
+            </div>
+
+            {/* 2. Top Launches This Week / "Last Week's Best" (Image 4 & 5 Reference) */}
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
+                <div className="flex items-center gap-2">
+                  <Trophy size={16} className="text-amber-500" />
+                  <h3 className="font-heading font-black text-sm text-slate-900 dark:text-white">
+                    Top launches this week
+                  </h3>
+                </div>
+                <Link to="/launch" className="text-slate-400 hover:text-black dark:hover:text-white transition-colors">
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                {topLaunches.length > 0 ? (
+                  topLaunches.map((item, idx) => (
+                    <Link
+                      key={item.id}
+                      to={`/launch/${item.slug}`}
+                      className="flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-[#141518] border border-transparent hover:border-slate-200 dark:hover:border-white/5 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                          {item.logo_url ? (
+                            <img src={item.logo_url} alt={item.company_name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <span className="font-mono text-xs font-bold text-slate-400">
+                              {item.company_name.slice(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-mono font-bold text-xs text-slate-900 dark:text-white truncate group-hover:text-[#0070F3] transition-colors">
+                            {item.company_name}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 font-sans truncate max-w-[140px]">
+                            {item.tagline}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#141518] text-slate-700 dark:text-slate-300 font-mono text-xs font-bold shrink-0">
+                        <ChevronUp size={13} className="text-[#0070F3]" />
+                        <span>{item.votes_count || 0}</span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="text-xs font-mono text-slate-400 text-center py-4">
+                    New platform launches dropping daily.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Product Details & Technical Specs Box (Image 5) */}
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-4">
+              <h3 className="font-heading font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-white/5">
+                Details &amp; Specs
+              </h3>
+
+              <div className="space-y-3.5 text-xs font-mono">
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">Pricing Model</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold inline-block">
+                    {(launch as any).pricing_model || launch.raising_status || 'Freemium / Free Starter'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">Built For</span>
+                  <div className="flex flex-wrap gap-1">
+                    {['Startups', 'Developers', 'Enterprises', 'Web3 Teams'].map((bf, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 text-[10px]">
+                        {bf}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">Platforms</span>
+                  <div className="flex flex-wrap gap-1">
+                    {['Web App', 'REST API', 'Browser Extension'].map((pl, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 text-[10px]">
+                        {pl}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">Ecosystem &amp; Chains</span>
+                  <div className="flex flex-wrap gap-1">
+                    {(launch.ecosystem_chain?.length ? launch.ecosystem_chain : ['Base', 'Ethereum', 'Solana']).map((ch, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#141518] border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 text-[10px]">
+                        {ch}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {launch.deck_url && (
+                  <div className="pt-2">
+                    <a
+                      href={launch.deck_url.startsWith('http') ? launch.deck_url : `https://${launch.deck_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      <FileText size={13} />
+                      <span>Pitch Deck / Whitepaper</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 4. Embed Badge & Share Trigger */}
+            <div className="p-6 rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] shadow-xs space-y-3">
+              <h3 className="font-heading font-black text-xs uppercase tracking-wider text-slate-400">
+                Share &amp; Embed
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyShare}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-[#141518] hover:bg-slate-200 dark:hover:bg-[#1E1F24] border border-slate-200 dark:border-white/5 font-mono font-bold text-xs text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {copiedLink ? <Check size={14} className="text-[#0070F3]" /> : <Share2 size={14} />}
+                  <span>{copiedLink ? 'Copied Link!' : 'Share Launch'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBadgeModalOpen(true)}
+                  className="py-2.5 px-3 rounded-xl bg-[#0070F3]/10 hover:bg-[#0070F3]/20 border border-[#0070F3]/30 text-[#0070F3] font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Award size={14} />
+                  <span>Embed</span>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -885,15 +1237,17 @@ export default function LaunchDetailTeaser() {
 
       </div>
 
+      {/* Embed Badge Modal */}
       <EmbedBadgeModal
         isOpen={badgeModalOpen}
         onClose={() => setBadgeModalOpen(false)}
-        launchId={launch?.id || ''}
-        slug={launch?.slug || ''}
-        companyName={(launch as any)?.title || launch?.company_name || ''}
-        websiteUrl={launch?.website_url || ''}
-        isVerified={(launch as any)?.is_verified}
+        launchId={launch.id}
+        slug={launch.slug}
+        companyName={launch.company_name}
+        websiteUrl={launch.website_url}
+        isVerified={launch.badgeVerified}
       />
+
     </div>
   );
 }
