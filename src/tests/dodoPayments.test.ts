@@ -71,3 +71,4 @@ describe('Dodo Payments Webhook & Checkout Contract', () => {
     expect(activeProductId).toBe('pdt_0NlfCmfNRZBHG6Po7CtkZ');
   });
 });
+
