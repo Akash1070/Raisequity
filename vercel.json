@@ -42,19 +42,19 @@
     },
     {
       "source": "/llms.txt",
-      "destination": "/api/llms-txt"
+      "destination": "/api/manifests?doc=llms"
     },
     {
       "source": "/llms-full.txt",
-      "destination": "/api/llms-full-txt"
+      "destination": "/api/manifests?doc=llms-full"
     },
     {
       "source": "/ai.txt",
-      "destination": "/api/ai-txt"
+      "destination": "/api/manifests?doc=ai"
     },
     {
       "source": "/api/md/_catalog",
-      "destination": "/api/catalog"
+      "destination": "/api/md?path=_catalog"
     },
     {
       "source": "/api/md/(.*)",

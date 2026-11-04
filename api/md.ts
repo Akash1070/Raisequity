@@ -1,4 +1,4 @@
-import { renderMarkdownForRoute } from '../src/lib/md/registry';
+import { renderMarkdownForRoute, listMarkdownRoutes } from '../src/lib/md/registry';
 import { buildMarkdownResponse, prefersMarkdown } from '../src/lib/md/http';
 
 export default async function handler(req: any, res: any) {
@@ -28,6 +28,28 @@ export default async function handler(req: any, res: any) {
     } else {
       path = cleanUrl;
     }
+  }
+
+  // Catalog endpoint (kept inside the same function to save a Lambda).
+  if (path === '_catalog') {
+    try {
+      const routes = await listMarkdownRoutes();
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      if (method === 'HEAD') {
+        res.end();
+        return;
+      }
+      res.end(JSON.stringify({ routes, total: routes.length }));
+    } catch (err: any) {
+      console.error('[API /api/md/_catalog Error]:', err);
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ error: 'Failed to generate markdown route catalog' }));
+    }
+    return;
   }
 
   const acceptHeader = req.headers ? (req.headers['accept'] || req.headers['Accept']) : null;

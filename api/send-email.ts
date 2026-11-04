@@ -1,4 +1,4 @@
-import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from './_lib';
+import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from '../src/lib/api-shared';
 
 // Server-side only: RESEND_API_KEY (non-VITE) in Vercel env. Requires a
 // valid Firebase session — this endpoint can no longer be used as an open

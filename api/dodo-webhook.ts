@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { readBody } from './_lib';
+import { readBody } from '../src/lib/api-shared';
 
 /**
  * Dodo Payments webhook receiver — Standard Webhooks specification.

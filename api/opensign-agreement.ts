@@ -1,4 +1,4 @@
-import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from './_lib';
+import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from '../src/lib/api-shared';
 
 // Server-side OpenSign proxy — OPENSIGN_API_KEY stays off the client.
 // Requires an authenticated Firebase session (no anonymous esign generation).

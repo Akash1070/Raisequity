@@ -1,4 +1,4 @@
-import { rateLimit, readBody, str, fetchWithTimeout, requireAuth } from './_lib';
+import { rateLimit, readBody, str, fetchWithTimeout, requireAuth } from '../src/lib/api-shared';
 
 // Server-side Gemini proxy. The browser never receives an AI key (previously
 // VITE_GEMINI_API_KEY shipped in the bundle). Prompts are built HERE from a

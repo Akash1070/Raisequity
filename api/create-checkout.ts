@@ -1,4 +1,4 @@
-import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from './_lib';
+import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from '../src/lib/api-shared';
 
 // Creates a Dodo checkout session server-side. Activation ONLY via verified
 // webhook (api/dodo-webhook.ts) — never from the browser. Requires an
