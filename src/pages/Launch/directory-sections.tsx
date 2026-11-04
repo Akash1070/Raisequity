@@ -437,10 +437,10 @@ export function FilterBar({
   );
 }
 
-export function SponsoredBanner() {
+export function SponsoredBannerYourWeb3Guy() {
   return (
     <a
-      href="https://t.me/akash_kumar107"
+      href="https://yourweb3guy.com"
       target="_blank"
       rel="noreferrer"
       className="rounded-2xl bg-gradient-to-r from-[#fff7f0] via-[#fef4ea] to-[#fffaf5] dark:from-[#1e1915] dark:via-[#261f1a] dark:to-[#1a1714] border border-[#f5d7b5] dark:border-amber-500/20 p-4 sm:p-5 flex items-center justify-between gap-4 transition-all hover:border-[#ea580c] hover:shadow-md cursor-pointer group"
@@ -457,20 +457,57 @@ export function SponsoredBanner() {
             </span>
           </div>
           <h3 className="font-heading font-black text-sm sm:text-base text-black dark:text-white leading-tight mb-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-            Launch once. Rank on Google with AI SEO on autopilot.
+            Dedicated PR blitz, tier-1 media coverage &amp; 60-word updates for 100k+ Web3 builders.
           </h3>
           <p className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
-            — LAUNCHRANKED <span className="hidden sm:inline">• Book sponsor spot → 4,800+ founders &amp; angels</span>
+            — YOURWEB3GUY <span className="hidden sm:inline">• Book PR &amp; Media Blitz → 100k+ founders &amp; angels</span>
           </p>
         </div>
       </div>
 
       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#ff6b4a] to-[#ff3b20] text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0 group-hover:scale-105 transition-transform">
-        <TrendingUp size={24} strokeWidth={2.5} />
+        <Rocket size={24} strokeWidth={2.5} />
       </div>
     </a>
   );
 }
+
+export function SponsoredBannerHireInCrypto() {
+  return (
+    <a
+      href="https://www.hireincrypto.com"
+      target="_blank"
+      rel="noreferrer"
+      className="rounded-2xl bg-gradient-to-r from-[#f0fdf4] via-[#e8fbf0] to-[#f4fdf8] dark:from-[#132219] dark:via-[#172b20] dark:to-[#111f17] border border-emerald-200 dark:border-emerald-500/20 p-4 sm:p-5 flex items-center justify-between gap-4 transition-all hover:border-emerald-500 hover:shadow-md cursor-pointer group"
+    >
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        <span className="font-mono text-[9px] font-black uppercase tracking-[2px] text-emerald-700/80 dark:text-emerald-400 [writing-mode:vertical-lr] rotate-180 hidden sm:block border-r border-emerald-300/40 dark:border-emerald-500/20 pr-2 select-none">
+          SPONSORED
+        </span>
+
+        <div className="min-w-0">
+          <div className="sm:hidden mb-1">
+            <span className="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">
+              SPONSORED
+            </span>
+          </div>
+          <h3 className="font-heading font-black text-sm sm:text-base text-black dark:text-white leading-tight mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+            Hire vetted Web3 engineers, token designers &amp; protocol leads on proof of work.
+          </h3>
+          <p className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+            — HIREINCRYPTO <span className="hidden sm:inline">• Post a Web3 role or hire elite talent → 500+ Protocols</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0 group-hover:scale-105 transition-transform">
+        <Briefcase size={22} strokeWidth={2.5} />
+      </div>
+    </a>
+  );
+}
+
+export const SponsoredBanner = SponsoredBannerYourWeb3Guy;
 
 interface LaunchCardProps {
   item: ExtendedLaunchItem;
@@ -617,7 +654,8 @@ export function LaunchList({ loading, launches, votedMap, sponsoredIndex, onVote
 
           return (
             <React.Fragment key={item.id}>
-              {idx === sponsoredIndex && <SponsoredBanner />}
+              {idx === sponsoredIndex && <SponsoredBannerYourWeb3Guy />}
+              {idx === 6 && <SponsoredBannerHireInCrypto />}
 
               <LaunchCard
                 item={item}

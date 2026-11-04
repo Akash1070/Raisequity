@@ -32,7 +32,7 @@ export default function CreditPackageModal({
   requiredCredits,
   actionTitle
 }: CreditPackageModalProps) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, getIdToken } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState<number | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -54,10 +54,14 @@ export default function CreditPackageModal({
 
     try {
       let token = '';
-      if (auth.currentUser) {
-        token = await auth.currentUser.getIdToken();
-      } else if (user && typeof (user as any).getIdToken === 'function') {
-        token = await (user as any).getIdToken();
+      if (typeof getIdToken === 'function') {
+        token = await getIdToken().catch(() => '');
+      }
+      if (!token && auth.currentUser && typeof auth.currentUser.getIdToken === 'function') {
+        token = await auth.currentUser.getIdToken().catch(() => '');
+      }
+      if (!token && user && typeof (user as any).getIdToken === 'function') {
+        token = await (user as any).getIdToken().catch(() => '');
       }
 
       const res = await fetch('/api/create-checkout', {

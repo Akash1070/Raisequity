@@ -242,7 +242,7 @@ export default function Login() {
       ],
       helpTitle: "Need custom fundraising help?",
       helpDesc: "Book a direct 15-min strategy call with platform partners.",
-      helpEmail: "founders@raisequity.com",
+      helpEmail: "8093akash@gmail.com",
       callLink: "https://cal.com/raisequity",
       ecosystem: ["Google Cloud", "AWS Activate", "Base", "Solana", "Arbitrum", "Dodo Payments"]
     },
@@ -270,7 +270,7 @@ export default function Login() {
       ],
       helpTitle: "Syndicate check-writer or fund lead?",
       helpDesc: "Inquire about institutional co-investment allocations & SPVs.",
-      helpEmail: "investors@raisequity.com",
+      helpEmail: "8093akash@gmail.com",
       callLink: "https://cal.com/raisequity",
       ecosystem: ["a16z crypto", "Pantera", "Coinbase Ventures", "Framework", "Y Combinator", "Stripe"]
     },
@@ -298,7 +298,7 @@ export default function Login() {
       ],
       helpTitle: "Agency studio looking for deals?",
       helpDesc: "Connect with our dealflow desk to review active client RFPs.",
-      helpEmail: "agency@raisequity.com",
+      helpEmail: "8093akash@gmail.com",
       callLink: "https://cal.com/raisequity",
       ecosystem: ["Smart Contract Audits", "Full-Stack Web3", "Tokenomics", "ZK Proofs", "GTM Scaling"]
     },
@@ -310,7 +310,7 @@ export default function Login() {
       features: [],
       helpTitle: "Platform Admin Access",
       helpDesc: "Strict access control with multi-factor authentication.",
-      helpEmail: "security@raisequity.com",
+      helpEmail: "8093akash@gmail.com",
       callLink: "https://cal.com/raisequity",
       ecosystem: ["Delaware C-Corp", "FireStore", "Dodo Payments", "Google Cloud"]
     }
