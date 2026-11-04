@@ -32,6 +32,20 @@
       })();
     </script>
 
+    <!-- Umami Analytics (Free & Privacy-Friendly) -->
+    <script>
+      (function() {
+        var umamiId = "%VITE_UMAMI_WEBSITE_ID%";
+        if (umamiId && !umamiId.startsWith('%')) {
+          var s = document.createElement('script');
+          s.defer = true;
+          s.src = "https://cloud.umami.is/script.js";
+          s.setAttribute('data-website-id', umamiId);
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
+
     <!-- Open Graph & Social Cards -->
     <meta property="og:title" content="Raisequity - Institutional Deal Flow Platform" />
     <meta property="og:description" content="Bridging the Web2 &amp; Web3 funding gap with guaranteed partner meetings and institutional due diligence memos." />
