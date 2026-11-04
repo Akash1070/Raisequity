@@ -459,27 +459,41 @@ export default function ServiceProviders() {
             </div>
           </div>
 
-          {/* CARD 4B: Free Credits ($500k Perks) */}
+          {/* CARD 4B: Verified Providers Working With Us */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="flex items-center justify-between mb-3.5">
-                <h3 className="text-xl font-heading font-black text-black dark:text-white tracking-tight">
-                  Free Credits
-                </h3>
-                <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 flex items-center justify-center">
-                  <Star size={13} fill="currentColor" />
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <ShieldCheck size={16} />
+                  </div>
+                  <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight">
+                    Verified Providers
+                  </h3>
                 </div>
+                <span className="font-mono text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
+                  Accredited
+                </span>
               </div>
 
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-3">
+                Join accredited agencies and dev studios securing pre-funded retainers backed by smart milestone escrow.
+              </p>
+
               <div className="space-y-2 mb-4">
-                {realCredits.map((c, i) => (
-                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
+                {[
+                  { name: "KOL & Growth Blitz", type: "Active Client RFPs", budget: "$10k - $50k/mo" },
+                  { name: "Smart Contract Audits", type: "Security & ZK Protocols", budget: "$15k - $80k" },
+                  { name: "Exchange & Market Making", type: "Verified Retainer", budget: "$25k+" },
+                  { name: "Tokenomics Structuring", type: "High-Intent Seed Teams", budget: "$12k - $30k" },
+                ].map((c, i) => (
+                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0 flex-1">
-                      <div className="font-heading font-black text-xs text-black dark:text-white truncate">{c.company}</div>
-                      <div className="text-[10px] font-mono text-neutral-400 truncate">{c.desc}</div>
+                      <div className="font-heading font-black text-xs text-black dark:text-white truncate">{c.name}</div>
+                      <div className="text-[10px] font-mono text-neutral-400 truncate">{c.type}</div>
                     </div>
-                    <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
-                      {c.value}
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded-md bg-white dark:bg-[#121316] text-black dark:text-white border border-neutral-200/80 dark:border-white/5 font-mono text-[9px] font-bold">
+                      {c.budget}
                     </span>
                   </div>
                 ))}
@@ -487,10 +501,10 @@ export default function ServiceProviders() {
             </div>
 
             <Link
-              to="/founders"
-              className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
+              to="/login?role=agency"
+              className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block shadow-xs"
             >
-              Claim $500k+ Perks →
+              Apply as Verified Agency →
             </Link>
           </div>
 
@@ -501,42 +515,35 @@ export default function ServiceProviders() {
            ══════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           
-          {/* CARD 5A: Market your Web3 product */}
+          {/* CARD 5A: Launch Directory & Inbound RFPs */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
                 <Megaphone size={18} />
               </div>
 
-              <a
-                href="https://akashkumarjha.substack.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2 hover:opacity-80 transition-opacity"
-              >
-                6,000+ READERS ↗
-              </a>
+              <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2">
+                4,800+ FOUNDERS & VCs
+              </div>
 
               <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
-                Market your Web3 product
+                Feature in Directory
               </h3>
 
               <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Get in front of a highly targeted audience of builders, check-writers, and ecosystem scouts.
+                Get permanent dofollow backlinks and direct inbound client inquiries from funded Web3 startups.
               </p>
             </div>
 
-            <a
-              href="https://akashkumarjha.substack.com/"
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              to="/launch"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              Read on Substack ↗
-            </a>
+              List in Launch Directory ↗
+            </Link>
           </div>
 
-          {/* CARD 5B: Hire in Web3 */}
+          {/* CARD 5B: Vetted Talent & Agencies */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
@@ -544,23 +551,23 @@ export default function ServiceProviders() {
               </div>
 
               <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-[#1e1f26] text-neutral-600 dark:text-neutral-300 font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                TALENT RECRUITING
+                CLIENT RFPs &amp; TALENT
               </div>
 
               <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
-                Hire in Web3
+                Service Provider Directory
               </h3>
 
               <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Access vetted crypto engineers, token designers, and full-stack growth leads for your protocol.
+                Browse open client RFPs, submit service proposals, and manage milestone disbursements securely.
               </p>
             </div>
 
             <Link
-              to="/login?role=agency"
+              to="/service-providers"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              Explore Talent ↗
+              Browse RFPs &amp; Talent ↗
             </Link>
           </div>
 

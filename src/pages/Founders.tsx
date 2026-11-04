@@ -112,7 +112,7 @@ export default function Founders() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { grants, credits } = useLandingData();
+  const { grants, credits, activeGrants, activeCredits, activeFunds, cycleIndex } = useLandingData();
   const [matches, setMatches] = useState(DEFAULT_MATCHES);
   const [activeFilter, setActiveFilter] = useState("All");
   const [launches, setLaunches] = useState(TRENDING_LAUNCHES);
@@ -433,11 +433,11 @@ export default function Founders() {
               </div>
 
               <div className="space-y-2.5 mb-5">
-                {grants.map((g, i) => (
-                  <div key={i} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between text-xs">
+                {activeGrants.map((g, i) => (
+                  <div key={i} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between text-xs transition-all duration-300">
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#805ad5]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#805ad5] animate-pulse" />
                         <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase">{g.network}</span>
                       </div>
                       <div className="font-bold text-black dark:text-white truncate">{g.title}</div>
@@ -475,8 +475,8 @@ export default function Founders() {
               </div>
 
               <div className="space-y-2.5 mb-5">
-                {credits.map((c, i) => (
-                  <div key={i} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
+                {activeCredits.map((c, i) => (
+                  <div key={i} className="p-3 rounded-2xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs transition-all duration-300">
                     <div className="min-w-0 flex-1">
                       <div className="font-heading font-black text-black dark:text-white truncate">{c.company}</div>
                       <div className="text-[10px] font-mono text-neutral-400 truncate">{c.desc}</div>
@@ -526,20 +526,20 @@ export default function Founders() {
             </Link>
           </div>
 
-          {/* 4 VC Cards in a 2x2 Grid */}
+          {/* 4 VC Cards in a 2x2 Grid (Dynamic FOMO Rotation every 3.5s) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {matches.slice(0, 4).map((m, idx) => (
+            {activeFunds.map((m, idx) => (
               <div
                 key={idx}
-                className="p-4 rounded-[20px] bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 transition-all flex flex-col justify-between group"
+                className="p-4 rounded-[20px] bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-heading font-black text-base text-black dark:text-white group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors">
-                      {m.firm}
+                      {m.name}
                     </span>
                     <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-neutral-200/70 dark:bg-[#25262e] text-neutral-700 dark:text-neutral-300 rounded-md">
-                      {m.checkSize}
+                      {m.checkSize || m.funding}
                     </span>
                   </div>
 
@@ -548,17 +548,18 @@ export default function Founders() {
                   </p>
 
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    {m.tags.map((t, ti) => (
-                      <span key={ti} className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/5 text-neutral-600 dark:text-neutral-400 rounded-md">
-                        {t}
-                      </span>
-                    ))}
+                    <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/5 text-neutral-600 dark:text-neutral-400 rounded-md">
+                      {m.category}
+                    </span>
+                    <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/5 text-neutral-600 dark:text-neutral-400 rounded-md">
+                      Verified Lead
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-neutral-200/60 dark:border-white/5 text-[10px] font-mono">
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                    ✓ {m.responseRate} Response Rate
+                    ✓ 94% Response Rate
                   </span>
                   <Link
                     to="/login?role=founder"

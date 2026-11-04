@@ -255,7 +255,7 @@ export default function MyLaunch() {
                   <Globe size={18} className="text-blue-500" />
                 </div>
                 <span className="font-mono text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                  DR 72 DOMAIN
+                  PERMANENT DOFOLLOW
                 </span>
               </div>
               <h3 className="text-base font-heading font-black text-black dark:text-white mb-1.5">

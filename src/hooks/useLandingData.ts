@@ -157,10 +157,10 @@ export function useLandingData() {
     SEEDED_DEAL_FLOW.slice(0, 9).map(normalizeDeal).filter(Boolean) as LandingDeal[]
   );
   const [grants, setGrants] = useState<LandingGrant[]>(() =>
-    web3Grants.slice(0, 8).map(normalizeGrant).filter(Boolean) as LandingGrant[]
+    web3Grants.slice(0, 12).map(normalizeGrant).filter(Boolean) as LandingGrant[]
   );
   const [credits, setCredits] = useState<LandingCredit[]>(() =>
-    startupCredits.slice(0, 8).map(normalizeCredit).filter(Boolean) as LandingCredit[]
+    startupCredits.slice(0, 12).map(normalizeCredit).filter(Boolean) as LandingCredit[]
   );
   const [projects, setProjects] = useState<LandingProject[]>(SEED_PROJECTS);
   const [ventureFunds, setVentureFunds] = useState<LandingVentureFund[]>(TOP_VC_FUNDS);
@@ -168,11 +168,11 @@ export function useLandingData() {
   const [launchesCount, setLaunchesCount] = useState(42);
   const [cycleIndex, setCycleIndex] = useState(0);
 
-  // Auto-cycle index every 6 seconds to rotate FOMO showcases smoothly
+  // Auto-cycle index every 3.5 seconds to rotate FOMO showcases smoothly (2-5s)
   useEffect(() => {
     const timer = setInterval(() => {
-      setCycleIndex((prev) => (prev + 1) % 3);
-    }, 6000);
+      setCycleIndex((prev) => (prev + 1) % 4);
+    }, 3500);
     return () => clearInterval(timer);
   }, []);
 
@@ -370,15 +370,25 @@ export function useLandingData() {
     },
   ];
 
+  // Dynamic slices for rotating cards (strictly 4 items to keep UI compact)
+  const activeGrants = grants.slice((cycleIndex * 4) % Math.max(grants.length - 3, 1), ((cycleIndex * 4) % Math.max(grants.length - 3, 1)) + 4);
+  const activeCredits = credits.slice((cycleIndex * 4) % Math.max(credits.length - 3, 1), ((cycleIndex * 4) % Math.max(credits.length - 3, 1)) + 4);
+  const activeDeals = deals.slice((cycleIndex * 3) % Math.max(deals.length - 2, 1), ((cycleIndex * 3) % Math.max(deals.length - 2, 1)) + 3);
+  const activeFunds = ventureFunds.slice((cycleIndex * 4) % Math.max(ventureFunds.length - 3, 1), ((cycleIndex * 4) % Math.max(ventureFunds.length - 3, 1)) + 4);
+
   return {
     deals,
     grants,
-    credits,
+    credits: credits.slice(0, 4), // strictly 4 items for compact UI
     projects,
     ventureFunds,
     investorsCount,
     launchesCount,
     cycleIndex,
     fomoActivities,
+    activeGrants,
+    activeCredits,
+    activeDeals,
+    activeFunds,
   };
 }

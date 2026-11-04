@@ -6,6 +6,7 @@ import {
   Zap,
   TrendingUp,
   Clock,
+  Calendar,
   Building,
   CheckCircle2,
   Sparkles,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { LiveActivityMarquee } from "../components/ui/LiveActivityMarquee";
 import { NumberTicker } from "../components/ui/NumberTicker";
+import { useLandingData } from "../hooks/useLandingData";
 import { usePageMeta } from "../hooks/usePageMeta";
 
 export default function Investors() {
@@ -39,6 +41,7 @@ export default function Investors() {
     { name: "Fasqon Fintech", category: "Fintech", votes: 91, founder: "Alexandre Silva", tagline: "Crypto-native neobank bridging Web3 liquidity and SEPA banking.", slug: "promptpilot-saas" },
   ]);
   const [votedMap, setVotedMap] = useState<Record<number, boolean>>({});
+  const { activeDeals } = useLandingData();
 
   const handleUpvote = (e: React.MouseEvent, idx: number) => {
     e.preventDefault();
@@ -239,7 +242,7 @@ export default function Investors() {
               </div>
 
               <div className="space-y-3">
-                {curatedDeals.map((deal) => (
+                {activeDeals.map((deal) => (
                   <Link
                     key={deal.id}
                     to={`/launch/${deal.slug}`}
@@ -538,31 +541,45 @@ export default function Investors() {
         </div>
 
         {/* ══════════════════════════════════════════════════════════
-            6. ROW 6: TRIPLE BENTO (Free Credits + Market + Hire)
+            6. ROW 6: TRIPLE BENTO (Startups + Verified Providers + 1-Click SAFEs)
            ══════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
           
-          {/* CARD 6A: Free Credits ($500k Perks) */}
+          {/* CARD 6A: Connect with 99+ Startups */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
               <div className="flex items-center justify-between mb-3.5">
-                <h3 className="text-xl font-heading font-black text-black dark:text-white tracking-tight">
-                  Free Credits
-                </h3>
-                <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 flex items-center justify-center">
-                  <Star size={13} fill="currentColor" />
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#0070F3]/10 text-[#0070F3] flex items-center justify-center">
+                    <Users size={16} />
+                  </div>
+                  <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight">
+                    Connect with 99+ Startups
+                  </h3>
                 </div>
+                <span className="font-mono text-[9px] font-bold text-[#0070F3] bg-[#0070F3]/10 px-2 py-0.5 rounded-full uppercase">
+                  Active Dealflow
+                </span>
               </div>
 
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-3">
+                Direct access to high-conviction founders raising seed rounds. Review live traction, telemetry, and request direct introduction.
+              </p>
+
               <div className="space-y-2 mb-4">
-                {realCredits.map((c, i) => (
-                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
+                {[
+                  { name: "NeuroChain AI", sector: "AI & Agents", round: "$1.5M Seed", badge: "96 Readiness" },
+                  { name: "SecantX Protocol", sector: "DeFi / ZK", round: "$2.2M Round", badge: "Institutional" },
+                  { name: "HyperScale DB", sector: "Infrastructure", round: "$800k SAFE", badge: "YC W24" },
+                  { name: "YourWeb3Guy", sector: "Growth / PR", round: "Cohort Live", badge: "Spotlight" },
+                ].map((s, i) => (
+                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0 flex-1">
-                      <div className="font-heading font-black text-xs text-black dark:text-white truncate">{c.company}</div>
-                      <div className="text-[10px] font-mono text-neutral-400 truncate">{c.desc}</div>
+                      <div className="font-heading font-black text-xs text-black dark:text-white truncate">{s.name}</div>
+                      <div className="text-[10px] font-mono text-neutral-400 truncate">{s.sector} • {s.round}</div>
                     </div>
-                    <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
-                      {c.value}
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded-md bg-white dark:bg-[#121316] text-black dark:text-white border border-neutral-200/80 dark:border-white/5 font-mono text-[9px] font-bold">
+                      {s.badge}
                     </span>
                   </div>
                 ))}
@@ -570,73 +587,108 @@ export default function Investors() {
             </div>
 
             <Link
-              to="/founders"
-              className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
+              to="/launch"
+              className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block shadow-xs"
             >
-              Claim $500k+ Perks →
+              Explore 99+ Live Startups →
             </Link>
           </div>
 
-          {/* CARD 6B: Market your Web3 product */}
+          {/* CARD 6B: Verified Providers Working With Us */}
           <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
             <div>
-              <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
-                <Megaphone size={18} />
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <ShieldCheck size={16} />
+                  </div>
+                  <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight">
+                    Verified Providers
+                  </h3>
+                </div>
+                <span className="font-mono text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
+                  Accredited
+                </span>
               </div>
 
-              <a
-                href="https://akashkumarjha.substack.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center px-2 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-black uppercase tracking-wider mb-2 hover:opacity-80 transition-opacity"
-              >
-                6,000+ READERS ↗
-              </a>
-
-              <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
-                Market your Web3 product
-              </h3>
-
-              <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Get in front of a highly targeted audience of builders, check-writers, and ecosystem scouts.
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-3">
+                Pre-vetted service partners for your portfolio companies. Audited track records with escrow-backed deliverables.
               </p>
-            </div>
 
-            <a
-              href="https://akashkumarjha.substack.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
-            >
-              Read on Substack ↗
-            </a>
-          </div>
-
-          {/* CARD 6C: Hire in Web3 */}
-          <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
-            <div>
-              <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-[#1c1d22] border border-neutral-200 dark:border-white/5 flex items-center justify-center text-black dark:text-white mb-3">
-                <Briefcase size={18} />
+              <div className="space-y-2 mb-4">
+                {[
+                  { name: "OmniShield Security", type: "Smart Contract & ZK Audit", metric: "100% SLA" },
+                  { name: "Web3 Growth Labs", type: "Token Launch & GTM Blitz", metric: "Tier 1 PR" },
+                  { name: "Nexus Legal Advisory", type: "Delaware C-Corp & SAFEs", metric: "Specialist" },
+                  { name: "LiquidAlpha Trading", type: "CEX/DEX Liquidity & MM", metric: "Institutional" },
+                ].map((p, i) => (
+                  <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-heading font-black text-xs text-black dark:text-white truncate">{p.name}</div>
+                      <div className="text-[10px] font-mono text-neutral-400 truncate">{p.type}</div>
+                    </div>
+                    <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[9px] font-bold">
+                      {p.metric}
+                    </span>
+                  </div>
+                ))}
               </div>
-
-              <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-[#1e1f26] text-neutral-600 dark:text-neutral-300 font-mono text-[9px] font-black uppercase tracking-wider mb-2">
-                TALENT RECRUITING
-              </div>
-
-              <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight mb-2">
-                Hire in Web3
-              </h3>
-
-              <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-4">
-                Access vetted crypto engineers, token designers, and full-stack growth leads for your protocol.
-              </p>
             </div>
 
             <Link
               to="/service-providers"
               className="w-full py-2.5 rounded-full bg-white dark:bg-[#1a1b20] border border-neutral-300 dark:border-white/10 hover:border-black dark:hover:border-white text-black dark:text-white font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block"
             >
-              Explore Talent ↗
+              Browse Verified Directory ↗
+            </Link>
+          </div>
+
+          {/* CARD 6C: 1-Click Founder Calendars & SAFEs */}
+          <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
+            <div>
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-500 flex items-center justify-center">
+                    <Zap size={16} />
+                  </div>
+                  <h3 className="text-lg font-heading font-black text-black dark:text-white tracking-tight">
+                    1-Click Diligence
+                  </h3>
+                </div>
+                <span className="font-mono text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase">
+                  Zero Friction
+                </span>
+              </div>
+
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs leading-relaxed mb-3">
+                Skip 4-week gatekeeper lag. Schedule 15-minute partner diligence calls and execute standard YC SAFEs with $0 broker fees.
+              </p>
+
+              <div className="space-y-2 mb-4 font-mono text-xs">
+                <div className="p-2.5 bg-neutral-50 dark:bg-[#18191e] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                  <span className="text-neutral-500 text-[11px]">Direct Calendar:</span>
+                  <span className="font-black text-black dark:text-white text-[11px]">15-min Founder Calls</span>
+                </div>
+                <div className="p-2.5 bg-neutral-50 dark:bg-[#18191e] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                  <span className="text-neutral-500 text-[11px]">Legal Framework:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black text-[11px]">$0 YC Post-Money SAFE</span>
+                </div>
+                <div className="p-2.5 bg-neutral-50 dark:bg-[#18191e] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                  <span className="text-neutral-500 text-[11px]">Broker Commission:</span>
+                  <span className="text-[#0070F3] font-black text-[11px]">0% Fee (Founder Direct)</span>
+                </div>
+                <div className="p-2.5 bg-neutral-50 dark:bg-[#18191e] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
+                  <span className="text-neutral-500 text-[11px]">Fast-Pass Access:</span>
+                  <span className="text-amber-500 font-black text-[11px]">7-Day Pre-Public Window</span>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              to="/login?role=investor"
+              className="w-full py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-extrabold text-xs text-center transition-all active:scale-95 cursor-pointer block shadow-xs"
+            >
+              Access Investor Terminal →
             </Link>
           </div>
 

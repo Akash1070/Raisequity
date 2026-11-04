@@ -440,7 +440,7 @@ export default function LaunchDirectory() {
                       </div>
                       <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
                         <span className="text-neutral-500">Backlink Power:</span>
-                        <span className="font-black text-black dark:text-white">100% Dofollow (DR 37+)</span>
+                        <span className="font-black text-black dark:text-white">100% Dofollow Authority Backlink</span>
                       </div>
                     </div>
                   </div>
@@ -773,15 +773,15 @@ export default function LaunchDirectory() {
                 </Link>
               </div>
 
-              {/* CARD 6C: DR Booster SEO Dofollow Backlinks */}
+              {/* CARD 6C: SEO Dofollow Authority Backlinks */}
               <div className="rounded-[28px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[#4f46e5] dark:text-[#805ad5] font-black">
-                      DR Booster
+                      SEO Indexing
                     </span>
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-[#1e1f26] text-black dark:text-white">
-                      DR 37+
+                      Permanent Dofollow
                     </span>
                   </div>
 
