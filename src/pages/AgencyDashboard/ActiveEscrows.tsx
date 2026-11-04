@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Lock,
   ShieldCheck,
@@ -13,78 +13,155 @@ import {
   Loader2,
   Sparkles
 } from "lucide-react";
+import { collection, getDocs, query, limit, addDoc, updateDoc, doc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface EscrowItem {
   id: string;
   client: string;
   title: string;
   totalLocked: string;
+  totalAmountUsd: number;
   milestonesCompleted: string;
   nextRelease: string;
   releaseHours: string;
   contract: string;
   network: string;
   status: string;
+  clientId?: string;
 }
 
 export default function ActiveEscrows() {
-  const [escrows, setEscrows] = useState<EscrowItem[]>([
-    {
-      id: "esc_fasqon_01",
-      client: "Fasqon Fintech",
-      title: "Cross-Chain SEPA-to-USDC Smart Settlement",
-      totalLocked: "$45,000 USDC",
-      milestonesCompleted: "1 of 3",
-      nextRelease: "$18,000 USDC (Milestone 2)",
-      releaseHours: "In Review (Est 24h)",
-      contract: "0x7F2a...94E1",
-      network: "Arbitrum One",
-      status: "In Progress"
-    },
-    {
-      id: "esc_secantx_02",
-      client: "SecantX Protocol",
-      title: "Circom ZK Constraint & Verifier Audit",
-      totalLocked: "$38,000 USD",
-      milestonesCompleted: "0 of 2",
-      nextRelease: "$19,000 USD (Milestone 1)",
-      releaseHours: "48h Post-Delivery",
-      contract: "0x3D1c...62B8",
-      network: "Ethereum Mainnet",
-      status: "Active Kickoff"
+  const { user } = useAuth();
+  const [escrows, setEscrows] = useState<EscrowItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load real escrow-backed engagements from Firestore (deal_flow + agreements).
+  useEffect(() => {
+    let active = true;
+    async function loadEscrows() {
+      try {
+        const [flowSnap, agSnap] = await Promise.all([
+          getDocs(query(collection(db, "deal_flow"), limit(100))),
+          getDocs(query(collection(db, "agreements"), limit(100))),
+        ]);
+        const items: EscrowItem[] = [];
+        flowSnap.docs.forEach((d) => {
+          const data = d.data();
+          const locked = Number(data.escrow_locked_amount || data.escrow_amount || 0) || 0;
+          if (locked <= 0 && data.escrow_status !== "funded") return;
+          const client = data.founder_name || data.company_name || data.name || "Client";
+          items.push({
+            id: d.id,
+            client,
+            title: data.project_title || data.tagline || data.description?.slice(0, 60) || "Milestone Engagement",
+            totalLocked: `$${locked.toLocaleString()} ${data.escrow_currency || "USD"}`,
+            totalAmountUsd: locked,
+            milestonesCompleted: data.milestones_completed || "0 of 3",
+            nextRelease: data.next_release || `${data.escrow_currency || "USD"} release on milestone completion`,
+            releaseHours: data.release_hours || "48h Post-Delivery",
+            contract: data.escrow_contract || data.contract_address || "—",
+            network: data.network || data.chain || "—",
+            status: data.escrow_status === "funded" ? "In Progress" : (data.deliverable_status || "In Progress"),
+            clientId: data.founder_id || data.founderId || undefined,
+          });
+        });
+        agSnap.docs.forEach((d) => {
+          const data = d.data();
+          const locked = Number(data.escrow_amount || 0) || 0;
+          if (locked <= 0) return;
+          items.push({
+            id: d.id,
+            client: data.client_name || data.founder_name || "Client",
+            title: data.project_title || "Facilitation Engagement",
+            totalLocked: `$${locked.toLocaleString()} ${data.escrow_currency || "USD"}`,
+            totalAmountUsd: locked,
+            milestonesCompleted: data.milestones_completed || "0 of 3",
+            nextRelease: data.next_release || "Release on milestone completion",
+            releaseHours: "48h Post-Delivery",
+            contract: data.escrow_contract || "—",
+            network: data.network || "—",
+            status: data.escrow_status === "funded" ? "In Progress" : "In Progress",
+            clientId: data.founder_id || undefined,
+          });
+        });
+        if (active) setEscrows(items);
+      } catch (err) {
+        console.warn("[ActiveEscrows] load error:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
     }
-  ]);
+    loadEscrows();
+    return () => { active = false; };
+  }, []);
 
   const [activeModalEscrow, setActiveModalEscrow] = useState<EscrowItem | null>(null);
   const [deliverableUrl, setDeliverableUrl] = useState("");
   const [deliverableNotes, setDeliverableNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmitDeliverable = (e: React.FormEvent) => {
+  const handleSubmitDeliverable = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeModalEscrow) return;
+    if (!activeModalEscrow || !user) return;
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    setTimeout(() => {
+    try {
+      // Persist the deliverable record — a real backend write.
+      await addDoc(collection(db, "escrow_deliverables"), {
+        escrow_id: activeModalEscrow.id,
+        agency_id: user.uid,
+        client_name: activeModalEscrow.client,
+        project_title: activeModalEscrow.title,
+        deliverable_url: deliverableUrl,
+        notes: deliverableNotes,
+        status: "pending_review",
+        created_at: new Date().toISOString(),
+      });
+
+      // Update the source engagement doc when it is a deal_flow entry.
+      try {
+        await updateDoc(doc(db, "deal_flow", activeModalEscrow.id), {
+          deliverable_status: "submitted",
+          deliverable_submitted_at: new Date().toISOString(),
+        }).catch(() => {});
+      } catch (_) {}
+
+      // Notify the client founder if we have a real user.
+      if (activeModalEscrow.clientId) {
+        await addDoc(collection(db, "notifications"), {
+          userId: activeModalEscrow.clientId,
+          type: "escrow_deliverable",
+          title: "Deliverable Submitted for Review",
+          body: `Your agency submitted a deliverable for "${activeModalEscrow.title}". Review it within 48h to trigger payout.`,
+          link: "/dashboard/messages",
+          read: false,
+          created_at: new Date().toISOString(),
+        }).catch(() => {});
+      }
+
       setEscrows((prev) =>
         prev.map((item) =>
           item.id === activeModalEscrow.id
-            ? {
-                ...item,
-                status: "Deliverable Submitted (Review Active)",
-                releaseHours: "48h Auto-Release Active"
-              }
+            ? { ...item, status: "Deliverable Submitted (Review Active)", releaseHours: "48h Auto-Release Active" }
             : item
         )
       );
-      setIsSubmitting(false);
       setSubmitSuccess(`Deliverable submitted for ${activeModalEscrow.title}. 48h automatic payout counter initiated.`);
       setActiveModalEscrow(null);
       setDeliverableUrl("");
       setDeliverableNotes("");
       setTimeout(() => setSubmitSuccess(null), 6000);
-    }, 1000);
+    } catch (err: any) {
+      console.error("[ActiveEscrows] submit error:", err);
+      setSubmitError(err?.message || "Failed to record deliverable submission. Please retry.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -112,7 +189,7 @@ export default function ActiveEscrows() {
             Total Vault Balance
           </div>
           <div className="text-2xl font-heading font-black text-emerald-600 dark:text-emerald-400">
-            $83,000 USD
+            ${escrows.reduce((a, e) => a + (e.totalAmountUsd || 0), 0).toLocaleString()} USD
           </div>
           <div className="text-[10px] font-mono text-neutral-500">
             {escrows.length} Active Contracts Locked
@@ -135,7 +212,20 @@ export default function ActiveEscrows() {
 
       {/* ── ESCROW VAULTS LIST ── */}
       <div className="space-y-4">
-        {escrows.map((e) => (
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center gap-3 text-neutral-400">
+            <Loader2 className="animate-spin text-emerald-500" size={28} />
+            <span className="text-xs font-mono">Loading escrow vaults...</span>
+          </div>
+        ) : escrows.length === 0 ? (
+          <div className="py-16 text-center rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A]">
+            <Lock size={28} className="mx-auto text-neutral-400 mb-2" />
+            <p className="text-sm font-bold text-black dark:text-white font-mono">No funded escrow vaults yet</p>
+            <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">
+              Once a client engagement is pre-funded, its escrow vault will appear here automatically.
+            </p>
+          </div>
+        ) : escrows.map((e) => (
           <div
             key={e.id}
             className="p-6 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-neutral-200 dark:border-[#262626] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6"
@@ -203,6 +293,12 @@ export default function ActiveEscrows() {
             <p className="text-xs text-neutral-500 font-mono leading-relaxed">
               Submitting milestone deliverable for <strong>{activeModalEscrow.title}</strong> ({activeModalEscrow.client}). Once submitted, client has 48h to verify before funds auto-disburse to your payout address.
             </p>
+
+            {submitError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs font-mono text-red-600 dark:text-red-300">
+                {submitError}
+              </div>
+            )}
 
             <form onSubmit={handleSubmitDeliverable} className="space-y-4">
               <div>

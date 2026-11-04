@@ -38,11 +38,10 @@ export default function AdminGrants() {
       const snap = await getDocs(query(collection(db, "grants"), limit(200)));
       const dbData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const grantMap = new Map<string, any>();
-      web3Grants.forEach(g => grantMap.set(g.id, g));
-      dbData.forEach(g => grantMap.set(g.id, { ...(grantMap.get(g.id) || {}), ...g }));
-
-      setGrants(Array.from(grantMap.values()));
+      // Show real Firestore records only. Seed data is never merged back in,
+      // so deleted/edited seeded grants stay deleted/edited. Seeds are only
+      // used as a fresh-database fallback.
+      setGrants(dbData.length > 0 ? dbData : web3Grants);
     } catch (err) {
       console.error("Error fetching grants:", err);
       setGrants(web3Grants);

@@ -75,34 +75,32 @@ export async function checkAgreementStatus(introRequestId: string): Promise<bool
  * Allows institutional investors to issue standardized, pre-vetted SAFT/SAFE agreements
  * directly to matched founders in 1 click, eliminating $5,000 legal setup costs per check.
  */
+/**
+ * 1-Click Standardized SAFE / SAFT Document Execution.
+ * Fail-closed: if the server-side OpenSign proxy is unavailable or returns a
+ * non-OK response, we throw — we never fabricate a legal document. Callers
+ * must surface the error and NOT record an investment.
+ */
 export async function issueStandardSafeAgreement(
   payload: SafeAgreementPayload
 ): Promise<OpenSignDocumentResponse> {
-  try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-    const response = await fetch(`${origin}/api/opensign-agreement`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...payload,
-        templateType: payload.instrumentType.includes('SAFT') ? 'token_saft' : 'yc_safe_postmoney',
-        title: `Standardized ${payload.instrumentType}: ${payload.companyName} ($${payload.checkAmountUsd.toLocaleString()})`,
-      }),
-    });
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  const response = await fetch(`${origin}/api/opensign-agreement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...payload,
+      templateType: payload.instrumentType.includes('SAFT') ? 'token_saft' : 'yc_safe_postmoney',
+      title: `Standardized ${payload.instrumentType}: ${payload.companyName} ($${payload.checkAmountUsd.toLocaleString()})`,
+    }),
+  });
 
-    if (response.ok) {
-      const data = await response.json();
-      return { documentId: data.documentId, signingUrl: data.signingUrl, status: 'pending' };
-    }
-  } catch (err) {
-    // Graceful fallback when serverless route is not yet deployed
+  if (!response.ok) {
+    throw new Error(`Agreement service unavailable (HTTP ${response.status})`);
   }
-
-  // Graceful institutional agreement execution fallback with verified reference
-  const docId = `safe_doc_${Date.now()}_${payload.companyId.slice(0, 6)}`;
-  return {
-    documentId: docId,
-    signingUrl: `https://app.opensignlabs.com/sign/${docId}`,
-    status: 'pending',
-  };
+  const data = await response.json();
+  if (!data?.documentId) {
+    throw new Error('Agreement service returned no document');
+  }
+  return { documentId: data.documentId, signingUrl: data.signingUrl, status: 'pending' };
 }

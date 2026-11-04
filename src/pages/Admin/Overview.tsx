@@ -4,7 +4,7 @@ import {
   Users, Building2, TrendingUp, Award, Gift, Briefcase, 
   ArrowUpRight, Activity, ShieldCheck, Rocket, Globe, Sparkles, DollarSign, Flame 
 } from "lucide-react";
-import { collection, getDocs, getCountFromServer, query, where, orderBy, limit, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, getCountFromServer, query, where, orderBy, limit, doc, setDoc, updateDoc, addDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { web3Grants } from "../../data/grants";
 import { startupCredits } from "../../data/credits";
@@ -64,60 +64,85 @@ export default function AdminOverview() {
   const [loading, setLoading] = useState(true);
   const [seedingAll, setSeedingAll] = useState(false);
 
-  const [selectedTriageId, setSelectedTriageId] = useState<string>("triage_1");
+  const [selectedTriageId, setSelectedTriageId] = useState<string>("");
   const [triageFilter, setTriageFilter] = useState<string>("all");
   const [triageActionState, setTriageActionState] = useState<Record<string, string>>({});
+  const [triageItems, setTriageItems] = useState<any[]>([]);
+  const [triageLoading, setTriageLoading] = useState(true);
 
-  const triageItems = [
-    {
-      id: "triage_1",
-      type: "STARTUP",
-      name: "NeuroChain AI",
-      founder: "Elena Rostova",
-      stage: "Seed Round ($1.5M)",
-      details: "Ex-DeepMind team • $38k MRR • 248 verified GitHub commits.",
-      submitted: "2h ago",
-      status: "Pending Verification",
-      score: 96,
-      proof: { ccorp: true, deck: true, github: true }
-    },
-    {
-      id: "triage_2",
-      type: "INVESTOR",
-      name: "Apex Ventures (David Chen)",
-      founder: "David Chen, GP",
-      stage: "Accredited Check-Writer",
-      details: "$45M Fund II • Typical check $250k–$1M • Lead check verified.",
-      submitted: "4h ago",
-      status: "Accreditation Review",
-      score: 98,
-      proof: { ccorp: true, deck: false, github: false }
-    },
-    {
-      id: "triage_3",
-      type: "ESCROW",
-      name: "Fasqon Fintech ↔ ChainCraft Labs",
-      founder: "Milestone 1 Completed",
-      stage: "Escrow Release: $13,500 USDC",
-      details: "48h sign-off window active • Foundry test harness passing 100%.",
-      submitted: "12h ago",
-      status: "Disbursement Pending",
-      score: 100,
-      proof: { ccorp: true, deck: true, github: true }
-    },
-    {
-      id: "triage_4",
-      type: "SLA",
-      name: "HyperScale DB (30-Day Guarantee)",
-      founder: "Marcus Vance",
-      stage: "Day 24 of 30",
-      details: "2 of 3 partner VC calls completed • 1 call currently matching.",
-      submitted: "Day 24",
-      status: "Active SLA Guarantee",
-      score: 94,
-      proof: { ccorp: true, deck: true, github: true }
+  // Build the triage queue from REAL pending documents.
+  useEffect(() => {
+    let active = true;
+    async function loadTriage() {
+      setTriageLoading(true);
+      const items: any[] = [];
+      try {
+        const [launchSnap, invSnap, bridgeSnap] = await Promise.all([
+          getDocs(query(collection(db, "launches"), where("status", "==", "queue"), limit(10))),
+          getDocs(query(collection(db, "users"), where("role", "==", "investor"), where("is_approved", "==", false), limit(10))),
+          getDocs(query(collection(db, "admin_intros"), where("status", "==", "pending_admin_bridge"), limit(10))),
+        ]);
+        launchSnap.docs.forEach((d) => {
+          const data = d.data();
+          items.push({
+            id: `launch_${d.id}`,
+            type: "STARTUP",
+            name: data.company_name || data.name || "Startup",
+            founder: data.founder_name || data.founder_id || "Founder",
+            stage: `${data.stage || "Round"} (${data.raise_amount_formatted || data.target_raise || "—"})`,
+            details: (data.tagline || data.description || "").slice(0, 120) || "Awaiting listing details.",
+            submitted: data.created_at ? new Date(data.created_at).toLocaleDateString() : "Recently",
+            status: data.status,
+            score: Number(data.authenticity_score || data.readiness_score || 70),
+            proof: { ccorp: Boolean(data.delaware_entity), deck: Boolean(data.deck_url || data.pitch_deck_url), github: Boolean(data.github_url) },
+            ref: { collection: "launches", docId: d.id, founderId: data.founder_id },
+          });
+        });
+        invSnap.docs.forEach((d) => {
+          const data = d.data();
+          items.push({
+            id: `investor_${d.id}`,
+            type: "INVESTOR",
+            name: data.full_name || data.company_name || "Investor",
+            founder: (data.company_name || "Accredited Check-Writer"),
+            stage: "Accreditation Review",
+            details: `Sectors: ${(data.sectors || []).slice(0, 4).join(", ") || "—"} • Check: ${data.min_check_size || "—"}–${data.max_check_size || "—"}`,
+            submitted: data.created_at ? new Date(data.created_at).toLocaleDateString() : "Recently",
+            status: "Pending approval",
+            score: 70,
+            proof: { ccorp: false, deck: false, github: false },
+            ref: { collection: "users", docId: d.id },
+          });
+        });
+        bridgeSnap.docs.forEach((d) => {
+          const data = d.data();
+          items.push({
+            id: `bridge_${d.id}`,
+            type: "BRIDGE",
+            name: data.client_name || data.opportunity_name || data.deal_name || "Bridge request",
+            founder: data.founder_name || data.agency_name || "—",
+            stage: data.type || "Pending routing",
+            details: data.message || "A human bridge is required to connect these parties.",
+            submitted: data.created_at ? new Date(data.created_at).toLocaleDateString() : "Recently",
+            status: data.status,
+            score: 75,
+            proof: { ccorp: false, deck: false, github: false },
+            ref: { collection: "admin_intros", docId: d.id, founderId: data.founder_id },
+          });
+        });
+      } catch (err) {
+        console.warn("[AdminOverview] triage load error:", err);
+      }
+      if (active) {
+        setTriageItems(items);
+        setTriageLoading(false);
+        if (items.length > 0) setSelectedTriageId((prev) => prev || items[0].id);
+        else setSelectedTriageId("");
+      }
     }
-  ];
+    loadTriage();
+    return () => { active = false; };
+  }, []);
 
   const filteredTriage = triageItems.filter(item => {
     if (triageFilter === "all") return true;
@@ -126,8 +151,45 @@ export default function AdminOverview() {
 
   const selectedTriage = triageItems.find(i => i.id === selectedTriageId) || triageItems[0];
 
-  const handleTriageAction = (id: string, action: string) => {
-    setTriageActionState(prev => ({ ...prev, [id]: action }));
+  const handleTriageAction = async (id: string, action: string) => {
+    const item = triageItems.find((i) => i.id === id);
+    if (!item?.ref) return;
+    const { collection: col, docId, founderId } = item.ref;
+    try {
+      if (action === "Approved & Published") {
+        if (col === "launches") {
+          await updateDoc(doc(db, "launches", docId), { status: "launched", published_at: new Date().toISOString() });
+        } else if (col === "users") {
+          await updateDoc(doc(db, "users", docId), { is_approved: true, approved_at: new Date().toISOString() });
+        } else {
+          await updateDoc(doc(db, "admin_intros", docId), { status: "connected", connected_at: new Date().toISOString() });
+        }
+      } else if (action === "Diligence Requested") {
+        await addDoc(collection(db, "notifications"), {
+          userId: founderId || docId,
+          type: "admin_docs_request",
+          title: "Additional documents requested",
+          body: `Raisequity admin requested missing diligence documents for "${item.name}".`,
+          link: "/dashboard/settings",
+          read: false,
+          created_at: new Date().toISOString(),
+        });
+      } else if (action === "Rejected / Escrow Refunded") {
+        if (col === "launches") {
+          await updateDoc(doc(db, "launches", docId), { status: "rejected", rejected_at: new Date().toISOString() });
+        } else if (col === "users") {
+          await updateDoc(doc(db, "users", docId), { is_approved: false });
+        } else {
+          await updateDoc(doc(db, "admin_intros", docId), { status: "rejected", closed_at: new Date().toISOString() });
+        }
+      }
+      setTriageActionState((prev) => ({ ...prev, [id]: action }));
+      // Refresh queue so handled items disappear from pending.
+      window.location.reload();
+    } catch (err) {
+      console.error("[AdminOverview] triage action error:", err);
+      alert("Action failed. No changes were applied.");
+    }
   };
 
   const fetchStats = async () => {
@@ -154,11 +216,11 @@ export default function AdminOverview() {
         ]);
         totalUsers = uCountSnap.data().count;
         totalFounders = fCountSnap.data().count;
-        totalInvestors = iCountSnap.data().count + 3000;
+        totalInvestors = iCountSnap.data().count;
       } catch (e) {
-        totalUsers = 15;
-        totalFounders = 9;
-        totalInvestors = 3000;
+        totalUsers = 0;
+        totalFounders = 0;
+        totalInvestors = 0;
       }
 
       // Fetch only top 5 recent users for table preview
@@ -195,15 +257,15 @@ export default function AdminOverview() {
         }
       } catch (e) {}
 
-      const finalTotalUsers = totalUsers > 0 ? totalUsers : 15;
-      const finalTotalFounders = totalFounders > 0 ? totalFounders : 9;
-      const finalTotalInvestors = totalInvestors > 0 ? totalInvestors : 3000;
-      const finalTotalCompanies = compCount > 0 ? compCount : projects.length;
-      const finalTotalMatches = matchCount > 0 ? matchCount : defaultSampleMatches.length;
-      const finalTotalGrants = grantCount > 0 ? grantCount : web3Grants.length;
-      const finalTotalCredits = creditCount > 0 ? creditCount : startupCredits.length;
-      const finalTotalLaunches = launchCount > 0 ? launchCount : 8;
-      const finalTotalPartners = partnerCount > 0 ? partnerCount : defaultNetworkPartners.length;
+      const finalTotalUsers = totalUsers;
+      const finalTotalFounders = totalFounders;
+      const finalTotalInvestors = totalInvestors;
+      const finalTotalCompanies = compCount;
+      const finalTotalMatches = matchCount;
+      const finalTotalGrants = grantCount;
+      const finalTotalCredits = creditCount;
+      const finalTotalLaunches = launchCount;
+      const finalTotalPartners = partnerCount;
 
       setStats({
         totalUsers: finalTotalUsers,
@@ -215,8 +277,8 @@ export default function AdminOverview() {
         totalCredits: finalTotalCredits,
         totalLaunches: finalTotalLaunches,
         totalPartners: finalTotalPartners,
-        recentUsers: recentUsersList.length > 0 ? recentUsersList : defaultSampleUsers,
-        recentMatches: recentMatchesList.length > 0 ? recentMatchesList : defaultSampleMatches,
+        recentUsers: recentUsersList,
+        recentMatches: recentMatchesList,
       });
     } catch (err) {
       console.error("Error loading admin overview stats:", err);
@@ -287,6 +349,32 @@ export default function AdminOverview() {
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-100">
         <Activity size={28} className="animate-spin text-emerald-400" />
         <p className="text-xs font-mono font-bold text-slate-400">Loading live ecosystem telemetry...</p>
+      </div>
+    );
+  }
+
+  // Empty triage queue (no pending items) — show KPIs with an honest empty state.
+  if (!selectedTriage && !triageLoading) {
+    return (
+      <div className="space-y-6 font-sans text-slate-100">
+        <div className="p-6 rounded-3xl border border-neutral-200 dark:border-[#262626] bg-white dark:bg-[#111111] text-center">
+          <ShieldCheck size={28} className="mx-auto text-emerald-500 mb-2" />
+          <p className="text-sm font-black text-black dark:text-white font-mono">Triage queue is clear</p>
+          <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">
+            No launches pending publish, investor approvals, or bridge requests right now.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+          {statCards.map((card) => (
+            <div key={card.label} className="bg-white dark:bg-[#111111] rounded-[24px] p-5 sm:p-6 border border-slate-200 dark:border-[#262626] shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] font-mono font-bold uppercase text-neutral-500">{card.label}</span>
+                <span className={card.color}>{card.icon}</span>
+              </div>
+              <div className="text-2xl font-black text-black dark:text-white">{card.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

@@ -206,7 +206,9 @@ export default function AgencyProfile() {
     ? form.agency_name.toLowerCase().replace(/[^a-z0-9]/g, "")
     : "partner";
 
-  const publicUrl = `https://raisequity.com/agency/${agencyHandle}`;
+  // The agency profile is reachable via the existing service teaser route;
+  // /agency/<handle> does not exist and must not be shared.
+  const publicUrl = `https://raisequity.com/services/teaser/${agencyHandle}`;
 
   const copyPublicLink = () => {
     navigator.clipboard.writeText(publicUrl);

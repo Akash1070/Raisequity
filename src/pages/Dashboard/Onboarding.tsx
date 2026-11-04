@@ -367,9 +367,6 @@ export default function Onboarding() {
     setError(null);
 
     try {
-      // 1. Save local completion flag safely to guarantee dashboard access
-      safeStorage.setItem(`rq_onboarding_completed_${uid}`, "true");
-
       const referralCode = `RQ-${uid.slice(0, 6).toUpperCase()}`;
       const companyBlurb = assembleBlurb();
       const refCode = safeStorage.getItem("referred_by_code") || safeStorage.getItem("rq_ref_code");
@@ -377,68 +374,62 @@ export default function Onboarding() {
       const finalSector = form.sector === "Other" && form.custom_sector?.trim() ? form.custom_sector.trim() : form.sector;
       const finalStage = form.stage === "Other" && form.custom_stage?.trim() ? form.custom_stage.trim() : form.stage;
 
-      // 2. Create/update founder profile in Firestore
-      try {
-        const founderProfileRef = doc(db, "founder_profiles", uid);
-        await setDoc(founderProfileRef, {
-          id: uid,
-          user_id: uid,
-          profile_subtype: form.profile_subtype,
-          full_name: form.full_name,
-          email: user?.email || "",
-          profile_photo_url: avatarPreview || null,
-          linkedin_url: form.linkedin_url,
-          twitter_url: form.twitter_url || null,
-          location: form.location || null,
-          company_name: form.company_name,
-          company_website: form.company_website || null,
-          company_blurb: companyBlurb,
-          what_company_does: form.what_company_does || null,
-          traction_signal: form.traction_signal || null,
-          opportunity_stat: form.opportunity_stat || null,
-          why_now: form.why_now || null,
-          team_credential: form.team_credential || null,
-          funding_goal: form.funding_goal || null,
-          stage: finalStage,
-          sector: finalSector,
-          arr: parseFloat(form.arr) || 0,
-          funds_raised: parseFloat(form.funds_raised) || 0,
-          founder_background: form.founder_background || null,
-          business_model: form.business_model || null,
-          referral_code: referralCode,
-          referred_by: refCode || null,
-          onboarding_step: 5,
-          profile_complete: true,
-          updated_at: new Date().toISOString()
-        }, { merge: true });
-      } catch (e1) {
-        console.warn("founder_profiles write warning:", e1);
-      }
+      // 2. Create/update founder profile in Firestore — core write, throws on
+      //    failure so onboarding never falsely completes.
+      const founderProfileRef = doc(db, "founder_profiles", uid);
+      await setDoc(founderProfileRef, {
+        id: uid,
+        user_id: uid,
+        profile_subtype: form.profile_subtype,
+        full_name: form.full_name,
+        email: user?.email || "",
+        profile_photo_url: avatarPreview || null,
+        linkedin_url: form.linkedin_url,
+        twitter_url: form.twitter_url || null,
+        location: form.location || null,
+        company_name: form.company_name,
+        company_website: form.company_website || null,
+        company_blurb: companyBlurb,
+        what_company_does: form.what_company_does || null,
+        traction_signal: form.traction_signal || null,
+        opportunity_stat: form.opportunity_stat || null,
+        why_now: form.why_now || null,
+        team_credential: form.team_credential || null,
+        funding_goal: form.funding_goal || null,
+        stage: finalStage,
+        sector: finalSector,
+        arr: parseFloat(form.arr) || 0,
+        funds_raised: parseFloat(form.funds_raised) || 0,
+        founder_background: form.founder_background || null,
+        business_model: form.business_model || null,
+        referral_code: referralCode,
+        referred_by: refCode || null,
+        onboarding_step: 5,
+        profile_complete: true,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
 
-      // 3. Create/update startup record in Firestore (limit deck payload to prevent exceeding 1MB doc size)
-      try {
-        const safeDeckUrl = useWebsiteInstead 
-          ? form.company_website 
-          : (deckUrl && deckUrl.length > 500000 ? form.company_website || "deck_uploaded" : deckUrl);
+      // 3. Create/update startup record in Firestore — core write, throws on
+      //    failure (deck payload is capped to avoid 1MB doc limits).
+      const safeDeckUrl = useWebsiteInstead 
+        ? form.company_website 
+        : (deckUrl && deckUrl.length > 500000 ? form.company_website || null : deckUrl);
 
-        const startupRef = doc(db, "startups", uid);
-        await setDoc(startupRef, {
-          id: uid,
-          founder_id: uid,
-          name: form.company_name,
-          tagline: form.what_company_does,
-          website_url: form.company_website || null,
-          deck_url: safeDeckUrl || null,
-          stage: finalStage,
-          sector: finalSector,
-          raise_amount: parseFloat((form.funding_goal || "").replace(/[^0-9.]/g, "")) || 0,
-          description: companyBlurb,
-          status: "approved",
-          updated_at: new Date().toISOString()
-        }, { merge: true });
-      } catch (e2) {
-        console.warn("startups write warning:", e2);
-      }
+      const startupRef = doc(db, "startups", uid);
+      await setDoc(startupRef, {
+        id: uid,
+        founder_id: uid,
+        name: form.company_name,
+        tagline: form.what_company_does,
+        website_url: form.company_website || null,
+        deck_url: safeDeckUrl || null,
+        stage: finalStage,
+        sector: finalSector,
+        raise_amount: parseFloat((form.funding_goal || "").replace(/[^0-9.]/g, "")) || 0,
+        description: companyBlurb,
+        status: "approved",
+        updated_at: new Date().toISOString()
+      }, { merge: true });
 
       // 4. Add investor contacts contributed (Give to Get) in parallel
       const validContacts = contacts.filter(c => (c?.investor_name || "").trim());
@@ -509,6 +500,10 @@ export default function Onboarding() {
         console.warn("refreshProfile warning:", rErr);
       }
 
+      // 7. Only now — after core Firestore writes succeeded — record local
+      //    completion and proceed.
+      safeStorage.setItem(`rq_onboarding_completed_${uid}`, "true");
+
       // Proceed to appropriate dashboard based on user role
       if (profile?.role === "service_provider") {
         navigate("/agency-dashboard/rfps", { replace: true });
@@ -519,13 +514,10 @@ export default function Onboarding() {
       }
     } catch (err: any) {
       console.error("Error launching onboarding:", err);
-      if (profile?.role === "service_provider") {
-        navigate("/agency-dashboard/rfps", { replace: true });
-      } else if (profile?.role === "investor") {
-        navigate("/investor-dashboard/deals", { replace: true });
-      } else {
-        navigate("/dashboard/feed", { replace: true });
-      }
+      // Do NOT navigate, do NOT mark complete. Surface the failure so the
+      // founder can retry (their draft is preserved).
+      setError(err?.message || "Failed to save your profile. Please retry — nothing was marked complete.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsSubmitting(false);
     }

@@ -31,6 +31,7 @@ interface PortfolioDeal {
   valuationCap: string;
   sharesOrTokens: string;
   currentMultiple: string;
+  currentValueNum: number;
   status: "Active" | "Follow-on" | "Exited";
   founder: string;
   dateClosed: string;
@@ -58,9 +59,11 @@ export default function Portfolio() {
       if (!snap.empty) {
         const liveDeals: PortfolioDeal[] = snap.docs.map(docSnap => {
           const data = docSnap.data();
-          const amt = Number(data.invested_amount || 50000);
-          const cap = Number(data.valuation_cap || 6000000);
-          const ownershipPct = ((amt / cap) * 100).toFixed(2);
+          const amt = Number(data.invested_amount || 0) || 0;
+          const cap = Number(data.valuation_cap || 0) || 0;
+          const currentValue = Number(data.current_value_usd || data.estimated_value_usd || 0) || 0;
+          const ownershipPct = cap > 0 && amt > 0 ? ((amt / cap) * 100).toFixed(2) : null;
+          const multiple = currentValue > 0 && amt > 0 ? (currentValue / amt) : null;
 
           return {
             id: docSnap.id,
@@ -68,11 +71,12 @@ export default function Portfolio() {
             name: data.company_name || 'Portfolio Startup',
             sector: data.sector || 'AI & SaaS',
             stage: data.stage || 'Seed Round',
-            investedAmount: `$${amt.toLocaleString()}`,
+            investedAmount: amt > 0 ? `$${amt.toLocaleString()}` : '—',
             investedAmountNum: amt,
-            valuationCap: `$${cap.toLocaleString()}`,
-            sharesOrTokens: `${ownershipPct}% ${data.instrument_type || 'SAFE'}`,
-            currentMultiple: '1.0x',
+            valuationCap: cap > 0 ? `$${cap.toLocaleString()}` : '—',
+            sharesOrTokens: ownershipPct !== null ? `${ownershipPct}% ${data.instrument_type || 'SAFE'}` : (data.instrument_type || 'SAFE'),
+            currentMultiple: multiple !== null ? `${multiple.toFixed(2)}x` : '—',
+            currentValueNum: currentValue,
             status: data.status || 'Active',
             founder: data.founder_name || 'Founder',
             dateClosed: data.created_at ? new Date(data.created_at).toLocaleDateString() : 'Recent',
@@ -93,6 +97,11 @@ export default function Portfolio() {
   }, [user?.uid]);
 
   const totalCapitalDeployed = portfolio.reduce((acc, curr) => acc + (curr.investedAmountNum || 0), 0);
+  const totalCurrentValue = portfolio.reduce((acc, curr) => acc + (curr.currentValueNum || 0), 0);
+  const ratedHoldings = portfolio.filter((p) => p.currentValueNum > 0 && p.investedAmountNum > 0);
+  const avgMultiple = ratedHoldings.length > 0
+    ? ratedHoldings.reduce((acc, p) => acc + p.currentValueNum / p.investedAmountNum, 0) / ratedHoldings.length
+    : null;
 
   return (
     <div className="w-full space-y-6 font-sans">
@@ -140,22 +149,22 @@ export default function Portfolio() {
             AVERAGE PORTFOLIO MULTIPLE
           </span>
           <div className="text-3xl font-heading font-black text-purple-600 dark:text-purple-400 my-1">
-            {portfolio.length > 0 ? "1.00x" : "0.00x"}
+            {avgMultiple !== null ? `${avgMultiple.toFixed(2)}x` : "—"}
           </div>
           <span className="font-mono text-xs text-neutral-400">
-            {portfolio.length > 0 ? "Tracking live valuations" : "No active holdings yet"}
+            {portfolio.length > 0 ? (avgMultiple !== null ? "Computed from tracked valuations" : "No valuation data yet") : "No active holdings yet"}
           </span>
         </div>
 
         <div className="p-6 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
           <span className="font-mono text-[10px] font-black uppercase tracking-wider text-neutral-400">
-            SYNDICATE ANCHORS HELD
+            PORTFOLIO MARK-TO-MARKET
           </span>
           <div className="text-3xl font-heading font-black text-amber-500 my-1">
-            $0
+            {totalCurrentValue > 0 ? `$${(totalCurrentValue / 1000).toFixed(0)}k` : "—"}
           </div>
           <span className="font-mono text-xs text-neutral-400">
-            Co-investment lead allocations
+            {totalCurrentValue > 0 ? "From documented current valuations" : "No valuation data recorded yet"}
           </span>
         </div>
       </div>

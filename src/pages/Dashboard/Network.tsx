@@ -14,6 +14,7 @@ import {
   doc, 
   updateDoc 
 } from "firebase/firestore";
+import { spendCredits } from "../../lib/credits";
 import type { FounderInvestorContact, FounderProfile } from "../../types/founder";
 
 interface NetworkContact extends FounderInvestorContact {
@@ -29,6 +30,7 @@ export default function DashboardNetwork() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showIntroModal, setShowIntroModal] = useState<NetworkContact | null>(null);
   const [introSending, setIntroSending] = useState(false);
+  const [introError, setIntroError] = useState<string | null>(null);
 
   // Fetch investor contacts from all accepted matches
   useEffect(() => {
@@ -81,6 +83,21 @@ export default function DashboardNetwork() {
     const blurb = founderProfile.company_blurb || `${founderProfile.company_name} — ${founderProfile.what_company_does || ""}`;
 
     try {
+      // Deduct the 160 credits via the ledger-backed flow first — never a
+      // raw balance mutation.
+      const spend = await spendCredits(
+        founderProfile.id,
+        'warm_intro_request',
+        160,
+        'discretionary_addon',
+        { action: 'network_warm_intro', contactId: contact.id }
+      );
+      if (!spend.success) {
+        setIntroError(spend.error || "Insufficient credits for this intro request.");
+        setIntroSending(false);
+        return;
+      }
+
       await addDoc(collection(db, "warm_intro_requests"), {
         requesting_founder_id: founderProfile.id,
         introducing_founder_id: contact.founder_id,
@@ -89,11 +106,6 @@ export default function DashboardNetwork() {
         credits_used: 160,
         status: "pending",
         created_at: new Date().toISOString(),
-      });
-
-      // Deduct credits in Firestore
-      await updateDoc(doc(db, "founder_profiles", founderProfile.id), {
-        credits: Math.max(0, (founderProfile.credits || 0) - 160),
       });
 
       // Notify introducing founder

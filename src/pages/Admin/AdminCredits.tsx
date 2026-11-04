@@ -37,11 +37,8 @@ export default function AdminCredits() {
       const snap = await getDocs(query(collection(db, "credits"), limit(200)));
       const dbData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const creditMap = new Map<string, any>();
-      startupCredits.forEach(c => creditMap.set(c.id, c));
-      dbData.forEach(c => creditMap.set(c.id, { ...(creditMap.get(c.id) || {}), ...c }));
-
-      setCredits(Array.from(creditMap.values()));
+      // Real Firestore records only; seed fallback only for fresh databases.
+      setCredits(dbData.length > 0 ? dbData : startupCredits);
     } catch (err) {
       console.error("Error fetching credits:", err);
       setCredits(startupCredits);

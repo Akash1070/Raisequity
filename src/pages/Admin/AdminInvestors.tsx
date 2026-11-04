@@ -8,7 +8,7 @@ import { Web3Investor } from "../../types/investor";
 
 export default function AdminInvestors() {
   const [activeTab, setActiveTab] = useState<"directory" | "platform">("directory");
-  
+
   // Platform registered users (investors)
   const [platformInvestors, setPlatformInvestors] = useState<any[]>([]);
   const [loadingPlatform, setLoadingPlatform] = useState(true);
@@ -191,7 +191,7 @@ export default function AdminInvestors() {
 
         const delimiter = lines[0].includes("\t") ? "\t" : ",";
         const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ""));
-        
+
         for (let i = 1; i < lines.length; i++) {
           let values: string[] = [];
           if (delimiter === "\t") {
@@ -263,8 +263,8 @@ export default function AdminInvestors() {
   };
 
   const filteredDirectory = directoryInvestors.filter(inv => {
-    const matchesSearch = !search || 
-      inv.name.toLowerCase().includes(search.toLowerCase()) || 
+    const matchesSearch = !search ||
+      inv.name.toLowerCase().includes(search.toLowerCase()) ||
       inv.firm.toLowerCase().includes(search.toLowerCase()) ||
       inv.email?.toLowerCase().includes(search.toLowerCase()) ||
       inv.telegram?.toLowerCase().includes(search.toLowerCase());
@@ -323,11 +323,10 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
 
       {/* Action Feedback Banner */}
       {actionFeedback && (
-        <div className={`p-4 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between ${
-          actionFeedback.type === 'success'
-            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            : 'bg-red-50 text-red-800 border-red-200'
-        }`}>
+        <div className={`p-4 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between ${actionFeedback.type === 'success'
+          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          : 'bg-red-50 text-red-800 border-red-200'
+          }`}>
           <span>{actionFeedback.message}</span>
           <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-slate-700 ml-4">✕</button>
         </div>
@@ -337,21 +336,19 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           onClick={() => setActiveTab("directory")}
-          className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "directory"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-400 hover:text-slate-600"
-          }`}
+          className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "directory"
+            ? "border-slate-900 text-slate-900"
+            : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
         >
           <Database size={16} /> Verified Investor Database ({totalInvestorCount ? totalInvestorCount.toLocaleString() : directoryInvestors.length})
         </button>
         <button
           onClick={() => setActiveTab("platform")}
-          className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "platform"
-              ? "border-slate-900 text-slate-900"
-              : "border-transparent text-slate-400 hover:text-slate-600"
-          }`}
+          className={`px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === "platform"
+            ? "border-slate-900 text-slate-900"
+            : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
         >
           <ShieldCheck size={16} /> Registered Platform Accounts ({platformInvestors.length})
         </button>
@@ -482,11 +479,10 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
                           </button>
                           <button
                             onClick={() => handleDeleteInvestor(inv.id)}
-                            className={`p-2 rounded-xl transition-all ${
-                              confirmDeleteId === inv.id
-                                ? "bg-red-600 text-white font-mono text-[10px] font-black px-2.5 shadow-xs"
-                                : "text-red-500 hover:text-red-700 hover:bg-red-50"
-                            }`}
+                            className={`p-2 rounded-xl transition-all ${confirmDeleteId === inv.id
+                              ? "bg-red-600 text-white font-mono text-[10px] font-black px-2.5 shadow-xs"
+                              : "text-red-500 hover:text-red-700 hover:bg-red-50"
+                              }`}
                             title={confirmDeleteId === inv.id ? "Click again to confirm delete" : "Delete Investor"}
                           >
                             {confirmDeleteId === inv.id ? "Confirm?" : <Trash2 size={16} />}
@@ -544,11 +540,10 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
                         {inv.company_name || inv.firm_name || "Angel / Independent"}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`text-[10px] font-black font-mono px-2.5 py-1 rounded-full border inline-flex items-center gap-1 ${
-                          inv.is_approved 
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                            : "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}>
+                        <span className={`text-[10px] font-black font-mono px-2.5 py-1 rounded-full border inline-flex items-center gap-1 ${inv.is_approved
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}>
                           {inv.is_approved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
                           {inv.is_approved ? "APPROVED VERIFIED" : "PENDING REVIEW"}
                         </span>
@@ -556,11 +551,10 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
                       <td className="px-6 py-4">
                         <button
                           onClick={() => toggleApproval(inv.id, inv.is_approved)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border cursor-pointer ${
-                            inv.is_approved
-                              ? "bg-slate-100 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-600"
-                              : "bg-slate-900 text-white border-slate-900 shadow-xs hover:bg-emerald-600"
-                          }`}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border cursor-pointer ${inv.is_approved
+                            ? "bg-slate-100 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-600"
+                            : "bg-slate-900 text-white border-slate-900 shadow-xs hover:bg-emerald-600"
+                            }`}
                         >
                           {inv.is_approved ? "Revoke Access" : "Approve Investor"}
                         </button>
@@ -595,18 +589,16 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
                 <button
                   type="button"
                   onClick={() => setImportFormat("csv")}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    importFormat === "csv" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${importFormat === "csv" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
                 >
                   CSV Format
                 </button>
                 <button
                   type="button"
                   onClick={() => setImportFormat("json")}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    importFormat === "json" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${importFormat === "json" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
                 >
                   JSON Format
                 </button>
@@ -660,8 +652,8 @@ Sandeep Nailwal,Polygon Ventures,VC Fund,sandeep@polygon.technology,@sandeep_p,D
                 </button>
               </div>
               <pre className="text-[10px] font-mono text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200 overflow-x-auto whitespace-pre-wrap">
-                {importFormat === "csv" 
-                  ? "Name,Firm,Category,Email,Telegram,Sectors,Stage,Check Size,LinkedIn" 
+                {importFormat === "csv"
+                  ? "Name,Firm,Category,Email,Telegram,Sectors,Stage,Check Size,LinkedIn"
                   : `[\n  { "name": "Investor", "firm": "Fund", "email": "a@vc.com", "telegram": "@tg" }\n]`}
               </pre>
             </div>

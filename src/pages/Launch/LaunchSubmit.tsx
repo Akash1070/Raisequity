@@ -145,6 +145,7 @@ export default function LaunchSubmit() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [isVerifyingBacklink, setIsVerifyingBacklink] = useState(false);
   const [backlinkVerified, setBacklinkVerified] = useState(false);
+  const [launchedViaDodo, setLaunchedViaDodo] = useState(false);
   const [backlinkReason, setBacklinkReason] = useState<string | null>(null);
 
   // Form State
@@ -343,27 +344,14 @@ export default function LaunchSubmit() {
     executeLaunchSubmission();
   };
 
-  const executeLaunchSubmission = async () => {
-    if (!uid) {
-      navigate('/login?redirect=/launch/submit');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    const tierCreditCosts = {
-      standard: 0,
-      premium: 110,
-      spotlight: 390,
-    };
-
-    const requiredCredits = tierCreditCosts[formData.launch_tier];
+  // Final creation step (shared by credit payments and post-checkout returns).
+  const finishLaunchSubmission = async (requiredCredits: number) => {
+    if (!uid) return;
 
     if (paymentMethod === 'credits' && requiredCredits > 0) {
       const creditRes = await spendCredits(
         uid,
-        'warm_intro_request' as any,
+        'launch_tier',
         requiredCredits,
         'discretionary_addon',
         { action: `launch_${formData.launch_tier}_tier` }
@@ -371,7 +359,7 @@ export default function LaunchSubmit() {
       if (!creditRes.success) {
         setError(creditRes.error || `Insufficient credit balance for ${formData.launch_tier} tier (Requires ${requiredCredits} credits).`);
         setIsSubmitting(false);
-        return;
+        return false;
       }
     }
 
@@ -390,10 +378,88 @@ export default function LaunchSubmit() {
     setShowBacklinkModal(false);
 
     if (res.success && res.launch) {
+      try { localStorage.removeItem('rq_pending_launch'); } catch (_) {}
       navigate(`/launch/${res.launch.slug}`, { replace: true });
-    } else {
-      setError(res.error || 'Failed to submit launch. Please try again.');
+      return true;
     }
+    setError(res.error || 'Failed to submit launch. Please try again.');
+    return false;
+  };
+
+  // After a Dodo checkout return, complete the saved launch intent.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') !== 'return') return;
+    let pending: any = null;
+    try { pending = JSON.parse(localStorage.getItem('rq_pending_launch') || 'null'); } catch (_) {}
+    if (!pending) return;
+    // Restore the stored submission state.
+    setFormData(pending.formData || formData);
+    setPaymentMethod(pending.paymentMethod || 'credits');
+    const tierCreditCosts = { standard: 0, premium: 110, spotlight: 390 };
+    const requiredCredits = tierCreditCosts[pending.tier] || 0;
+    // Dodo checkout completed → record the marker and finish the launch.
+    // (The webhook also activates the subscription/credits on the server.)
+    setLaunchedViaDodo(true);
+    // Defer until the restored state is applied.
+    setTimeout(async () => {
+      if (uid) await finishLaunchSubmission(requiredCredits);
+    }, 150);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const executeLaunchSubmission = async () => {
+    if (!uid) {
+      navigate('/login?redirect=/launch/submit');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const tierCreditCosts = {
+      standard: 0,
+      premium: 110,
+      spotlight: 390,
+    };
+
+    const requiredCredits = tierCreditCosts[formData.launch_tier];
+
+    // Cash (Direct Pay) tiers must be paid via Dodo checkout — never free.
+    if (paymentMethod !== 'credits' && requiredCredits > 0) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            packageId: `launch_${formData.launch_tier}`,
+            amountUsd: formData.launch_tier === 'spotlight' ? 39 : 11,
+            credits: requiredCredits,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.checkout_url) {
+          throw new Error(data?.error || 'Payment gateway unavailable');
+        }
+        // Persist the intent, then send the user to Dodo to pay.
+        try {
+          localStorage.setItem('rq_pending_launch', JSON.stringify({
+            formData,
+            paymentMethod,
+            tier: formData.launch_tier,
+          }));
+        } catch (_) {}
+        window.location.href = data.checkout_url;
+        return; // resumes via checkout=return handler
+      } catch (err: any) {
+        setError(err?.message || 'Payment processing unavailable — your launch was NOT submitted and nothing was charged.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    await finishLaunchSubmission(requiredCredits);
   };
 
   const inputCls =

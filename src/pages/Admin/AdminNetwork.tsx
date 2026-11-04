@@ -56,12 +56,9 @@ export default function AdminNetwork() {
     try {
       const snap = await getDocs(query(collection(db, "network_partners"), limit(200)));
       const dbData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      
-      const partnerMap = new Map<string, any>();
-      defaultNetworkPartners.forEach(p => partnerMap.set(p.id, p));
-      dbData.forEach(p => partnerMap.set(p.id, { ...(partnerMap.get(p.id) || {}), ...p }));
 
-      setPartners(Array.from(partnerMap.values()));
+      // Real Firestore records only; seed fallback only for fresh databases.
+      setPartners(dbData.length > 0 ? dbData : defaultNetworkPartners);
     } catch (err) {
       console.error("Error fetching network partners:", err);
       setPartners(defaultNetworkPartners);

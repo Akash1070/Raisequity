@@ -45,10 +45,20 @@ export default function SubscriptionCheckoutModal({ onSuccess, onCancel }: Subsc
 
     try {
       // SECURITY: Creates live session via Dodo Payments API
+      const token = user ? await user.getIdToken() : '';
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uid, email: userEmail }),
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ 
+          userId: uid, 
+          email: userEmail,
+          returnUrl: window.location.href,
+          amountUsd: 20,
+          credits: 200
+        }),
       });
 
       if (!res.ok) {

@@ -4,10 +4,11 @@ export default function handler(_req: any, res: any) {
     ts: new Date().toISOString(),
     services: {
       email: Boolean(process.env.RESEND_API_KEY),
-      payments: Boolean(process.env.DODO_PAYMENTS_API_KEY && process.env.DODO_SUBSCRIPTION_PRODUCT_ID),
+      payments: Boolean(process.env.DODO_PAYMENTS_API_KEY && (process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ')),
       esign: Boolean(process.env.OPENSIGN_API_KEY),
       ai: Boolean(process.env.GEMINI_API_KEY),
       webhookActivation: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON && process.env.DODO_WEBHOOK_SECRET),
+      apiAuth: Boolean(process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY),
     },
   });
 }

@@ -1,10 +1,10 @@
-import { rateLimit, readBody, str, fetchWithTimeout } from './_lib';
+import { rateLimit, readBody, str, fetchWithTimeout, requireAuth } from './_lib';
 
 // Server-side Gemini proxy. The browser never receives an AI key (previously
 // VITE_GEMINI_API_KEY shipped in the bundle). Prompts are built HERE from a
 // fixed task enum — clients cannot use this as a free-form AI proxy.
-// Cost controls: per-IP rate limit, input caps, maxOutputTokens, timeout.
-// Also set a hard spend cap in Google AI Studio (manual dashboard step).
+// Cost controls: auth required, per-IP rate limit, input caps,
+// maxOutputTokens, timeout. Also set a hard spend cap in Google AI Studio.
 const TASKS: Record<string, (b: any) => string> = {
   check_fit: (b) => `You are a venture capital analyst. Score this match 0.0-5.0 and explain in 2 paragraphs.\nBLURB: ${str(b.companyBlurb, 2000)}\nSECTOR: ${str(b.sector, 100)}\nSTAGE: ${str(b.stage, 50)}\nRAISE: ${Number(b.raiseAmount) || 0}\nINVESTOR: ${str(b.investorJson, 2000)}\nPREFS: ${str(b.investorPrefsJson, 2000)}\nReturn JSON only: {"score": 4.2, "reason_paragraph_1": "...", "reason_paragraph_2": "..."}`,
   scan_website: (b) => `You are a startup analyst. Given this website URL: "${str(b.websiteUrl, 300)}", extract: what_company_does (<=100 chars), traction_signal, opportunity_stat, why_now, team_credential. Return JSON only with those keys.`,
@@ -14,6 +14,7 @@ const TASKS: Record<string, (b: any) => string> = {
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   if (!rateLimit(req, res, 10)) return;
+  if (!(await requireAuth(req, res))) return;
   const key = process.env.GEMINI_API_KEY;
   if (!key) return res.status(503).json({ error: 'ai_not_configured' });
   const body = readBody(req);

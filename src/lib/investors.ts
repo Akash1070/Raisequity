@@ -16,6 +16,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { Web3Investor } from '../types/investor';
+import { spendCredits } from './credits';
 
 const COLLECTION_NAME = 'web3_investors';
 
@@ -257,7 +258,9 @@ export async function bulkImportWeb3Investors(
 }
 
 /**
- * Unlock contact details for a founder using 1 credit
+ * Unlock contact details for a founder using 1 credit.
+ * Credit deduction goes through spendCredits (atomic, ledger-backed) — the
+ * balance is never mutated with a raw updateDoc here.
  */
 export async function unlockInvestorContact(
   userId: string,
@@ -305,31 +308,17 @@ export async function unlockInvestorContact(
       };
     }
 
-    // 2. Deduct 1 credit & record in both user record and credit ledger
-    const newCredits = Math.max(0, currentCredits - 1);
+    // 2. Spend 1 credit atomically via the ledger-backed spendCredits flow.
+    const spend = await spendCredits(userId, 'contact_unlock', 1, 'discretionary_addon', { investorId });
+    if (!spend.success) {
+      return { success: false, error: spend.error || 'Failed to deduct credit for unlock.' };
+    }
+    const newCredits = spend.newBalance;
+
+    // Record the unlock on the user doc (non-monetary state).
     await updateDoc(userRef, {
-      credits: newCredits,
-      credit_balance: newCredits,
       unlocked_investors: arrayUnion(investorId),
     });
-
-    // Also sync founder profile doc if present
-    try {
-      await updateDoc(doc(db, 'founder_profiles', userId), { credits: newCredits });
-    } catch (e) {}
-
-    // Record ledger entry
-    try {
-      await addDoc(collection(db, 'credit_transactions'), {
-        userId,
-        type: 'spend',
-        source: 'contact_unlock',
-        amount: 1,
-        balanceAfter: newCredits,
-        timestamp: new Date().toISOString(),
-        metadata: { investorId },
-      });
-    } catch (e) {}
 
     // 3. Retrieve real contact from secured private subcollection (fallback to main doc)
     let email = '';

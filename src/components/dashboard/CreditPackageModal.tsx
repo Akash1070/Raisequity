@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   CreditCard,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { earnCredits } from '../../lib/credits';
@@ -34,6 +35,12 @@ export default function CreditPackageModal({
   const { user, profile, refreshProfile } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState<number | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
+  // Demo top-up is ONLY available when explicitly enabled via env for local
+  // sandbox testing. In production it is never rendered and the checkout
+  // path never silently falls back to free credits.
+  const demoTopUpEnabled = import.meta.env.VITE_ENABLE_DEMO_TOPUP === 'true';
 
   if (!isOpen) return null;
 
@@ -42,34 +49,34 @@ export default function CreditPackageModal({
   const handleCheckout = async () => {
     if (!user?.uid) return;
     setIsProcessing(true);
+    setPurchaseError(null);
 
     try {
-      // 1. Try Dodo Payments Checkout session
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await user.getIdToken()}`
+        },
         body: JSON.stringify({
-          userId: user.uid,
-          email: user.email,
           packageId: 'pack_200_credits',
           amountUsd: 20,
-          credits: 200
+          credits: 200,
+          returnUrl: window.location.href
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.checkout_url) {
-          window.location.href = data.checkout_url;
-          return;
-        }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
       }
-    } catch (_) {
-      // If payment endpoint is in local demo environment, fallback to simulated top-up
+      throw new Error(data?.error || 'Checkout unavailable');
+    } catch (err: any) {
+      setPurchaseError(err?.message || 'Payment processing is unavailable right now. No credits were added — please try again later.');
+    } finally {
+      setIsProcessing(false);
     }
-
-    // Direct Instant Top-Up Simulation
-    await handleInstantTestTopUp();
   };
 
   const handleInstantTestTopUp = async () => {
@@ -152,6 +159,14 @@ export default function CreditPackageModal({
             </div>
           )}
 
+          {/* Error Banner */}
+          {purchaseError && (
+            <div className="p-4 bg-red-50 border-b border-red-200 text-red-700 font-mono text-xs font-bold text-center flex items-center justify-center gap-2">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{purchaseError}</span>
+            </div>
+          )}
+
           {/* Unified Package Presentation */}
           <div className="p-6 sm:p-7 space-y-6">
             <div className="p-6 rounded-[28px] border-2 border-amber-500 bg-amber-50/20 dark:bg-amber-950/10 relative shadow-sm">
@@ -216,15 +231,17 @@ export default function CreditPackageModal({
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={handleInstantTestTopUp}
-                disabled={isProcessing}
-                className="w-full py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-              >
-                <Zap size={14} />
-                <span>Instant Demo / Test Top-Up (+200 Credits Now)</span>
-              </button>
+              {demoTopUpEnabled && (
+                <button
+                  type="button"
+                  onClick={handleInstantTestTopUp}
+                  disabled={isProcessing}
+                  className="w-full py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Zap size={14} />
+                  <span>Sandbox Demo Top-Up (+200 Credits — local only)</span>
+                </button>
+              )}
             </div>
 
             {/* Guarantee footer */}

@@ -16,6 +16,7 @@ import BlurbPreview from "../../components/dashboard/BlurbPreview";
 import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import { db } from "../../lib/firebase";
 import { collection, addDoc, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { earnCredits } from "../../lib/credits";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -84,6 +85,7 @@ export default function Settings() {
     min_check_size: "50",
     max_check_size: "250",
     preferred_sectors: ["AI", "Web3", "SaaS"],
+    preferred_stages: [],
     bio: "",
     accredited_investor: true
   });
@@ -137,20 +139,29 @@ export default function Settings() {
     if (!uid) return;
 
     if (userRole === "investor") {
-      getDoc(doc(db, "investor_profiles", uid)).then((snap) => {
+      // Read both the profile store and the thesis store so edits in Settings
+      // actually affect the recommendation engine (which reads investor_preferences).
+      Promise.all([
+        getDoc(doc(db, "investor_profiles", uid)),
+        getDoc(doc(db, "investor_preferences", uid)),
+      ]).then(([snap, prefSnap]) => {
         const invData = snap.exists() ? snap.data() : {};
+        const prefData = prefSnap.exists() ? prefSnap.data() : {};
+        const minAbs = Number(prefData.min_check_size || invData.min_check_size || 50000);
+        const maxAbs = Number(prefData.max_check_size || invData.max_check_size || 250000);
         setInvestorForm({
           full_name: invData.full_name || profile?.full_name || user?.displayName || "",
           firm_name: invData.fund_name || profile?.company_name || "",
           role_title: invData.investor_type || "Partner / Angel",
-          location: invData.geography || (profile as any)?.location || "",
+          location: prefData.geography || invData.geography || (profile as any)?.location || "",
           linkedin_url: invData.linkedin_url || profile?.linkedin_url || "",
           twitter_url: invData.twitter_url || "",
-          diligence_link: invData.cal_link || invData.calendly_link || "",
-          min_check_size: String(invData.min_check_size || "50"),
-          max_check_size: String(invData.max_check_size || "250"),
-          preferred_sectors: invData.preferred_sectors || ["AI", "Web3", "SaaS"],
-          bio: invData.bio || invData.thesis_description || "",
+          diligence_link: invData.cal_link || invData.calendly_link || (profile as any)?.cal_link || "",
+          min_check_size: String(Math.round((minAbs || 50000) / 1000)),
+          max_check_size: String(Math.round((maxAbs || 250000) / 1000)),
+          preferred_sectors: prefData.preferred_sectors || invData.preferred_sectors || ["AI", "Web3", "SaaS"],
+          preferred_stages: prefData.preferred_stages || invData.preferred_stages || [],
+          bio: invData.bio || prefData.thesis_description || invData.thesis_description || "",
           accredited_investor: invData.accredited_investor ?? true
         });
       }).catch(() => {});
@@ -242,6 +253,9 @@ export default function Settings() {
 
     try {
       if (userRole === "investor") {
+        const minAbs = (parseFloat(investorForm.min_check_size) || 50) * 1000;
+        const maxAbs = (parseFloat(investorForm.max_check_size) || 250) * 1000;
+
         await setDoc(doc(db, "investor_profiles", uid), {
           id: uid,
           full_name: investorForm.full_name,
@@ -251,11 +265,23 @@ export default function Settings() {
           linkedin_url: investorForm.linkedin_url,
           twitter_url: investorForm.twitter_url,
           cal_link: investorForm.diligence_link,
-          min_check_size: parseFloat(investorForm.min_check_size) || 50,
-          max_check_size: parseFloat(investorForm.max_check_size) || 250,
+          min_check_size: minAbs,
+          max_check_size: maxAbs,
           preferred_sectors: investorForm.preferred_sectors,
           thesis_description: investorForm.bio,
           accredited_investor: investorForm.accredited_investor,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+
+        // Single source for the ranking engine — always keep in sync.
+        await setDoc(doc(db, "investor_preferences", uid), {
+          userId: uid,
+          preferred_sectors: investorForm.preferred_sectors,
+          preferred_stages: investorForm.preferred_stages || [],
+          min_check_size: minAbs,
+          max_check_size: maxAbs,
+          geography: investorForm.location || "Global",
+          thesis_description: investorForm.bio,
           updated_at: new Date().toISOString()
         }, { merge: true });
 
@@ -263,6 +289,10 @@ export default function Settings() {
           full_name: investorForm.full_name,
           company_name: investorForm.firm_name,
           linkedin_url: investorForm.linkedin_url,
+          cal_link: investorForm.diligence_link,
+          min_check_size: minAbs,
+          max_check_size: maxAbs,
+          sectors: investorForm.preferred_sectors,
           updated_at: new Date().toISOString()
         });
       } else if (userRole === "service_provider") {
@@ -349,24 +379,27 @@ export default function Settings() {
         verified: true
       });
 
-      // SEED directly into global web3_investors & investor_connections so it appears in Admin & Check-Writers CRM
-      try {
-        await addDoc(collection(db, "web3_investors"), {
-          name: newContact.investor_name,
-          firm: newContact.fund_name || "Private Angel",
-          category: newContact.fund_name ? "FUND" : "ANGEL",
-          email: newContact.investor_email || "contact@raisequity.com",
-          linkedin: newContact.investor_linkedin || "",
-          sectors: newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["AI", "Tech", "SaaS"],
-          check_size: `$${checkMin}k - $${checkMax}k`,
-          know_count: 1,
-          warm_intro_founder: founderName,
-          warm_intro_company: founderCompany,
-          verified: true,
-          created_at: new Date().toISOString()
-        });
-      } catch (seedErr) {
-        console.warn("Direct investor seeding warning:", seedErr);
+      // Seed into the global investor directory ONLY when we have a real
+      // contact email — never a fabricated placeholder.
+      if (newContact.investor_email?.trim()) {
+        try {
+          await addDoc(collection(db, "web3_investors"), {
+            name: newContact.investor_name,
+            firm: newContact.fund_name || "Private Angel",
+            category: newContact.fund_name ? "FUND" : "ANGEL",
+            email: newContact.investor_email.trim(),
+            linkedin: newContact.investor_linkedin || "",
+            sectors: newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["AI", "Tech", "SaaS"],
+            check_size: `$${checkMin}k - $${checkMax}k`,
+            know_count: 1,
+            warm_intro_founder: founderName,
+            warm_intro_company: founderCompany,
+            verified: true,
+            created_at: new Date().toISOString()
+          });
+        } catch (seedErr) {
+          console.warn("Direct investor seeding warning:", seedErr);
+        }
       }
 
       setNewContact({
@@ -379,6 +412,16 @@ export default function Settings() {
         check_size_min: "",
         check_size_max: ""
       });
+
+      // The button promises +100 credits — actually award them (ledger-backed).
+      const activeUid = user?.uid || (user as any)?.id;
+      if (activeUid) {
+        try {
+          await earnCredits(activeUid, 'referral', 100, { action: 'investor_contact_contribution', investor: newContact.investor_name });
+        } catch (earnErr) {
+          console.warn("Contact reward credit error:", earnErr);
+        }
+      }
     } catch (err: any) {
       setContactError(err.message || "Failed to add investor contact.");
     } finally {

@@ -1,9 +1,11 @@
-import { rateLimit, readBody, isEmail, str, fetchWithTimeout } from './_lib';
+import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from './_lib';
 
 // Server-side OpenSign proxy — OPENSIGN_API_KEY stays off the client.
+// Requires an authenticated Firebase session (no anonymous esign generation).
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   if (!rateLimit(req, res, 10)) return;
+  if (!(await requireAuth(req, res))) return;
   const key = process.env.OPENSIGN_API_KEY;
   const templateId = process.env.OPENSIGN_TEMPLATE_ID;
   const base = process.env.OPENSIGN_BASE_URL ?? 'https://api.opensignlabs.com/v1';

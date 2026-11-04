@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, ShieldCheck, CheckCircle2, DollarSign, 
-  Sparkles, Loader2, X, ExternalLink, Scale, Check, MessageSquare
+  Sparkles, Loader2, X, ExternalLink, Scale, Check, MessageSquare, AlertTriangle
 } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -36,6 +36,7 @@ export default function OneClickSafeModal({
   const [isExecuting, setIsExecuting] = useState(false);
   const [executedDocUrl, setExecutedDocUrl] = useState<string | null>(null);
   const [createdConvId, setCreatedConvId] = useState<string | null>(null);
+  const [executionError, setExecutionError] = useState<string | null>(null);
 
   if (!isOpen || !company) return null;
 
@@ -45,6 +46,7 @@ export default function OneClickSafeModal({
 
   const handleExecute = async () => {
     setIsExecuting(true);
+    setExecutionError(null);
     try {
       const payload: SafeAgreementPayload = {
         companyId: company.id,
@@ -60,6 +62,8 @@ export default function OneClickSafeModal({
         instrumentType: instrument,
       };
 
+      // Fail-closed: agreement must be generated first. If the service is
+      // unavailable we surface the error and record nothing.
       const result = await issueStandardSafeAgreement(payload);
       const docSigningUrl = result.signingUrl || `https://app.opensignlabs.com/sign/${result.documentId}`;
       setExecutedDocUrl(docSigningUrl);
@@ -161,8 +165,10 @@ export default function OneClickSafeModal({
         console.warn('[OneClickSafe] Chat thread initiation warning:', chatErr);
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error executing SAFE agreement:', err);
+      setExecutionError(err?.message || 'Agreement service unavailable. No allocation was recorded and no document was issued — please retry when the service is available.');
+      setExecutedDocUrl(null);
     } finally {
       setIsExecuting(false);
     }
@@ -244,6 +250,14 @@ export default function OneClickSafeModal({
               </div>
             ) : (
               <>
+                {/* Execution Error */}
+                {executionError && (
+                  <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-[11px] text-red-700 font-medium flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                    <span>{executionError}</span>
+                  </div>
+                )}
+
                 {/* Company Mini Card */}
                 <div className="bg-white border border-gray-200/80 rounded-2xl p-4 flex items-center justify-between shadow-xs">
                   <div>

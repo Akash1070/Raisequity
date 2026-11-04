@@ -290,8 +290,18 @@ export default function LaunchDetailTeaser() {
     setLaunch((prev) => (prev ? { ...prev, votes_count: prev.votes_count + 1 } : null));
 
     try {
-      await voteLaunch(launch.id, uid);
+      const res = await voteLaunch(launch.id, uid);
+      if (!res.success) {
+        // Roll back the optimistic increment so the UI never lies.
+        setHasVoted(false);
+        setLaunch((prev) => (prev ? { ...prev, votes_count: Math.max(0, prev.votes_count - 1) } : null));
+        if (res.error) console.warn('Vote failed:', res.error);
+      } else if (typeof res.newCount === 'number') {
+        setLaunch((prev) => (prev ? { ...prev, votes_count: res.newCount as number } : null));
+      }
     } catch (err) {
+      setHasVoted(false);
+      setLaunch((prev) => (prev ? { ...prev, votes_count: Math.max(0, prev.votes_count - 1) } : null));
       console.error('Error voting:', err);
     }
   };
@@ -318,28 +328,20 @@ export default function LaunchDetailTeaser() {
       setComments((prev) => [res.comment!, ...prev]);
       setNewCommentText('');
     } else {
-      const mockComment: LaunchComment = {
-        id: `c_${Date.now()}`,
-        launch_id: launch.id,
-        user_id: uid,
-        user_name: name,
-        comment_text: newCommentText,
-        is_maker: isMaker,
-        created_at: new Date().toISOString()
-      };
-      setComments((prev) => [mockComment, ...prev]);
-      setNewCommentText('');
+      // Honest failure: no fake comment appended.
+      alert('Your comment could not be posted. Please try again.');
     }
   };
 
-  // AI Prompt Bar Action
+  // AI Prompt Bar Action — summary is built from the launch's own (verified)
+  // fields; no fabricated metrics are inserted.
   const handleAiAsk = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiQuery.trim() || !launch) return;
     setAiLoading(true);
     setTimeout(() => {
       setAiAnswer(
-        `⚡ Institutional Summary for ${launch.company_name}: ${launch.tagline} Verified category: ${launch.category}. Status: ${launch.status}. Upvotes: ${launch.votes_count}. Traction data: Delaware C-Corp verified, post-money YC SAFE compatible, with active checking interest from 180+ partner VCs.`
+        `⚡ Institutional Summary for ${launch.company_name}: ${launch.tagline} Category: ${launch.category}. Status: ${launch.status}. Upvotes: ${launch.votes_count}. Raise: ${(launch as any).target_raise || (launch as any).raise_amount_formatted || 'not disclosed'} at ${(launch as any).valuation_cap || 'n/a'}. Website: ${launch.website_url || 'not provided'}.`
       );
       setAiLoading(false);
     }, 600);

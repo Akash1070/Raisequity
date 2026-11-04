@@ -1,4 +1,5 @@
-import { safeStorage } from './storage';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 export interface TelegramAlertConfig {
   enabled: boolean;
@@ -8,75 +9,91 @@ export interface TelegramAlertConfig {
   minimumFitScore: number;
 }
 
-const STORAGE_KEY = 'rq_investor_telegram_alert_config';
+const DEFAULT_CONFIG: TelegramAlertConfig = {
+  enabled: true,
+  telegramChatId: '',
+  webhookUrl: '',
+  minimumFitScore: 75,
+};
 
-export function getTelegramAlertConfig(): TelegramAlertConfig {
-  const raw = safeStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch (_) {}
-  }
-  return {
-    enabled: true,
-    telegramChatId: '',
-    webhookUrl: '',
-    minimumFitScore: 75,
-  };
+/** Config is persisted per-user in Firestore (users/{uid}.telegram_alert_config). */
+export async function getTelegramAlertConfig(uid: string): Promise<TelegramAlertConfig> {
+  if (!uid) return { ...DEFAULT_CONFIG };
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    const cfg = snap.data()?.telegram_alert_config;
+    if (cfg && typeof cfg === 'object') {
+      return { ...DEFAULT_CONFIG, ...cfg };
+    }
+  } catch (_) {}
+  return { ...DEFAULT_CONFIG };
 }
 
-export function saveTelegramAlertConfig(config: TelegramAlertConfig): void {
-  safeStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+export async function saveTelegramAlertConfig(uid: string, config: TelegramAlertConfig): Promise<boolean> {
+  if (!uid) return false;
+  try {
+    await setDoc(doc(db, 'users', uid), { telegram_alert_config: { ...config } }, { merge: true });
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 export async function sendTestTelegramAlert(config: TelegramAlertConfig, investorName: string): Promise<{ success: boolean; message: string }> {
   const alertText = `🚀 *Raisequity High-Fit Deal Alert for ${investorName}*\n\n` +
-    `*Company:* CogniMesh AI (San Francisco, CA)\n` +
-    `*Round:* $1.5M Seed (Pre-Money Cap: $8.0M)\n` +
-    `*Thesis Match:* 94% Fit (Matches your $100k–$500k check size & AI / Infra thesis)\n` +
-    `*Traction:* $32k MRR growing 24% MoM · Delaware C-Corp verified\n` +
-    `*Exclusive Window:* 7-Day Pre-Launch Front-Run Active\n\n` +
-    `🔗 [1-Click Review & Issue SAFE](https://raisequity.com/investor-dashboard/deals)`;
+    `*Company:* Test deal (fit alert)\n` +
+    `*Round:* Seed\n` +
+    `*Thesis Match:* ≥${config.minimumFitScore}% fit parameters matched\n` +
+    `*Traction:* See platform for verified signals\n\n` +
+    `🔗 [Open Deal Flow](https://raisequity.com/investor-dashboard/deals)`;
 
-  try {
-    if (config.webhookUrl) {
-      await fetch(config.webhookUrl, {
+  // No chat id, no webhook, no real bot token → nothing can be delivered.
+  if (!config.telegramChatId && !config.webhookUrl) {
+    return { success: false, message: 'Add a Telegram chat ID (or webhook URL) before sending test alerts.' };
+  }
+
+  const botToken = (config.telegramBotToken || '').trim();
+  if (config.telegramChatId && !botToken) {
+    return { success: false, message: 'Telegram bot token is not configured. Alerts cannot be sent.' };
+  }
+
+  let delivered = false;
+  const failures: string[] = [];
+
+  if (config.telegramChatId && botToken) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: 'deal.matched',
-          investor: investorName,
+          chat_id: config.telegramChatId,
           text: alertText,
-          timestamp: new Date().toISOString(),
+          parse_mode: 'Markdown',
         }),
-      }).catch(() => {});
+      });
+      if (r.ok) delivered = true;
+      else failures.push(`Telegram API ${r.status}`);
+    } catch (_) {
+      failures.push('Telegram API unreachable');
     }
-
-    if (config.telegramChatId) {
-      // In production with token, dispatch to Telegram Bot API
-      const botToken = config.telegramBotToken || 'demo_raisequity_bot_token';
-      if (botToken !== 'demo_raisequity_bot_token') {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: config.telegramChatId,
-            text: alertText,
-            parse_mode: 'Markdown',
-          }),
-        }).catch(() => {});
-      }
-    }
-
-    return {
-      success: true,
-      message: `Test alert dispatched to Telegram Chat (${config.telegramChatId || 'WebHook'}) with 94% fit sample!`,
-    };
-  } catch (err: any) {
-    return {
-      success: true,
-      message: `Simulated Telegram alert sent successfully: "${alertText.slice(0, 80)}..."`,
-    };
   }
-}
 
+  if (config.webhookUrl) {
+    try {
+      const r = await fetch(config.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'deal.matched', investor: investorName, text: alertText, timestamp: new Date().toISOString() }),
+      });
+      if (r.ok) delivered = true;
+      else failures.push(`Webhook ${r.status}`);
+    } catch (_) {
+      failures.push('Webhook unreachable');
+    }
+  }
+
+  if (delivered) {
+    return { success: true, message: 'Test alert delivered successfully.' };
+  }
+  return { success: false, message: `Alert could not be delivered: ${failures.join(', ') || 'unknown error'}` };
+}

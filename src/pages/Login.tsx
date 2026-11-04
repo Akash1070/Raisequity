@@ -5,6 +5,8 @@ import { Rocket, ShieldCheck, ArrowRight, Mail, Lock, Loader2, AlertCircle, Chec
 import { useAuth } from "../contexts/AuthContext";
 import { safeStorage } from "../lib/storage";
 import { Logo } from "../components/ui/Logo";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -15,6 +17,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,17 +26,29 @@ export default function Login() {
 
   const from = (location.state as any)?.from;
   const needsProfile = (location.state as any)?.needsProfile;
-  
+
   // Save referral code and role if present in URL query params
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const refCode = searchParams.get("ref");
     if (refCode) {
+      // Store under BOTH keys so AuthContext (rq_ref_code) and legacy readers
+      // (referred_by_code) see the referral at signup.
       safeStorage.setItem("referred_by_code", refCode);
+      safeStorage.setItem("rq_ref_code", refCode);
     }
     const roleParam = searchParams.get("role");
     if (roleParam === "agency" || roleParam === "service_provider" || roleParam === "investor" || roleParam === "admin" || roleParam === "founder") {
       setRole((roleParam === "agency" ? "service_provider" : roleParam) as any);
+    }
+  }, [location.search]);
+
+  // Honored redirect param: after login, send users where they asked to go.
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const redirect = searchParams.get("redirect");
+    if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
+      setRedirectPath(redirect);
     }
   }, [location.search]);
 
@@ -50,6 +66,12 @@ export default function Login() {
 
     if (isUserAdmin) {
       navigate("/admin", { replace: true });
+      return;
+    }
+
+    // Honored redirect param: after login, send users where they asked to go.
+    if (redirectPath) {
+      navigate(redirectPath, { replace: true });
       return;
     }
 
@@ -135,6 +157,20 @@ export default function Login() {
       setError(err.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Enter your account email first, then click Forgot?");
+      return;
+    }
+    setError(null);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+    } catch (err: any) {
+      setError(err?.message || "Failed to send password reset email.");
     }
   };
 
@@ -302,7 +338,11 @@ export default function Login() {
                 <div>
                   <div className="flex justify-between items-center mb-1.5 px-1">
                     <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">Password</label>
-                    {!isSignUp && <button type="button" className="text-[11px] font-mono text-slate-400 hover:text-[#0070F3] transition-colors">Forgot?</button>}
+                    {!isSignUp && (
+                      <button type="button" onClick={handleForgotPassword} className="text-[11px] font-mono text-slate-400 hover:text-[#0070F3] transition-colors cursor-pointer">
+                        {resetSent ? "✓ Reset link sent" : "Forgot?"}
+                      </button>
+                    )}
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />

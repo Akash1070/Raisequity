@@ -33,6 +33,7 @@ import { useFounderProfile } from '../../hooks/useFounderProfile';
 import { getOrCreateConversation, sendDirectMessage } from '../../lib/messages';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { spendCredits } from '../../lib/credits';
 import CreatePostModal from './CreatePostModal';
 
 interface CommunityBroadcastFeedProps {
@@ -94,19 +95,13 @@ export default function CommunityBroadcastFeed({
 
     setConnectingPostId(post.id);
     try {
-      // 1. Deduct 1 credit in Firestore
-      try {
-        await updateDoc(doc(db, 'users', uid), {
-          credit_balance: increment(-1),
-          credits: increment(-1),
-        });
-        if (founderProfile?.id) {
-          await updateDoc(doc(db, 'founder_profiles', uid), {
-            credits: increment(-1),
-          });
-        }
-      } catch (cErr) {
-        console.warn('Could not update credit balance in Firestore:', cErr);
+      // 1. Spend the 1 credit atomically via the ledger-backed flow. If the
+      //    deduction fails, the connection does not proceed.
+      const spend = await spendCredits(uid, 'feed_post', 1, 'discretionary_addon', { action: 'community_connect', postId: post.id });
+      if (!spend.success) {
+        setNotEnoughCredits(true);
+        setTimeout(() => setNotEnoughCredits(false), 4000);
+        return;
       }
 
       // 2. Start direct message thread

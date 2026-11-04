@@ -33,11 +33,12 @@ import {
   X,
   Send
 } from "lucide-react";
-import { collection, getDocs, query, limit, addDoc } from "firebase/firestore";
+import { collection, getDocs, query, limit, addDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { spendCredits } from "../../lib/credits";
 import { getOrCreateConversation, sendDirectMessage } from "../../lib/messages";
+import { scoreStartupForInvestor, parseMoneyRange } from "../../lib/matching";
 import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import OneClickSafeModal from "../../components/investor/OneClickSafeModal";
 import CalBookingEmbed from "../../components/investor/CalBookingEmbed";
@@ -77,6 +78,8 @@ interface DealItem {
   twitter_handle?: string;
   telegram_handle?: string;
   traction?: string;
+  fitReasons?: string[];
+  fitNegatives?: string[];
 }
 
 const CURATED_HIRE_DEALS: DealItem[] = [
@@ -237,6 +240,64 @@ export default function DealFeed() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [investorPrefs, setInvestorPrefs] = useState<any>(null);
+
+  // Load investor thesis preferences once (single source of truth for fit).
+  useEffect(() => {
+    if (!user?.uid) return;
+    getDoc(doc(db, "investor_preferences", user.uid))
+      .then((s) => {
+        if (s.exists()) setInvestorPrefs({ ...(s.data() as any) });
+        else {
+          // Fallback to users-doc fields until onboarding/writes land there.
+          setInvestorPrefs({
+            preferred_sectors: (profile as any)?.target_sectors || (profile as any)?.sectors || [],
+            preferred_stages: ((profile as any)?.stage_focus ? [(profile as any).stage_focus] : []),
+            min_check_size: (profile as any)?.min_check_size || null,
+            max_check_size: (profile as any)?.max_check_size || null,
+            geography: (profile as any)?.geography || null,
+            thesis_description: (profile as any)?.thesis_description || null,
+          });
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
+
+  // Recomputed fit from the deterministic engine — never fabricated.
+  const applyEngineFit = (list: DealItem[]): DealItem[] => {
+    if (!investorPrefs) return list;
+    return list.map((d) => {
+      const raise = parseMoneyRange(d.targetRaise);
+      const m = scoreStartupForInvestor(
+        {
+          name: d.name,
+          sector: d.sector,
+          stage: d.stage,
+          raise_amount: raise ? raise[1] : null,
+          location: d.location,
+          description: d.description,
+          tagline: d.tagline,
+          traction: d.traction,
+        },
+        {
+          preferred_sectors: investorPrefs.preferred_sectors || [],
+          preferred_stages: investorPrefs.preferred_stages || [],
+          min_check_size: investorPrefs.min_check_size || null,
+          max_check_size: investorPrefs.max_check_size || null,
+          geography: investorPrefs.geography || null,
+          thesis_description: investorPrefs.thesis_description || null,
+        }
+      );
+      return {
+        ...d,
+        matchScore: m.score,
+        matchLevel: m.score >= 85 ? "HIGH CONVICTION" : m.score >= 70 ? "MODERATE" : "WATCH",
+        fitReasons: m.reasons,
+        fitNegatives: m.negatives,
+      };
+    });
+  };
 
   // Outreach to Manual/Seeded Founder Modal
   const [outreachModalOpen, setOutreachModalOpen] = useState(false);
@@ -380,7 +441,12 @@ export default function DealFeed() {
         company_name: selectedDeal.name,
         round_stage: selectedDeal.stage,
         target_raise: selectedDeal.targetRaise,
-        status: "confirmed",
+        // Honest booking: stored as a request pending founder confirmation —
+        // no fake "confirmed" meeting with a fabricated calendar link.
+        status: "requested",
+        duration_min: 30,
+        meeting_url: (profile as any)?.cal_link || (profile as any)?.calendly_link || null,
+        requested_at: new Date().toISOString(),
         created_at: new Date().toISOString()
       });
 
@@ -443,28 +509,27 @@ export default function DealFeed() {
     async function loadLiveStartups() {
       try {
         const dealFlowSnap = await getDocs(query(collection(db, "deal_flow"), limit(100)));
+        let next: DealItem[] = [];
         if (!dealFlowSnap.empty) {
-          const liveDeals = dealFlowSnap.docs.map(d => ({ id: d.id, ...d.data() })) as DealItem[];
-          setDeals(liveDeals);
-          if (liveDeals.length > 0) {
-            setSelectedDealId(liveDeals[0].id);
-          }
-          return;
+          next = dealFlowSnap.docs.map(d => ({ id: d.id, ...d.data() })) as DealItem[];
+        } else if (SEEDED_DEAL_FLOW && SEEDED_DEAL_FLOW.length > 0) {
+          next = [...SEEDED_DEAL_FLOW as DealItem[], ...CURATED_HIRE_DEALS];
         }
-
-        // Fallback to high-density seeded deals dataset (98 verified projects)
-        if (SEEDED_DEAL_FLOW && SEEDED_DEAL_FLOW.length > 0) {
-          setDeals([...SEEDED_DEAL_FLOW as DealItem[], ...CURATED_HIRE_DEALS]);
-          setSelectedDealId(SEEDED_DEAL_FLOW[0].id);
+        const ranked = applyEngineFit(next);
+        setDeals(ranked);
+        if (ranked.length > 0) {
+          setSelectedDealId(ranked[0].id);
         }
       } catch (err) {
         console.warn("[DealFeed] Error loading deals from Firestore, using seeded dataset:", err);
-        setDeals([...SEEDED_DEAL_FLOW as DealItem[], ...CURATED_HIRE_DEALS]);
+        const ranked = applyEngineFit([...SEEDED_DEAL_FLOW as DealItem[], ...CURATED_HIRE_DEALS]);
+        setDeals(ranked);
       }
     }
 
     loadLiveStartups();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [investorPrefs]);
 
   const selectedDeal = deals.find((d) => d.id === selectedDealId) || deals[0];
 
@@ -918,10 +983,12 @@ export default function DealFeed() {
 
           {/* Section 3: RECOMMENDATION FIT ANALYSIS */}
           <div className="p-5 rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center justify-between gap-3 text-xs font-mono">
-            <div className="flex items-center gap-2">
-              <Sparkles size={14} className="text-emerald-500" />
-              <span className="font-bold text-neutral-600 dark:text-neutral-300">
-                RECOMMENDATION FIT ANALYSIS: Verified fit with your sector &amp; check-size parameters.
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles size={14} className="text-emerald-500 shrink-0" />
+              <span className="font-bold text-neutral-600 dark:text-neutral-300 min-w-0">
+                {selectedDeal.fitReasons?.length
+                  ? `RECOMMENDATION FIT: ${(selectedDeal as any).fitReasons.join(" · ")}${(selectedDeal as any).fitNegatives?.length ? ` • Watch: ${(selectedDeal as any).fitNegatives.join(" · ")}` : ""}`
+                  : "RECOMMENDATION FIT ANALYSIS: verified fit is computed from your saved thesis & check-size parameters."}
               </span>
             </div>
             <span className="font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -974,10 +1041,10 @@ export default function DealFeed() {
                   <CheckCircle size={20} className="text-emerald-500 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-black text-emerald-900 dark:text-emerald-200 font-heading">
-                      Diligence Call Booked (25 Credits Deducted)
+                      Diligence Call Requested (25 Credits Deducted)
                     </h4>
                     <p className="text-xs font-mono text-emerald-800 dark:text-emerald-300/80 mt-1 leading-relaxed">
-                      Session reserved with founder <strong>{selectedDeal.founder}</strong>. A calendar invite and automated direct messaging channel have been established.
+                      Request submitted to founder <strong>{selectedDeal.founder}</strong>. They will confirm the meeting time via your direct message channel; no calendar invite is sent until confirmed.
                     </p>
                   </div>
                 </div>
@@ -1195,6 +1262,8 @@ export default function DealFeed() {
         <TelegramThesisAlertModal
           isOpen={telegramModalOpen}
           onClose={() => setTelegramModalOpen(false)}
+          investorName={profile?.full_name || "Investor Partner"}
+          uid={user?.uid}
         />
       )}
 

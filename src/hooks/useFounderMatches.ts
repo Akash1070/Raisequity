@@ -100,83 +100,10 @@ export function useFounderMatches() {
         };
       });
 
-      let finalMatches = [...enrichedMatches, ...blindMatches];
-
-      // If no pre-existing match docs found for this founder, dynamically discover peer founders in adjacent sectors
-      if (finalMatches.length === 0) {
-        const potentialPeers: MatchWithFounder[] = [];
-
-        try {
-          // 1. Discover other registered founders from founder_profiles
-          const allFoundersSnap = await getDocs(query(collection(db, 'founder_profiles'), limit(10)));
-          allFoundersSnap.docs.forEach((docSnap) => {
-            if (docSnap.id !== founderProfile.id) {
-              const data = docSnap.data() as FounderProfile;
-              potentialPeers.push({
-                id: `match_${founderProfile.id}_${docSnap.id}`,
-                founder_a_id: docSnap.id,
-                founder_b_id: founderProfile.id,
-                status: 'pending',
-                matched_at: new Date().toISOString(),
-                isBlindIntro: false,
-                unreadCount: 0,
-                otherFounder: { id: docSnap.id, ...data }
-              });
-            }
-          });
-        } catch (fpErr) {
-          console.warn('[useFounderMatches] Could not fetch other founder_profiles:', fpErr);
-        }
-
-        // 2. If fewer than 2 peers registered, provide verified cohort peer founders
-        if (potentialPeers.length < 2) {
-          const COHORT_PEERS: { id: string; name: string; company: string; sector: string; avatar: string }[] = [
-            {
-              id: 'cohort_peer_elena',
-              name: 'Elena Rostova',
-              company: 'NeuroChain AI',
-              sector: 'AI & Autonomous Agents',
-              avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80'
-            },
-            {
-              id: 'cohort_peer_marcus',
-              name: 'Marcus Vance',
-              company: 'SecantX Protocol',
-              sector: 'Web3 & ZK Settlement',
-              avatar: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=150&auto=format&fit=crop&q=80'
-            },
-            {
-              id: 'cohort_peer_david',
-              name: 'David Chen',
-              company: 'HyperScale DB',
-              sector: 'Infrastructure & Latency',
-              avatar: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=150&auto=format&fit=crop&q=80'
-            }
-          ];
-
-          COHORT_PEERS.forEach((peer) => {
-            potentialPeers.push({
-              id: `match_${founderProfile.id}_${peer.id}`,
-              founder_a_id: peer.id,
-              founder_b_id: founderProfile.id,
-              status: 'pending',
-              matched_at: new Date().toISOString(),
-              isBlindIntro: false,
-              unreadCount: 0,
-              otherFounder: {
-                id: peer.id,
-                full_name: peer.name,
-                company_name: peer.company,
-                industry: peer.sector,
-                profile_photo_url: peer.avatar,
-                verified: true
-              } as unknown as FounderProfile
-            });
-          });
-        }
-
-        finalMatches = potentialPeers;
-      }
+      // Only real match documents and blind intro requests are shown. No
+      // fabricated peers or pending "matches" from people who never requested
+      // one — an empty state is honest and is handled by the UI.
+      const finalMatches = [...enrichedMatches, ...blindMatches];
 
       setMatches(finalMatches);
     } catch (err: any) {

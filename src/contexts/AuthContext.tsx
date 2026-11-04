@@ -9,7 +9,8 @@ import {
   signInWithPopup,
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
-  signInWithEmailLink
+  signInWithEmailLink,
+  sendEmailVerification
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -105,7 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               onboarding_completed: true,
               is_approved: true,
               first_deal_fee_waived: true,
-              credit_balance: 999999,
+              credit_balance: 0,
               created_at: new Date().toISOString(),
             } : {
               id: currentUser.uid,
@@ -120,7 +121,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               first_deal_fee_waived: false,
               trial_ends_at: new Date(Date.now() + 15 * 86400000).toISOString(),
               has_active_subscription: false,
-              credit_balance: 50,
+              subscription_status: 'trial',
+              credit_balance: 0,
               created_at: new Date().toISOString(),
             };
 
@@ -203,6 +205,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const newUser = userCredential.user;
 
+      // Send the real verification email (the signup UI promises one).
+      sendEmailVerification(newUser).catch((verErr) => {
+        console.warn('[AuthContext] sendEmailVerification failed:', verErr);
+      });
+
       // Investors require manual admin review/approval before transacting
       const isApprovedByDefault = publicRole !== 'investor';
       const trialDays = 15;
@@ -224,9 +231,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         onboarding_completed: false,
         is_approved: isApprovedByDefault,
         first_deal_fee_waived: false,
-        subscription_status: publicRole === 'investor' ? 'active' : 'trial',
+        subscription_status: 'trial',
         trial_ends_at: trialEndsAt,
-        has_active_subscription: publicRole === 'investor',
+        has_active_subscription: false,
         credit_balance: trialStarterCredits,
         referral_code: referralCode,
         referred_by: referredBy,
@@ -290,9 +297,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           onboarding_completed: false,
           is_approved: true,
           first_deal_fee_waived: false,
-          subscription_status: targetRole === 'investor' ? 'active' : 'trial',
+          subscription_status: 'trial',
           trial_ends_at: trialEndsAt,
-          has_active_subscription: targetRole === 'investor',
+          has_active_subscription: false,
           credit_balance: trialStarterCredits,
           referral_code: referralCode,
           referred_by: referredBy,

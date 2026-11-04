@@ -1,9 +1,12 @@
-import { rateLimit, readBody, isEmail, str, fetchWithTimeout } from './_lib';
+import { rateLimit, readBody, isEmail, str, fetchWithTimeout, requireAuth } from './_lib';
 
-// Server-side only: RESEND_API_KEY (non-VITE) in Vercel env.
+// Server-side only: RESEND_API_KEY (non-VITE) in Vercel env. Requires a
+// valid Firebase session — this endpoint can no longer be used as an open
+// relay by unauthenticated callers.
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   if (!rateLimit(req, res, 20)) return;
+  if (!(await requireAuth(req, res))) return;
   const key = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
   if (!key || !from) return res.status(503).json({ error: 'email_not_configured' });

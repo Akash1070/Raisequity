@@ -18,6 +18,7 @@ import { db } from "../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { SEEDED_DEAL_FLOW, DealItem } from "../../data/dealFlowData";
 import { spendCredits } from "../../lib/credits";
+import { scoreStartupForInvestor, parseMoneyRange } from "../../lib/matching";
 
 export default function RecommendedFounders() {
   const { user, profile, refreshProfile } = useAuth();
@@ -25,8 +26,9 @@ export default function RecommendedFounders() {
   const [loading, setLoading] = useState(true);
   const [invited, setInvited] = useState<Record<string, boolean>>({});
   const [introSuccessNote, setIntroSuccessNote] = useState<string | null>(null);
+  const [introErrorNote, setIntroErrorNote] = useState<string | null>(null);
 
-  // Load and rank deals dynamically from database
+  // Load and rank deals dynamically from database using the real matching engine.
   useEffect(() => {
     async function loadAndRankDeals() {
       try {
@@ -39,31 +41,42 @@ export default function RecommendedFounders() {
           allDeals = SEEDED_DEAL_FLOW;
         }
 
-        // Compute dynamic fit score against investor preferences
-        const investorSectors: string[] = (profile as any)?.target_sectors || (profile as any)?.sectors || ["AI & Agents", "DeFi", "Fintech", "Infrastructure"];
-        const investorStage: string = (profile as any)?.stage_focus || "Seed";
+        const investorSectors: string[] = (profile as any)?.target_sectors || (profile as any)?.sectors || [];
+        const prefStages = ((profile as any)?.stage_focus ? [(profile as any).stage_focus] : []);
 
-        const ranked = allDeals.map((deal, idx) => {
-          let score = 85;
-          const sectorMatch = investorSectors.some(s => 
-            deal.sector?.toLowerCase().includes(s.toLowerCase()) ||
-            (deal.industry || []).some(i => i.toLowerCase().includes(s.toLowerCase()))
+        const ranked = allDeals.map((deal) => {
+          const raise = parseMoneyRange(deal.targetRaise);
+          const m = scoreStartupForInvestor(
+            {
+              name: deal.name,
+              sector: deal.sector,
+              stage: deal.stage,
+              raise_amount: raise ? raise[1] : null,
+              location: deal.location,
+              description: (deal as any).description,
+              tagline: (deal as any).tagline,
+              traction: (deal as any).traction,
+            },
+            {
+              preferred_sectors: investorSectors,
+              preferred_stages: prefStages,
+              min_check_size: (profile as any)?.min_check_size || null,
+              max_check_size: (profile as any)?.max_check_size || null,
+              geography: (profile as any)?.geography || null,
+              thesis_description: (profile as any)?.thesis_description || null,
+            }
           );
-          if (sectorMatch) score += 9;
-          if (deal.stage?.toLowerCase().includes(investorStage.toLowerCase())) score += 4;
-          // Add deterministic variance based on project index
-          const finalScore = Math.min(99, score + (idx % 3));
 
           return {
             ...deal,
-            matchScore: finalScore,
-            whyMatched: sectorMatch 
-              ? `Direct match for your check size and ${deal.sector || 'high-conviction'} protocol allocation quota.`
-              : `High velocity ${deal.stage || 'Seed'} round with verified GitHub momentum and audit verification.`
+            matchScore: m.score,
+            whyMatched: m.reasons.length
+              ? m.reasons.join(" · ")
+              : (m.negatives.length ? `Watch: ${m.negatives.join(" · ")}` : "Limited thesis signal — update your thesis in Settings."),
+            fitNegatives: m.negatives,
           };
         });
 
-        // Sort descending by match score and pick top 6
         ranked.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
         setRecommendedDeals(ranked.slice(0, 6));
       } catch (err) {
@@ -79,17 +92,22 @@ export default function RecommendedFounders() {
 
   const handleRequestIntro = async (deal: DealItem) => {
     if (!user?.uid) return;
-    setInvited((prev) => ({ ...prev, [deal.id]: true }));
+    setIntroErrorNote(null);
 
     try {
-      // 1. Spend 1 credit
-      await spendCredits(
+      // 1. Spend 1 credit — must succeed before any dispatch.
+      const spendRes = await spendCredits(
         user.uid,
         'extra_intro',
         1,
         'discretionary_addon',
         { dealId: deal.id, companyName: deal.name, founder: deal.founder }
-      ).catch(() => {});
+      );
+
+      if (!spendRes.success) {
+        setIntroErrorNote(spendRes.error || "Insufficient credits for this intro request.");
+        return;
+      }
 
       // 2. Dispatch to admin_intros so Admin can connect manually if founder is not onboarded
       await addDoc(collection(db, "admin_intros"), {
@@ -109,11 +127,13 @@ export default function RecommendedFounders() {
         created_at: new Date().toISOString()
       });
 
+      setInvited((prev) => ({ ...prev, [deal.id]: true }));
       await refreshProfile();
       setIntroSuccessNote(`Double-blind intro request dispatched for ${deal.name}! Our venture partner desk has received your request and will facilitate your direct meeting.`);
       setTimeout(() => setIntroSuccessNote(null), 6000);
     } catch (err: any) {
       console.error("Intro request error:", err);
+      setIntroErrorNote(err?.message || "Failed to dispatch intro request. No credits were spent.");
     }
   };
 
@@ -123,6 +143,13 @@ export default function RecommendedFounders() {
         <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-xs font-mono text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between shadow-xs animate-fade-in">
           <span>✓ {introSuccessNote}</span>
           <button onClick={() => setIntroSuccessNote(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-80">✕</button>
+        </div>
+      )}
+
+      {introErrorNote && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-500/30 rounded-2xl text-xs font-mono text-red-700 dark:text-red-300 font-bold flex items-center justify-between shadow-xs animate-fade-in">
+          <span>{introErrorNote}</span>
+          <button onClick={() => setIntroErrorNote(null)} className="text-red-600 dark:text-red-400 hover:opacity-80">✕</button>
         </div>
       )}
       

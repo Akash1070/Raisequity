@@ -23,8 +23,9 @@ import {
   FeedPost 
 } from "../../lib/posts";
 import { getMonthlyIntroRequestUsage, MonthlyIntroQuotaStatus } from "../../lib/quota";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { spendCredits } from "../../lib/credits";
 
 interface OpportunityItem {
   id: string;
@@ -202,11 +203,58 @@ export default function Feed() {
   }, [user?.uid]);
 
   const userCredits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
+  const [introError, setIntroError] = useState<string | null>(null);
 
-  const handleRequestIntro = (opp: OpportunityItem) => {
-    setIntroRequested((prev) => ({ ...prev, [opp.id]: true }));
-    setIntroNotice(`Warm intro requested to ${opp.partnerName} (${opp.name})! Fast-Pass memo submitted to thesis queue.`);
-    setTimeout(() => setIntroNotice(null), 5000);
+  const handleRequestIntro = async (opp: OpportunityItem) => {
+    if (!user?.uid) {
+      setIntroError("Sign in to request an intro.");
+      return;
+    }
+    if (userCredits < 1) {
+      setIntroError("Insufficient credits. 1 credit is required to request a warm intro.");
+      return;
+    }
+    setIntroError(null);
+    try {
+      // 1. Spend the 1 credit atomically (ledger-backed).
+      const spend = await spendCredits(
+        user.uid,
+        'warm_intro_request',
+        1,
+        'discretionary_addon',
+        { opportunityId: opp.id, firm: opp.firm }
+      );
+      if (!spend.success) {
+        setIntroError(spend.error || "Credit deduction failed.");
+        return;
+      }
+
+      // 2. Persist a real intro request routed through the admin bridge so a
+      //    human can facilitate the connection (no fake local toast).
+      await addDoc(collection(db, "admin_intros"), {
+        type: "founder_opportunity_request",
+        founder_id: user.uid,
+        founder_name: founderProfile?.full_name || profile?.full_name || user.email?.split("@")[0] || "Founder",
+        founder_email: user.email || "",
+        opportunity_id: opp.id,
+        opportunity_name: opp.name,
+        firm_name: opp.firm,
+        partner_name: opp.partnerName,
+        sector: opp.sectors.join(", "),
+        stage: opp.stage,
+        check_size: opp.checkSize,
+        requested_credits: 1,
+        status: "pending_admin_bridge",
+        created_at: new Date().toISOString(),
+      });
+
+      setIntroRequested((prev) => ({ ...prev, [opp.id]: true }));
+      setIntroNotice(`Warm intro requested to ${opp.partnerName} (${opp.name})! Our team will route your fast-pass memo to the thesis queue.`);
+      setTimeout(() => setIntroNotice(null), 6000);
+    } catch (err: any) {
+      console.error("[Feed] Intro request failed:", err);
+      setIntroError(err?.message || "Failed to dispatch intro request. No credits were spent.");
+    }
   };
 
   const filteredOpportunities = CURATED_OPPORTUNITIES.filter((opp) => {
@@ -235,6 +283,17 @@ export default function Feed() {
             <span>{introNotice}</span>
           </div>
           <button onClick={() => setIntroNotice(null)} className="text-emerald-600 hover:text-emerald-800 ml-4">✕</button>
+        </div>
+      )}
+
+      {/* Intro Request Error Banner */}
+      {introError && (
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{introError}</span>
+          </div>
+          <button onClick={() => setIntroError(null)} className="text-red-600 hover:text-red-800 ml-4">✕</button>
         </div>
       )}
       

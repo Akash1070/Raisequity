@@ -15,31 +15,40 @@ interface TelegramThesisAlertModalProps {
   isOpen: boolean;
   onClose: () => void;
   investorName?: string;
+  uid?: string;
 }
 
 export default function TelegramThesisAlertModal({
   isOpen,
   onClose,
   investorName = 'Investor Partner',
+  uid,
 }: TelegramThesisAlertModalProps) {
-  const [config, setConfig] = useState<TelegramAlertConfig>(getTelegramAlertConfig());
+  const [config, setConfig] = useState<TelegramAlertConfig>({
+    enabled: true,
+    telegramChatId: '',
+    webhookUrl: '',
+    minimumFitScore: 75,
+  });
   const [isSendingTest, setIsSendingTest] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setConfig(getTelegramAlertConfig());
-      setTestResult(null);
-      setSavedSuccess(false);
+      getTelegramAlertConfig(uid || '').then((cfg) => {
+        setConfig(cfg);
+        setTestResult(null);
+        setSavedSuccess(false);
+      });
     }
-  }, [isOpen]);
+  }, [isOpen, uid]);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    saveTelegramAlertConfig(config);
-    setSavedSuccess(true);
+  const handleSave = async () => {
+    const ok = await saveTelegramAlertConfig(uid || '', config);
+    setSavedSuccess(ok);
     setTimeout(() => setSavedSuccess(false), 2000);
   };
 
@@ -48,9 +57,9 @@ export default function TelegramThesisAlertModal({
     setTestResult(null);
     try {
       const res = await sendTestTelegramAlert(config, investorName);
-      setTestResult(res.message);
-    } catch (_) {
-      setTestResult('Test alert simulated successfully!');
+      setTestResult(res.success ? { kind: 'ok', text: res.message } : { kind: 'err', text: res.message });
+    } catch (err: any) {
+      setTestResult({ kind: 'err', text: err?.message || 'Unexpected alert delivery failure.' });
     } finally {
       setIsSendingTest(false);
     }
@@ -165,10 +174,14 @@ export default function TelegramThesisAlertModal({
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-medium flex items-center gap-2"
+                className={`p-3 border rounded-xl text-xs font-medium flex items-center gap-2 ${
+                  testResult.kind === 'ok'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-red-50 border-red-200 text-red-800'
+                }`}
               >
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                <span>{testResult}</span>
+                <CheckCircle2 size={16} className={testResult.kind === 'ok' ? 'text-emerald-600 shrink-0' : 'text-red-500 shrink-0'} />
+                <span>{testResult.text}</span>
               </motion.div>
             )}
           </div>

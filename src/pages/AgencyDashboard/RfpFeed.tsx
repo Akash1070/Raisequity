@@ -25,7 +25,7 @@ import {
   CheckCircle
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, query, limit, getDocs, getDoc, doc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { spendCredits } from "../../lib/credits";
 import { getOrCreateConversation, sendDirectMessage } from "../../lib/messages";
@@ -82,6 +82,38 @@ export default function RfpFeed() {
     }
   ];
 
+  // Resolve a REAL founder account for a client name (launches/deal_flow).
+  // Never fabricate a chat thread with a fake user id.
+  const resolveClientUid = async (clientName: string): Promise<{ uid?: string; email?: string } | null> => {
+    const needle = clientName.toLowerCase().trim();
+    if (!needle) return null;
+    try {
+      const [launchSnap, dealSnap] = await Promise.all([
+        getDocs(query(collection(db, "launches"), limit(100))),
+        getDocs(query(collection(db, "deal_flow"), limit(100))),
+      ]);
+      let founderId: string | undefined;
+      for (const snap of [launchSnap, dealSnap]) {
+        for (const d of snap.docs) {
+          const data = d.data();
+          const name = String(data.company_name || data.name || data.client_name || "").toLowerCase();
+          if (name && (name === needle || name.includes(needle) || needle.includes(name))) {
+            founderId = data.founder_id || data.founderId || undefined;
+            if (founderId) break;
+          }
+        }
+        if (founderId) break;
+      }
+      if (!founderId) return null;
+      try {
+        const userSnap = await getDoc(doc(db, "users", founderId));
+        return { uid: founderId, email: userSnap.data()?.email || "" };
+      } catch { return { uid: founderId }; }
+    } catch {
+      return null;
+    }
+  };
+
   const handleApply = async () => {
     if (!user) return;
     setApplying(true);
@@ -103,52 +135,69 @@ export default function RfpFeed() {
       }
 
       // 2. Record proposal submission in Firestore
+      const client = await resolveClientUid(selectedRfp.clientName);
       await addDoc(collection(db, "rfp_proposals"), {
         rfp_id: selectedRfp.id,
         agency_id: user.uid,
         agency_name: profile?.company_name || profile?.full_name || "Verified Agency",
         agency_email: user.email || "",
         client_name: selectedRfp.clientName,
+        client_id: client?.uid || null,
         project_title: selectedRfp.projectTitle,
         budget: selectedRfp.budgetFormatted,
         status: "submitted",
         created_at: new Date().toISOString()
       });
 
-      // 3. Automated message in chat
-      const clientUid = `client_${selectedRfp.clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-      try {
-        const convId = await getOrCreateConversation(
-          {
-            id: user.uid,
-            name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
-            role: "service_provider",
-            email: user.email || "agency@raisequity.com",
-            headline: "Vetted Web3 Partner"
-          },
-          {
-            id: clientUid,
-            name: selectedRfp.clientName,
-            role: "founder",
-            email: "founder@client.com",
-            headline: `${selectedRfp.clientName} · ${selectedRfp.projectTitle}`
-          }
-        );
+      if (client?.uid) {
+        // 3a. Real client found → open a real conversation with them.
+        try {
+          const convId = await getOrCreateConversation(
+            {
+              id: user.uid,
+              name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
+              role: "service_provider",
+              email: user.email || "agency@raisequity.com",
+              headline: "Vetted Web3 Partner"
+            },
+            {
+              id: client.uid,
+              name: selectedRfp.clientName,
+              role: "founder",
+              email: client.email || "",
+              headline: `${selectedRfp.clientName} · ${selectedRfp.projectTitle}`
+            }
+          );
 
-        await sendDirectMessage({
-          conversationId: convId,
-          sender: {
-            id: user.uid,
-            name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
-            role: "service_provider",
-            email: user.email || "agency@raisequity.com"
-          },
-          recipientId: clientUid,
-          recipientRole: "founder",
-          content: `Hi ${selectedRfp.clientName}, our studio just submitted a milestone proposal for "${selectedRfp.projectTitle}". All deliverables will be verified under your 100% pre-funded escrow vault.`
+          await sendDirectMessage({
+            conversationId: convId,
+            sender: {
+              id: user.uid,
+              name: profile?.company_name || profile?.full_name || "Verified Agency Partner",
+              role: "service_provider",
+              email: user.email || "agency@raisequity.com"
+            },
+            recipientId: client.uid,
+            recipientRole: "founder",
+            content: `Hi ${selectedRfp.clientName}, our studio just submitted a milestone proposal for "${selectedRfp.projectTitle}". All deliverables will be verified under your 100% pre-funded escrow vault.`
+          });
+        } catch (cErr) {
+          console.warn("Direct message creation error:", cErr);
+        }
+      } else {
+        // 3b. No onboarded client account → route through the admin bridge so
+        //     a real human can connect the parties. No fake thread.
+        await addDoc(collection(db, "admin_intros"), {
+          type: "agency_rfp_bridge",
+          agency_id: user.uid,
+          agency_name: profile?.company_name || profile?.full_name || "Verified Agency",
+          client_name: selectedRfp.clientName,
+          project_title: selectedRfp.projectTitle,
+          rfp_id: selectedRfp.id,
+          budget: selectedRfp.budgetFormatted,
+          status: "pending_admin_bridge",
+          created_at: new Date().toISOString(),
         });
-      } catch (cErr) {
-        console.warn("Direct message creation error:", cErr);
       }
 
       setProposalSubmitted(true);
@@ -162,7 +211,11 @@ export default function RfpFeed() {
 
   const handleChatWithFounder = async () => {
     if (!user) return;
-    const clientUid = `client_${selectedRfp.clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+    const client = await resolveClientUid(selectedRfp.clientName);
+    if (!client?.uid) {
+      alert("This client is not onboarded on Raisequity yet — your proposal has been routed to our venture team to connect you.");
+      return;
+    }
     try {
       const convId = await getOrCreateConversation(
         {
@@ -173,10 +226,10 @@ export default function RfpFeed() {
           headline: "Vetted Web3 Partner"
         },
         {
-          id: clientUid,
+          id: client.uid,
           name: selectedRfp.clientName,
           role: "founder",
-          email: "founder@client.com",
+          email: client.email || "",
           headline: `${selectedRfp.clientName} · ${selectedRfp.projectTitle}`
         }
       );

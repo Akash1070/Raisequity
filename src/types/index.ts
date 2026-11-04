@@ -73,7 +73,9 @@ export type CreditTxSource =
   | 'boosted_bid'
   | 'promoted_dealflow'
   | 'directory_featured'
-  | 'trial_starter';
+  | 'trial_starter'
+  | 'launch_tier'
+  | 'warm_intro_request';
 
 export interface CreditTransaction {
   id: string;
