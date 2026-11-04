@@ -123,12 +123,20 @@ export async function getPublicLaunches(
   sortBy: 'votes' | 'recent' | 'tier' = 'votes'
 ): Promise<LaunchItem[]> {
   try {
-    const q = query(collection(db, 'launches'));
+    // Only publicly launched listings (legacy docs without a status are kept).
+    // Status filter runs server-side so we never pull unpublished drafts.
+    const base = collection(db, 'launches');
+    const q = query(base, where('status', 'in', ['launched']), limit(500));
     const snap = await getDocs(q);
     let items = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as LaunchItem[];
 
-    // Only publicly launched listings (legacy docs without a status are kept).
-    items = items.filter((i) => i.status === 'launched' || !i.status);
+    // Include legacy docs missing the status field (pre-status era).
+    if (items.length < 500) {
+      const legacySnap = await getDocs(query(base, where('status', '==', ''), limit(200)));
+      const legacy = legacySnap.docs.map((d) => ({ id: d.id, ...d.data() })) as LaunchItem[];
+      const seen = new Set(items.map((i) => i.id));
+      items = [...items, ...legacy.filter((l) => !seen.has(l.id))];
+    }
 
     // Category filter
     if (category && category !== 'All') {

@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../lib/firebase";
+import { db, storage } from "../../lib/firebase";
 import { doc, getDoc, getDocs, query, where, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { processReferral } from "../../lib/referrals";
 import BlurbPreview from "../../components/dashboard/BlurbPreview";
 import InvestorContactForm, { ContactFormData } from "../../components/dashboard/InvestorContactForm";
@@ -91,6 +92,34 @@ export default function Onboarding() {
     if (!file) return;
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  // Upload to Firebase Storage (never store base64 in Firestore — document
+  // size limit and silent-failure risk). Returns the public download URL.
+  const uploadOnboardingFile = (file: File, folder: "avatars" | "pitch_decks"): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const currentUid = user?.uid || (user as any)?.id || "user";
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${folder}/${currentUid}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const fileRef = storageRef(storage, path);
+      const task = uploadBytesResumable(fileRef, file);
+      task.on(
+        "state_changed",
+        (snap) => {
+          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          if (folder === "pitch_decks") setDeckProgress(pct);
+        },
+        (err) => reject(err),
+        async () => {
+          try {
+            const url = await getDownloadURL(fileRef);
+            resolve(url);
+          } catch (err) {
+            reject(err);
+          }
+        }
+      );
+    });
   };
 
   // Redirect immediately if onboarding is already completed or if user is on wrong track
@@ -374,6 +403,18 @@ export default function Onboarding() {
       const finalSector = form.sector === "Other" && form.custom_sector?.trim() ? form.custom_sector.trim() : form.sector;
       const finalStage = form.stage === "Other" && form.custom_stage?.trim() ? form.custom_stage.trim() : form.stage;
 
+      // 1. Upload files to Firebase Storage FIRST — so a failure blocks
+      //    completion instead of silently half-saving a profile.
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        avatarUrl = await uploadOnboardingFile(avatarFile, "avatars");
+      }
+      let deckStorageUrl: string | null = null;
+      if (deckFile && !useWebsiteInstead) {
+        deckStorageUrl = await uploadOnboardingFile(deckFile, "pitch_decks");
+      }
+      const finalDeckUrl = useWebsiteInstead ? (form.company_website || null) : deckStorageUrl;
+
       // 2. Create/update founder profile in Firestore — core write, throws on
       //    failure so onboarding never falsely completes.
       const founderProfileRef = doc(db, "founder_profiles", uid);
@@ -383,7 +424,7 @@ export default function Onboarding() {
         profile_subtype: form.profile_subtype,
         full_name: form.full_name,
         email: user?.email || "",
-        profile_photo_url: avatarPreview || null,
+        profile_photo_url: avatarUrl || avatarPreview || null,
         linkedin_url: form.linkedin_url,
         twitter_url: form.twitter_url || null,
         location: form.location || null,
@@ -409,12 +450,8 @@ export default function Onboarding() {
         updated_at: new Date().toISOString()
       }, { merge: true });
 
-      // 3. Create/update startup record in Firestore — core write, throws on
-      //    failure (deck payload is capped to avoid 1MB doc limits).
-      const safeDeckUrl = useWebsiteInstead 
-        ? form.company_website 
-        : (deckUrl && deckUrl.length > 500000 ? form.company_website || null : deckUrl);
-
+      // 3. Create/update startup record in Firestore (deck now points to the
+      //    uploaded Storage URL instead of a base64 payload).
       const startupRef = doc(db, "startups", uid);
       await setDoc(startupRef, {
         id: uid,
@@ -422,7 +459,7 @@ export default function Onboarding() {
         name: form.company_name,
         tagline: form.what_company_does,
         website_url: form.company_website || null,
-        deck_url: safeDeckUrl || null,
+        deck_url: finalDeckUrl,
         stage: finalStage,
         sector: finalSector,
         raise_amount: parseFloat((form.funding_goal || "").replace(/[^0-9.]/g, "")) || 0,

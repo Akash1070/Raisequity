@@ -14,6 +14,8 @@ import {
   query,
   orderBy,
   limit,
+  startAfter,
+  documentId,
 } from 'firebase/firestore';
 import { Web3Investor } from '../types/investor';
 import { spendCredits } from './credits';
@@ -76,12 +78,15 @@ export function getInvestorAvatarUrl(inv: Partial<Web3Investor>): string {
 export async function getWeb3Investors(
   unlockedIds: string[] = [],
   isAdmin: boolean = false,
-  options?: { limit?: number; sector?: string }
+  options?: { limit?: number; sector?: string; lastId?: string }
 ): Promise<Web3Investor[]> {
   try {
-    const maxLimit = options?.limit ?? 5000;
+    const maxLimit = Math.min(options?.limit ?? 200, 500);
     const colRef = collection(db, COLLECTION_NAME);
-    let q = query(colRef, limit(maxLimit));
+    let q = query(colRef, orderBy(documentId()), limit(maxLimit));
+    if (options?.lastId) {
+      q = query(colRef, orderBy(documentId()), startAfter(options.lastId), limit(maxLimit));
+    }
 
     const snap = await getDocs(q);
     const investors = snap.docs.map(d => {

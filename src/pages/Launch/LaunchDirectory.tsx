@@ -18,6 +18,8 @@ import {
   HeroSection,
   LaunchList,
   SidebarWidgets,
+  DEFAULT_SPONSORS,
+  SponsorRow,
 } from './directory-sections';
 
 export interface ExtendedLaunchItem extends LaunchItem {
@@ -55,6 +57,7 @@ export default function LaunchDirectory() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [launches, setLaunches] = useState<ExtendedLaunchItem[]>([]);
   const [votedMap, setVotedMap] = useState<Record<string, boolean>>({});
+  const [sponsors, setSponsors] = useState<SponsorRow[]>(DEFAULT_SPONSORS);
   const [loading, setLoading] = useState<boolean>(true);
 
   const loadData = async () => {
@@ -192,6 +195,29 @@ export default function LaunchDirectory() {
   useEffect(() => {
     loadData();
   }, [uid]);
+
+  // Load live sponsor rows (active sponsors from Firestore; fall back to the
+  // default partner banners when none are configured).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'sponsors'), limit(10)));
+        const rows = snap.docs
+          .map((d) => d.data())
+          .filter((s) => s.active !== false && (s.name || s.headline))
+          .map((s) => ({
+            name: String(s.name || s.company || 'SPONSOR').toUpperCase(),
+            href: String(s.url || s.website || 'https://raisequity.com'),
+            headline: String(s.headline || s.title || 'Sponsored by a verified partner.'),
+            subline: String(s.subline || s.description || 'Visit site'),
+            accent: (s.accent === 'emerald' ? 'emerald' : 'orange') as 'orange' | 'emerald',
+          }));
+        if (active && rows.length) setSponsors(rows.slice(0, 2));
+      } catch (_) {}
+    })();
+    return () => { active = false; };
+  }, []);
 
   const handleProtectedAction = (destination: string) => {
     if (!uid) {
@@ -400,6 +426,7 @@ export default function LaunchDirectory() {
                   launches={filteredLaunches}
                   votedMap={votedMap}
                   sponsoredIndex={sponsoredIndex}
+                  sponsors={sponsors}
                   onVote={handleVote}
                   onOpen={(slug) => navigate(`/launch/${slug}`)}
                   onReset={resetAllFilters}

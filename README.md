@@ -268,26 +268,31 @@ All client read/write interactions are guarded by institutional-grade Firestore 
 4. If AI provider misbehaves: remove `GEMINI_API_KEY` from Vercel env → redeploy → all AI calls fail over to the deterministic matching engine (no downtime).
 
 **Monitored pre-launch checklist (20):**
-1. ✅ API keys hidden — no secrets in frontend or git (`.env` ignored; only public Firebase web config ships).
-2. ⚠️ **Rotate/restrict the Firebase web API key** (`AIzaSyDA2sTTcOvZFvlA0h3Tf1echp84saV82iQ` was committed in the first release). It is public-by-design, but on an open-source repo you must add **HTTP referrer restrictions** in Google Cloud Console (allow only `https://raisequity.com/*` and localhost).
-3. ✅ Rate limiting on all mutating `/api/*` (per-IP in-memory 10–20/min) — add Cloudflare WAF rate rules for multi-instance safety.
-4. ✅ Auth enforced server-side on payment/email/esign/AI endpoints (Firebase ID token); route guards are UX-only, Firestore rules are the real gate.
-5. ✅ Firestore rules locked: users see only their own data, admins only; catch-all deny; private investor contacts subcollection-gated.
-6. ✅ Server input validation: payload size caps + field truncation on all endpoints.
+1. ✅ API keys hidden — no secrets in frontend or git (`.env` ignored; only public Firebase web config ships; no hardcoded key literal in source).
+2. ⚠️ **Restrict the Firebase web API key** with HTTP referrer restrictions in Google Cloud Console (allow only `https://raisequity.com/*` and localhost). Public-by-design, but this closes quota-burn and account-lockout vectors.
+3. ✅ Rate limiting on all mutating `/api/*` (per-IP in-memory 10–60/min) — add Cloudflare WAF rate rules for multi-instance safety.
+4. ✅ Auth enforced server-side on payment/credits/email/esign/AI endpoints (Firebase ID token); route guards are UX-only, Firestore rules are the real gate.
+5. ✅ Firestore rules locked: users see only their own data, admins only; catch-all deny; balances are server-managed; private investor contacts subcollection-gated.
+6. ✅ Server input validation: payload size caps + field truncation on all endpoints (client-log capped, error-logging never returns internals).
 7. ⚠️ AI spend cap — set a hard monthly cap in Google AI Studio (manual step; task enum + rate limits already bound usage).
-8. ✅ Errors never leak stack traces (generic JSON errors; client console-only).
-9. ⚠️ Error tracking — none shipped; add Sentry/Cloudflare analytics post-launch or before scale.
+8. ✅ Errors never leak stack traces (generic JSON errors; client console-only; server logs sanitized).
+9. ✅ Error tracking — `window.onerror` / unhandled rejections are sent to `/api/client-log` (Firestore `client_errors`), rate-limited and sanitized.
 10. ⚠️ Database backups — Firebase daily automatic backups; **test a restore once** in a scratch project before launch.
-11. ✅ 404/500 — SPA catch-all returns home; API 404/500 are styled text; Terms/Privacy HTML pages now exist at `/terms`, `/privacy`.
-12. ✅ Works on cheap Android — single 110 KB gzip JS bundle; server throttling n/a (static hosting).
+11. ✅ 404/500 — SPA catch-all returns home; API 404/500 are styled text; Terms/Privacy HTML pages at `/terms`, `/privacy`.
+12. ✅ Works on cheap Android — small gzip JS bundle; static hosting, edge-cached assets.
 13. ✅ Sub-3s loads — Vite static build, edge-cached assets, s-maxage caching on API responses.
 14. ✅ Meta tags + OG image — per-page titles/descriptions/canonicals, `og:image` `/logo.png`, `ai-summary`, JSON-LD Organization/WebSite/Article/Breadcrumb.
 15. ✅ Privacy Policy + Terms — HTML pages + markdown alternates (`/privacy.md`, `/terms.md`).
-16. ⚠️ Analytics — none; install GA4/Plausible with cookie consent before marketing scale.
+16. ✅ Analytics — Umami (free, privacy-friendly) loaded in `main.tsx` (set `VITE_UMAMI_WEBSITE_ID`).
 17. ✅ Signup/payment/reset — unit-tested contracts; verify live Dodo test-mode payment + reset email once post-deploy.
 18. ⚠️ Email deliverability — verify `RESEND_FROM_EMAIL` domain SPF/DKIM records in Resend (needed to avoid spam).
 19. ✅ Contact — footer mailto + Telegram links; support email `support@raisequity.com`.
 20. ✅ Rollback plan above.
+
+**Scale readiness:**
+- Investor directory is paginated (200/batch, doc-id cursor) instead of one 5,000-doc fetch; `web3_investors` count is server-aggregated.
+- Public launches are queried server-side by `status == 'launched'` with a 500 cap; legacy docs handled separately.
+- Sponsor banners on the launch leaderboard now render from the Firestore `sponsors` collection (fallback to default partners).
 
 ## 🔏 E-Sign Workflow (OpenSign optional)
 

@@ -50,6 +50,8 @@ export default function Investors() {
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(30);
+  const [hasMoreDirectory, setHasMoreDirectory] = useState(false);
+  const [directoryCursor, setDirectoryCursor] = useState("");
 
   // Warm Intro Connections State
   const [declaredConnections, setDeclaredConnections] = useState<InvestorConnection[]>([]);
@@ -90,7 +92,8 @@ export default function Investors() {
     ? founderProfile.credits
     : 50));
 
-  // Fetch Web3 Investor Dataset & User Unlocked IDs
+  // Fetch Web3 Investor Dataset & User Unlocked IDs (bounded pagination —
+  // never pull thousands of docs into one request).
   const loadDirectory = async () => {
     setLoadingDirectory(true);
     try {
@@ -110,10 +113,40 @@ export default function Investors() {
         }
       }
 
-      const list = await getWeb3Investors(activeUnlockedIds, false, { limit: 5000 });
+      const list = await getWeb3Investors(activeUnlockedIds, false, { limit: 200 });
       setDirectoryInvestors(list);
+      setHasMoreDirectory(list.length === 200);
+      setDirectoryCursor(list.length > 0 ? list[list.length - 1].id : "");
     } catch (err: any) {
       console.error("Error loading investor directory:", err);
+    } finally {
+      setLoadingDirectory(false);
+    }
+  };
+
+  const loadMoreDirectory = async () => {
+    if (!hasMoreDirectory || !directoryCursor || loadingDirectory) return;
+    setLoadingDirectory(true);
+    try {
+      let activeUnlockedIds = unlockedIds;
+      if (user?.uid) {
+        const uSnap = await getDoc(doc(db, "users", user.uid));
+        if (uSnap.exists()) activeUnlockedIds = uSnap.data().unlocked_investors || [];
+      }
+      const more = await getWeb3Investors(activeUnlockedIds, false, { limit: 200, lastId: directoryCursor });
+      if (!more.length) {
+        setHasMoreDirectory(false);
+        return;
+      }
+      setDirectoryInvestors((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const fresh = more.filter((m) => !seen.has(m.id));
+        return [...prev, ...fresh];
+      });
+      setDirectoryCursor(more[more.length - 1].id);
+      setHasMoreDirectory(more.length === 200);
+    } catch (err: any) {
+      console.error("Error loading more investors:", err);
     } finally {
       setLoadingDirectory(false);
     }
@@ -892,20 +925,31 @@ export default function Investors() {
             </div>
 
             {/* Pagination / Load More Slicing Control */}
-            {visibleCount < filteredDirectory.length && (
+            {(visibleCount < filteredDirectory.length || hasMoreDirectory) && (
               <div className="flex flex-col items-center justify-center pt-8 pb-4 gap-2">
                 <button
-                  onClick={() => setVisibleCount((prev) => prev + 30)}
-                  className="px-6 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black font-extrabold text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+                  onClick={() => {
+                    if (visibleCount >= filteredDirectory.length && hasMoreDirectory) {
+                      loadMoreDirectory();
+                    } else {
+                      setVisibleCount((prev) => prev + 30);
+                    }
+                  }}
+                  disabled={loadingDirectory}
+                  className="px-6 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-black font-extrabold text-xs transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Sparkles size={14} className="text-amber-400" />
-                  <span>Load More Check-Writers</span>
+                  {loadingDirectory ? (
+                    <Loader2 size={14} className="animate-spin text-amber-400" />
+                  ) : (
+                    <Sparkles size={14} className="text-amber-400" />
+                  )}
+                  <span>{loadingDirectory ? "Loading more..." : "Load More Check-Writers"}</span>
                   <span className="font-mono text-[11px] opacity-75">
-                    (Showing {displayedInvestors.length} of {filteredDirectory.length})
+                    (Showing {displayedInvestors.length} of {totalServerCount ?? filteredDirectory.length})
                   </span>
                 </button>
                 <p className="text-[11px] font-mono text-slate-400">
-                  Showing top thesis-matched investors with instant contact unlocking
+                  Browsing the full verified check-writer directory in batches — instant contact unlocking stays available.
                 </p>
               </div>
             )}
