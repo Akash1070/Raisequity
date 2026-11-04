@@ -9,6 +9,7 @@ import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { SEEDED_LAUNCHES } from '../../data/dealFlowData';
 import {
   BentoRowFive,
   BentoRowSix,
@@ -127,6 +128,47 @@ export default function LaunchDirectory() {
           }
         });
       } catch (fpErr) {
+      }
+
+      // 3. Supplement with verified platform startups (SEEDED_LAUNCHES including YourWeb3Guy, HireInCrypto, Fasqon, Sanity United, Ceres Farm, etc.)
+      for (const s of SEEDED_LAUNCHES) {
+        if (!combined.some(c => c.slug?.toLowerCase() === s.slug?.toLowerCase() || c.company_name?.toLowerCase() === s.company_name?.toLowerCase())) {
+          const votes = Number(s.votes_count || 0);
+          const normalizedStage = s.product_stage || s.stage || 'Mainnet Live';
+          const chain = (s.ecosystem_chain && s.ecosystem_chain[0]) || s.chain || 'Cross-Chain';
+
+          combined.push({
+            id: s.id,
+            slug: s.slug,
+            founder_id: s.founder_id || 'founder_' + s.slug,
+            founder_name: s.founder_name || 'Founding Lead',
+            company_name: s.company_name,
+            tagline: s.tagline,
+            description: s.description,
+            website_url: s.website_url || 'https://raisequity.com',
+            logo_url: s.logo_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(s.company_name)}`,
+            screenshots: s.screenshots || [],
+            category: s.category || 'Web3',
+            twitter_handle: s.twitter_handle || '',
+            maker_comment: s.maker_comment || 'Verified launch on Raisequity.',
+            launch_tier: s.launch_tier || 'standard',
+            scheduled_date: s.scheduled_date || new Date().toISOString(),
+            status: 'launched',
+            badgeVerified: s.badgeVerified ?? true,
+            votes_count: votes,
+            created_at: s.created_at || new Date().toISOString(),
+            target_keywords: s.target_keywords || [s.category || 'Web3'],
+            product_stage: normalizedStage,
+            stage: normalizedStage,
+            chain,
+            ecosystem_chain: [chain],
+            rating: 5.0,
+            review_count: Math.max(2, votes % 7),
+            comments_count: Math.max(1, votes % 4),
+            icon_symbol: s.company_name?.slice(0, 2).toUpperCase() || 'RQ',
+            icon_bg: 'bg-black text-white'
+          });
+        }
       }
 
       combined.sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0));

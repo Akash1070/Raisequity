@@ -143,8 +143,16 @@ const TOP_VC_FUNDS: LandingVentureFund[] = [
 const SEED_PROJECTS: LandingProject[] = [
   { name: 'YourWeb3Guy', founder: 'Akash Kumar', category: 'Agency / PR', votes: 168, tagline: 'Dedicated PR, media blitz and tier-1 publication for crypto protocols.', badge: 'Spotlight', slug: 'yourweb3guy' },
   { name: 'HireInCrypto', founder: 'Raisequity Team', category: 'Hiring / Talent', votes: 142, tagline: 'Connecting elite crypto-native talent with pre-funded startups.', badge: 'Premium', slug: 'hireincrypto' },
+  { name: 'Sanity United', founder: 'Sanity Lead', category: 'DePIN', votes: 138, tagline: 'Green energy + AI task marketplace + mining — infrastructure-backed token.', badge: 'Verified', slug: 'sanity-united' },
+  { name: 'Fasqon', founder: 'Fasqon Lead', category: 'Fintech', votes: 126, tagline: 'Crypto-native neobank for freelancers & creators — fiat+crypto in one app.', badge: 'Spotlight', slug: 'fasqon' },
+  { name: 'Ceres Farm', founder: 'DeFi Syndicate', category: 'DeFi / Yield', votes: 119, tagline: 'Automated smart vaults for leveraged yield optimization and one-click liquidity.', badge: 'Verified', slug: 'ceres-farm' },
+  { name: 'Noah AI', founder: 'Noah Core', category: 'AI & Data', votes: 115, tagline: 'Decentralized compute aggregation and tokenized AI inference network.', badge: 'Premium', slug: 'noah-ai' },
   { name: 'NeuroChain AI', founder: 'Elena Rostova', category: 'AI & Agents', votes: 124, tagline: 'Autonomous multi-agent orchestration for on-chain inference.', badge: 'Verified', slug: 'neurochain-ai' },
   { name: 'SecantX Protocol', founder: 'Marcus Vance', category: 'DeFi / ZK', votes: 118, tagline: 'ZK institutional settlement engine for cross-chain liquidity & SAFEs.', badge: 'Verified', slug: 'secantx-protocol' },
+  { name: 'Matterhorn', founder: 'Matterhorn Protocol', category: 'Infrastructure', votes: 112, tagline: 'High-availability RPC routing and latency optimization for multichain dApps.', badge: 'Verified', slug: 'matterhornso' },
+  { name: 'Equiteez', founder: 'Mavryk Team', category: 'RWA & Tokenization', votes: 108, tagline: 'Institutional real-world asset tokenization platform with automated compliance.', badge: 'Verified', slug: 'equiteez-by-mavryk' },
+  { name: 'Swappay', founder: 'Swappay Labs', category: 'Payments', votes: 104, tagline: 'Instant cross-chain crypto checkout SDK with zero merchant chargeback risk.', badge: 'Verified', slug: 'swarppay' },
+  { name: 'Cadinu', founder: 'Cadinu Ecosystem', category: 'Gaming / Metaverse', votes: 98, tagline: 'Decentralized gaming economy and player asset collateralization.', badge: 'Verified', slug: 'cadinu' }
 ];
 
 /**
@@ -171,7 +179,7 @@ export function useLandingData() {
   // Auto-cycle index every 3.5 seconds to rotate FOMO showcases smoothly (2-5s)
   useEffect(() => {
     const timer = setInterval(() => {
-      setCycleIndex((prev) => (prev + 1) % 4);
+      setCycleIndex((prev) => (prev + 1) % 6);
     }, 3500);
     return () => clearInterval(timer);
   }, []);
@@ -250,14 +258,14 @@ export function useLandingData() {
             });
             if (dbLaunches.length) {
               const merged = [...dbLaunches, ...SEED_PROJECTS.filter((p) => !seenSlugs.has(p.slug))];
-              setProjects(merged.slice(0, 8));
+              setProjects(merged.slice(0, 20));
               setLaunchesCount(Math.max(merged.length, 42));
             }
           } else {
             const launches = await getPublicLaunches();
             if (launches.length) {
               const items = launches.map(normalizeProject).filter(Boolean) as LandingProject[];
-              setProjects(items.slice(0, 8));
+              setProjects(items.slice(0, 20));
               setLaunchesCount(Math.max(launches.length, 42));
             }
           }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -69,7 +70,13 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
     ? realCredits.slice(0, 2)
     : realCredits.slice(2, 4);
 
-  const activeFund = ventureFunds[cycleIndex % ventureFunds.length] || ventureFunds[0];
+    const activeFund = ventureFunds[cycleIndex % ventureFunds.length] || ventureFunds[0];
+
+  // Dynamically rotate Trending Projects & Startups so the showcase stays fresh and alive
+  const projectsOffset = (cycleIndex * 4) % Math.max(directoryProjects.length - 3, 1);
+  const displayedProjects = directoryProjects.length <= 4
+    ? directoryProjects
+    : directoryProjects.slice(projectsOffset, projectsOffset + 4);
 
   const handleDirectoryCheckout = async () => {
     if (!user) {
@@ -472,7 +479,7 @@ export function MasterBentoGrid({ className = "" }: MasterBentoGridProps) {
 
         {/* 4 Live Project Cards in a 2x2 grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {directoryProjects.map((p, idx) => (
+          {displayedProjects.map((p, idx) => (
             <Link
               key={idx}
               to={`/launch/${p.slug}`}
