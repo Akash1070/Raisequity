@@ -210,6 +210,15 @@ html.dark .terminal-window {
   border-radius: 9999px;
 }
 
+/* Hide scrollbar utility for clean modern pill carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @keyframes marquee {
   0% { transform: translateX(0%); }
   100% { transform: translateX(-50%); }

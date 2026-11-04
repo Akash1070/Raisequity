@@ -19,7 +19,16 @@ import {
   Megaphone,
   Briefcase,
   Share2,
-  Users
+  Users,
+  Check,
+  MessageSquare,
+  Flame,
+  TrendingUp,
+  Filter,
+  SlidersHorizontal,
+  ExternalLink,
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { getPublicLaunches, voteLaunch, hasUserVoted, getVerifiedLaunchCount, getLaunchComments } from '../../lib/launches';
 import { LaunchItem } from '../../types/launch';
@@ -30,9 +39,270 @@ import { LiveActivityMarquee } from '../../components/ui/LiveActivityMarquee';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 import { usePageMeta } from '../../hooks/usePageMeta';
 
-const CORE_NARRATIVES = ['All', 'AI', 'Web3', 'SaaS', 'Infrastructure'];
+export interface ExtendedLaunchItem extends LaunchItem {
+  rating?: number;
+  review_count?: number;
+  comments_count?: number;
+  icon_symbol?: string;
+  icon_bg?: string;
+}
 
-const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
+const EXTENDED_NARRATIVES = [
+  'All',
+  'AI',
+  'Web3',
+  'SaaS',
+  'Infrastructure',
+  'DeFi',
+  'DevTools',
+  'Fintech',
+  'Consumer',
+  'Security',
+  'Open Source'
+];
+
+const PRODUCT_STAGES = [
+  'All Stages',
+  'Mainnet Live',
+  'Public Beta',
+  'Raising Seed',
+  'Pre-Seed'
+];
+
+const ECOSYSTEM_CHAINS = [
+  'All Chains',
+  'Ethereum',
+  'Solana',
+  'Base',
+  'Arbitrum',
+  'Cross-Chain'
+];
+
+const CURATED_LAUNCHES: ExtendedLaunchItem[] = [
+  {
+    id: 'curated_notelify',
+    slug: 'notelify',
+    founder_id: 'maker_notelify',
+    founder_name: 'David K.',
+    company_name: 'Notelify',
+    tagline: 'Your complete AI study workspace for PDFs, videos & lectures',
+    description: 'Your Complete AI study workspace for PDFs, videos & lectures. Summarize, transcribe, and chat with all your research materials in one unified canvas.',
+    website_url: 'https://notelify.ai',
+    logo_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'AI',
+    twitter_handle: '@notelify_ai',
+    maker_comment: 'Built for students, researchers and analysts who read hundreds of pages daily.',
+    launch_tier: 'spotlight',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 28,
+    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+    target_keywords: ['Productivity', 'AI', 'Other'],
+    product_stage: 'Public Beta',
+    rating: 5.0,
+    review_count: 4,
+    comments_count: 1,
+    icon_symbol: '📖',
+    icon_bg: 'bg-neutral-900 text-white'
+  },
+  {
+    id: 'curated_witness',
+    slug: 'witness-deepfake-detect',
+    founder_id: 'maker_witness',
+    founder_name: 'Alex Rivera',
+    company_name: 'Witness',
+    tagline: 'Detect AI-generated images, videos and deepfakes in seconds',
+    description: 'Forensic deepfake and AI-generated image verification engine. Integrates directly into browser extensions and enterprise trust & safety workflows.',
+    website_url: 'https://witness.ai',
+    logo_url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'AI',
+    twitter_handle: '@witness_ai',
+    maker_comment: 'Trained on 40M+ synthetic artifacts with sub-second browser verification.',
+    launch_tier: 'spotlight',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 23,
+    created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
+    target_keywords: ['AI', 'Chrome Extension', 'Security'],
+    product_stage: 'Mainnet Live',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: '[ • ]',
+    icon_bg: 'bg-white text-black border border-neutral-300'
+  },
+  {
+    id: 'curated_creditbar',
+    slug: 'creditbar-mac',
+    founder_id: 'maker_creditbar',
+    founder_name: 'Liam Vance',
+    company_name: 'CreditBar',
+    tagline: 'What came in. What went out. One menu bar.',
+    description: 'Lightweight Mac menubar utility tracking cash flow, runway burn, and corporate card balances with zero-latency notifications.',
+    website_url: 'https://creditbar.app',
+    logo_url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'SaaS',
+    twitter_handle: '@creditbar_app',
+    maker_comment: 'Never log into 5 different banking dashboards again.',
+    launch_tier: 'premium',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 15,
+    created_at: new Date(Date.now() - 3600000 * 10).toISOString(),
+    target_keywords: ['Productivity', 'Finance', 'SaaS'],
+    product_stage: 'Public Beta',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: '📊',
+    icon_bg: 'bg-slate-900 text-cyan-400'
+  },
+  {
+    id: 'curated_the_launch_directory',
+    slug: 'the-launch-directory',
+    founder_id: 'maker_tld',
+    founder_name: 'Sophie Martin',
+    company_name: 'The Launch Directory',
+    tagline: 'Submit your startup to the launch directory that keeps the record',
+    description: 'The permanent record for indie hackers and early stage startups. Indexed dofollow authority backlinks and automated discovery syndication.',
+    website_url: 'https://thelaunchdirectory.com',
+    logo_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'SaaS',
+    twitter_handle: '@launchdirectory',
+    maker_comment: 'Guaranteed permanent indexing and fast-pass review within 24 hours.',
+    launch_tier: 'standard',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 12,
+    created_at: new Date(Date.now() - 3600000 * 14).toISOString(),
+    target_keywords: ['Other', 'Advertising', 'Marketing'],
+    product_stage: 'Mainnet Live',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: 'L',
+    icon_bg: 'bg-neutral-900 text-white'
+  },
+  {
+    id: 'curated_voxoria',
+    slug: 'voxoria-ai',
+    founder_id: 'maker_voxoria',
+    founder_name: 'Chloe Zhang',
+    company_name: 'Voxoria',
+    tagline: 'Marketing data for AI agents',
+    description: 'Real-time telemetry and programmatic analytics engine enabling autonomous marketing and sales agents to self-optimize campaigns.',
+    website_url: 'https://voxoria.ai',
+    logo_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'AI',
+    twitter_handle: '@voxoria_ai',
+    maker_comment: 'Serving 45k agent queries per minute across 12 programmatic networks.',
+    launch_tier: 'standard',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 12,
+    created_at: new Date(Date.now() - 3600000 * 16).toISOString(),
+    target_keywords: ['AI', 'Analytics Tool', 'Other'],
+    product_stage: 'Raising Seed',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 1,
+    icon_symbol: 'V',
+    icon_bg: 'bg-neutral-900 text-[#a3e635]'
+  },
+  {
+    id: 'curated_chmonitor',
+    slug: 'chmonitor',
+    founder_id: 'maker_chm',
+    founder_name: 'Roman K.',
+    company_name: 'chmonitor',
+    tagline: 'Monitor ClickHouse with ease',
+    description: 'Sub-second real-time observability and query profiling dashboard engineered specifically for high-throughput ClickHouse clusters.',
+    website_url: 'https://chmonitor.io',
+    logo_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'Infrastructure',
+    twitter_handle: '@chmonitor',
+    maker_comment: 'Zero agent footprint, connects via native ClickHouse HTTP interface.',
+    launch_tier: 'standard',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 11,
+    created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
+    target_keywords: ['Analytics Tool', 'AI', 'DevTool'],
+    product_stage: 'Mainnet Live',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: '📶',
+    icon_bg: 'bg-orange-50 text-orange-600'
+  },
+  {
+    id: 'curated_tapmap',
+    slug: 'tapmap',
+    founder_id: 'maker_tapmap',
+    founder_name: 'Maya Lin',
+    company_name: 'TapMap',
+    tagline: 'A social network built on maps: where to go and with whom',
+    description: 'Hyperlocal social map platform connecting IRL friends, spontaneous meetups, and real-time venue recommendations.',
+    website_url: 'https://tapmap.app',
+    logo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'Consumer',
+    twitter_handle: '@tapmap_app',
+    maker_comment: '12k weekly active university students across NYC and SF.',
+    launch_tier: 'standard',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 9,
+    created_at: new Date(Date.now() - 3600000 * 22).toISOString(),
+    target_keywords: ['Social Networking', 'Mobile App'],
+    product_stage: 'Public Beta',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: '🗺️',
+    icon_bg: 'bg-sky-500 text-white'
+  },
+  {
+    id: 'curated_trackmynetworth',
+    slug: 'trackmynetworth',
+    founder_id: 'maker_tmnw',
+    founder_name: 'Arjun Verma',
+    company_name: 'TrackMyNetWorth',
+    tagline: 'Family net worth tracker for India',
+    description: 'Unified multi-asset portfolio tracker supporting bank accounts, equities, real estate, and crypto with privacy-first encryption.',
+    website_url: 'https://trackmynetworth.in',
+    logo_url: 'https://images.unsplash.com/photo-1579621970795-87facc2f976d?w=150&auto=format&fit=crop&q=80',
+    screenshots: [],
+    category: 'Fintech',
+    twitter_handle: '@trackmynetworth',
+    maker_comment: 'End-to-end encrypted, zero data selling, automated bank sync via Account Aggregator.',
+    launch_tier: 'standard',
+    scheduled_date: new Date().toISOString(),
+    status: 'launched',
+    badgeVerified: true,
+    votes_count: 7,
+    created_at: new Date(Date.now() - 3600000 * 26).toISOString(),
+    target_keywords: ['Finance', 'Productivity', 'Other'],
+    product_stage: 'Public Beta',
+    rating: 5.0,
+    review_count: 2,
+    comments_count: 0,
+    icon_symbol: '▲',
+    icon_bg: 'bg-indigo-950 text-indigo-300'
+  },
   {
     id: 'curated_neurochain_ai',
     slug: 'neurochain-ai',
@@ -51,9 +321,15 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
+    votes_count: 6,
+    created_at: new Date(Date.now() - 3600000 * 30).toISOString(),
     target_keywords: ['AI', 'Agents', 'Infrastructure'],
+    product_stage: 'Raising Seed',
+    rating: 5.0,
+    review_count: 1,
+    comments_count: 2,
+    icon_symbol: '⚡',
+    icon_bg: 'bg-purple-900 text-cyan-300'
   },
   {
     id: 'curated_secantx_protocol',
@@ -73,9 +349,15 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-    target_keywords: ['Web3', 'ZK', 'Settlement'],
+    votes_count: 5,
+    created_at: new Date(Date.now() - 3600000 * 34).toISOString(),
+    target_keywords: ['Web3', 'ZK', 'Settlement', 'DeFi'],
+    product_stage: 'Mainnet Live',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 1,
+    icon_symbol: '⬡',
+    icon_bg: 'bg-emerald-950 text-emerald-400'
   },
   {
     id: 'curated_hyperscale_db',
@@ -95,9 +377,15 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 20).toISOString(),
+    votes_count: 4,
+    created_at: new Date(Date.now() - 3600000 * 38).toISOString(),
     target_keywords: ['Database', 'Vector', 'Latency'],
+    product_stage: 'Public Beta',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: '⚡',
+    icon_bg: 'bg-blue-950 text-blue-400'
   },
   {
     id: 'curated_promptpilot_saas',
@@ -117,10 +405,43 @@ const CURATED_INSTITUTIONAL_LAUNCHES: LaunchItem[] = [
     scheduled_date: new Date().toISOString(),
     status: 'launched',
     badgeVerified: true,
-    votes_count: 0,
-    created_at: new Date(Date.now() - 3600000 * 28).toISOString(),
+    votes_count: 3,
+    created_at: new Date(Date.now() - 3600000 * 42).toISOString(),
     target_keywords: ['SaaS', 'DevTools', 'Testing'],
+    product_stage: 'Pre-Seed',
+    rating: 5.0,
+    review_count: 0,
+    comments_count: 0,
+    icon_symbol: '✈',
+    icon_bg: 'bg-amber-950 text-amber-400'
+  }
+];
+
+const LAST_WEEKS_BEST = [
+  {
+    name: 'TicTravelDesk',
+    medal: '🥇',
+    tagline: 'Plan your next adventure effortlessly',
+    votes: 40,
+    icon: '✈️',
+    bg: 'bg-blue-50 dark:bg-[#1a2230] text-blue-600'
   },
+  {
+    name: 'Tilemode',
+    medal: '🥈',
+    tagline: 'The keyboard cockpit for your Mac.',
+    votes: 34,
+    icon: '⊞',
+    bg: 'bg-neutral-100 dark:bg-[#1e1f24] text-neutral-800 dark:text-neutral-200'
+  },
+  {
+    name: 'ZelNum',
+    medal: '🥉',
+    tagline: 'Bulk WhatsApp, Phone & Email...',
+    votes: 32,
+    icon: '⚡',
+    bg: 'bg-purple-50 dark:bg-[#251733] text-purple-600'
+  }
 ];
 
 const REAL_CREDITS = [
@@ -149,8 +470,11 @@ export default function LaunchDirectory() {
   );
   const [activeTab, setActiveTab] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'votes' | 'recent'>('votes');
-  const [launches, setLaunches] = useState<LaunchItem[]>(CURATED_INSTITUTIONAL_LAUNCHES);
+  const [sortBy, setSortBy] = useState<'votes' | 'trending' | 'recent'>('votes');
+  const [selectedStage, setSelectedStage] = useState<string>('All Stages');
+  const [selectedChain, setSelectedChain] = useState<string>('All Chains');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+  const [launches, setLaunches] = useState<ExtendedLaunchItem[]>(CURATED_LAUNCHES);
   const [votedMap, setVotedMap] = useState<Record<string, boolean>>({});
 
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; mins: number; secs: number }>({
@@ -182,18 +506,18 @@ export default function LaunchDirectory() {
   const loadData = async () => {
     try {
       const publicItems = await getPublicLaunches();
-      const combined = [...publicItems];
+      const combined: ExtendedLaunchItem[] = [...publicItems];
 
-      for (const curated of CURATED_INSTITUTIONAL_LAUNCHES) {
+      for (const curated of CURATED_LAUNCHES) {
         if (!combined.some((item) => item.id === curated.id || item.slug === curated.slug)) {
           combined.push(curated);
         }
       }
 
-
-
       if (sortBy === 'votes') {
-        combined.sort((a, b) => b.votes_count - a.votes_count);
+        combined.sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0));
+      } else if (sortBy === 'trending') {
+        combined.sort((a, b) => ((b.votes_count || 0) * 1.5 + (b.review_count || 0)) - ((a.votes_count || 0) * 1.5 + (a.review_count || 0)));
       } else {
         combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       }
@@ -235,13 +559,13 @@ export default function LaunchDirectory() {
         safeStorage.removeItem(guestKey);
         setVotedMap((prev) => ({ ...prev, [launchId]: false }));
         setLaunches((prev) =>
-          prev.map((l) => (l.id === launchId ? { ...l, votes_count: Math.max(0, l.votes_count - 1) } : l))
+          prev.map((l) => (l.id === launchId ? { ...l, votes_count: Math.max(0, (l.votes_count || 0) - 1) } : l))
         );
       } else {
         safeStorage.setItem(guestKey, 'true');
         setVotedMap((prev) => ({ ...prev, [launchId]: true }));
         setLaunches((prev) =>
-          prev.map((l) => (l.id === launchId ? { ...l, votes_count: l.votes_count + 1 } : l))
+          prev.map((l) => (l.id === launchId ? { ...l, votes_count: (l.votes_count || 0) + 1 } : l))
         );
       }
       return;
@@ -254,7 +578,7 @@ export default function LaunchDirectory() {
       setLaunches((prev) =>
         prev.map((l) =>
           l.id === launchId
-            ? { ...l, votes_count: currentVoted ? Math.max(0, l.votes_count - 1) : l.votes_count + 1 }
+            ? { ...l, votes_count: currentVoted ? Math.max(0, (l.votes_count || 0) - 1) : (l.votes_count || 0) + 1 }
             : l
         )
       );
@@ -266,7 +590,7 @@ export default function LaunchDirectory() {
         setLaunches((prev) =>
           prev.map((l) =>
             l.id === launchId
-              ? { ...l, votes_count: currentVoted ? l.votes_count + 1 : Math.max(0, l.votes_count - 1) }
+              ? { ...l, votes_count: currentVoted ? (l.votes_count || 0) + 1 : Math.max(0, (l.votes_count || 0) - 1) }
               : l
           )
         );
@@ -276,25 +600,54 @@ export default function LaunchDirectory() {
     }
   };
 
-  const hallOfFameLaunches = [...launches]
-    .sort((a, b) => b.votes_count - a.votes_count)
-    .slice(0, 4);
-
   const getCategoryCount = (narrative: string) => {
     if (narrative === 'All') return launches.length;
-    return launches.filter((l) => l.category.toLowerCase().includes(narrative.toLowerCase())).length;
+    return launches.filter((l) => {
+      const catMatch = l.category.toLowerCase().includes(narrative.toLowerCase());
+      const kwMatch = l.target_keywords?.some((k) => k.toLowerCase().includes(narrative.toLowerCase()));
+      return catMatch || kwMatch;
+    }).length;
+  };
+
+  const activeFiltersCount = (selectedStage !== 'All Stages' ? 1 : 0) + (selectedChain !== 'All Chains' ? 1 : 0);
+
+  const resetAllFilters = () => {
+    setActiveTab('All');
+    setSelectedStage('All Stages');
+    setSelectedChain('All Chains');
+    setSearchQuery('');
   };
 
   const filteredLaunches = launches.filter((l) => {
+    // Narrative Category filter
     if (activeTab !== 'All') {
-      if (!l.category.toLowerCase().includes(activeTab.toLowerCase())) return false;
+      const catMatch = l.category.toLowerCase().includes(activeTab.toLowerCase());
+      const kwMatch = l.target_keywords?.some((k) => k.toLowerCase().includes(activeTab.toLowerCase()));
+      if (!catMatch && !kwMatch) return false;
     }
+
+    // Product Stage filter
+    if (selectedStage !== 'All Stages') {
+      if (l.product_stage !== selectedStage) return false;
+    }
+
+    // Ecosystem / Chain filter
+    if (selectedChain !== 'All Chains') {
+      const kw = l.target_keywords || [];
+      const desc = `${l.tagline} ${l.description}`.toLowerCase();
+      const chainQuery = selectedChain.toLowerCase();
+      const match = kw.some((k) => k.toLowerCase().includes(chainQuery)) || desc.includes(chainQuery);
+      if (!match) return false;
+    }
+
+    // Search query filter
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
       l.company_name.toLowerCase().includes(q) ||
       l.tagline.toLowerCase().includes(q) ||
-      l.category.toLowerCase().includes(q)
+      l.category.toLowerCase().includes(q) ||
+      l.target_keywords?.some((k) => k.toLowerCase().includes(q))
     );
   });
 
@@ -304,8 +657,8 @@ export default function LaunchDirectory() {
       {/* ── LIVE ACTIVITY TICKER ── */}
       {!isDashboard && <LiveActivityMarquee />}
 
-      {/* ── MAIN BENTO CONTAINER (Spacious, Neo-Organic, Zero-Wasted Space) ── */}
-      <main className="w-full max-w-5xl mx-auto px-4 py-6 sm:py-10 flex-1 flex flex-col justify-start space-y-4 sm:space-y-5">
+      {/* ── MAIN CONTAINER ── */}
+      <main className="w-full max-w-5xl mx-auto px-4 py-6 sm:py-10 flex-1 flex flex-col justify-start space-y-6">
         
         {/* ── TOP VIEW SELECTOR BAR ── */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 rounded-full p-2 shadow-[0_2px_8px_rgba(0,0,0,0.02)] gap-3">
@@ -425,7 +778,7 @@ export default function LaunchDirectory() {
 
                     <div className="space-y-2.5 font-mono text-xs">
                       <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
-                        <span className="text-neutral-500">Weekly Active Launches:</span>
+                        <span className="text-neutral-500">Active Startups:</span>
                         <span className="font-black text-black dark:text-white">{launches.length} Startups</span>
                       </div>
                       <div className="p-3 bg-white dark:bg-[#121316] rounded-xl border border-neutral-200/80 dark:border-white/5 flex justify-between items-center">
@@ -449,182 +802,470 @@ export default function LaunchDirectory() {
             )}
 
             {/* ══════════════════════════════════════════════════════════
-                2. ROW 2: TOP 3 SPOTLIGHT PODIUM BENTO CARDS
+                2. MAIN DUAL-COLUMN DIRECTORY BOARD (IMAGE 1 + IMAGE 3 + IMAGE 5)
                ══════════════════════════════════════════════════════════ */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {hallOfFameLaunches.slice(0, 3).map((item, idx) => {
-                const podiumColors = [
-                  { rank: "#1 SPOTLIGHT", border: "border-amber-400/40", badge: "bg-amber-400/10 text-amber-500", medal: "🥇" },
-                  { rank: "#2 RUNNER UP", border: "border-slate-300/40", badge: "bg-slate-200/20 text-slate-400", medal: "🥈" },
-                  { rank: "#3 FINALIST", border: "border-amber-600/30", badge: "bg-amber-600/10 text-amber-600", medal: "🥉" },
-                ][idx];
+            <div id="directory-board" className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* ── LEFT COLUMN (8 cols): FILTER BAR + RANKED LEADERBOARD ── */}
+              <div className="lg:col-span-8 space-y-4">
+                
+                {/* ── IMAGE 5: OVERHAULED ADVANCED FILTER BAR ── */}
+                <div className="bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 rounded-[24px] p-3.5 shadow-xs space-y-3">
+                  
+                  {/* Row A: Category Pills Carousel (Completely Scrollbar-Free) */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                    {EXTENDED_NARRATIVES.map((narrative) => {
+                      const count = getCategoryCount(narrative);
+                      const isSelected = activeTab === narrative;
+                      return (
+                        <button
+                          key={narrative}
+                          onClick={() => setActiveTab(narrative)}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer border flex items-center gap-1.5 shrink-0 ${
+                            isSelected
+                              ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-xs'
+                              : 'bg-neutral-50 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-300 border-neutral-200/80 dark:border-white/5 hover:border-black/50 dark:hover:border-white/30'
+                          }`}
+                        >
+                          <span>{narrative === 'All' ? 'All Narratives' : narrative}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                            isSelected
+                              ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black'
+                              : 'bg-neutral-200/70 dark:bg-[#25262e] text-neutral-600 dark:text-neutral-400'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => navigate(`/launch/${item.slug}`)}
-                    className={`rounded-[28px] bg-white dark:bg-[#121316] border ${podiumColors.border} p-6 flex flex-col justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:-translate-y-1 hover:shadow-md cursor-pointer group`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`font-mono text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full ${podiumColors.badge}`}>
-                          {podiumColors.medal} {podiumColors.rank}
-                        </span>
-                        <span className="font-mono text-xs font-black text-black dark:text-white flex items-center gap-1">
-                          <span className="text-emerald-500">▲</span> {item.votes_count}
-                        </span>
+                  {/* Row B: Search Bar, Sort Toggles & Advanced Filter Button */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-neutral-100 dark:border-white/5">
+                    
+                    {/* Search Input */}
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={13} />
+                      <input
+                        type="text"
+                        placeholder="Search by name, tagline, or keyword..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2 bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 rounded-full text-xs font-mono text-black dark:text-white placeholder-neutral-400 focus:outline-none focus:border-black transition-all"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black dark:hover:text-white text-xs font-mono p-1 cursor-pointer"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Controls: Sort Buttons + Advanced Filter Toggle */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      
+                      {/* Sort Pill Group */}
+                      <div className="flex items-center bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 rounded-full p-1 text-xs font-mono">
+                        <button
+                          onClick={() => setSortBy('votes')}
+                          className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
+                            sortBy === 'votes'
+                              ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                              : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                          }`}
+                        >
+                          Top
+                        </button>
+                        <button
+                          onClick={() => setSortBy('trending')}
+                          className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
+                            sortBy === 'trending'
+                              ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                              : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                          }`}
+                        >
+                          Trending
+                        </button>
+                        <button
+                          onClick={() => setSortBy('recent')}
+                          className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
+                            sortBy === 'recent'
+                              ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                              : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                          }`}
+                        >
+                          Recent
+                        </button>
                       </div>
 
-                      <h3 className="text-xl font-heading font-black text-black dark:text-white mb-1 group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors">
-                        {item.company_name}
-                      </h3>
-
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 leading-relaxed mb-4">
-                        {item.tagline}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between text-[10px] font-mono text-neutral-400">
-                      <span>{item.category} • By {item.founder_name}</span>
-                      <ChevronUp size={14} className="text-emerald-500" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════
-                3. ROW 3: CATEGORY FILTER PILLS & SEARCH BENTO BAR
-               ══════════════════════════════════════════════════════════ */}
-            <div id="directory-board" className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 rounded-[24px] p-3 shadow-xs">
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                {CORE_NARRATIVES.map((narrative) => {
-                  const count = getCategoryCount(narrative);
-                  const isSelected = activeTab === narrative;
-                  return (
-                    <button
-                      key={narrative}
-                      onClick={() => setActiveTab(narrative)}
-                      className={`px-4 py-2 rounded-full text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer border flex items-center gap-2 ${
-                        isSelected
-                          ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-xs'
-                          : 'bg-neutral-50 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-300 border-neutral-200/80 dark:border-white/5 hover:border-black'
-                      }`}
-                    >
-                      <span>{narrative === 'All' ? 'All Narratives' : narrative}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
-                        isSelected
-                          ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black'
-                          : 'bg-neutral-200/70 dark:bg-[#25262e] text-neutral-600 dark:text-neutral-400'
-                      }`}>
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 md:w-56">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={13} />
-                  <input
-                    type="text"
-                    placeholder="Search launches..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 rounded-full text-xs font-mono text-black dark:text-white placeholder-neutral-400 focus:outline-none focus:border-black transition-all"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black text-xs font-mono"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 rounded-full p-1 shrink-0 text-xs font-mono">
-                  <button
-                    onClick={() => setSortBy('votes')}
-                    className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
-                      sortBy === 'votes'
-                        ? 'bg-black text-white dark:bg-white dark:text-black'
-                        : 'text-neutral-500 hover:text-black dark:hover:text-white'
-                    }`}
-                  >
-                    Top
-                  </button>
-                  <button
-                    onClick={() => setSortBy('recent')}
-                    className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
-                      sortBy === 'recent'
-                        ? 'bg-black text-white dark:bg-white dark:text-black'
-                        : 'text-neutral-500 hover:text-black dark:hover:text-white'
-                    }`}
-                  >
-                    Recent
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════
-                4. ROW 4: DIRECTORY GRID (High-Density 2x2 Bento Cards)
-               ══════════════════════════════════════════════════════════ */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {filteredLaunches.map((item, idx) => {
-                const hasVoted = votedMap[item.id];
-                const rankNumber = idx + 1;
-
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => navigate(`/launch/${item.slug}`)}
-                    className="p-4 rounded-[20px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 hover:border-black/30 dark:hover:border-white/20 transition-all flex items-start justify-between gap-3 group cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-heading font-black text-base text-black dark:text-white group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors truncate">
-                          {item.company_name}
-                        </span>
-                        <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-neutral-100 dark:bg-[#1f2026] text-neutral-600 dark:text-neutral-300 rounded-md">
-                          {item.category}
-                        </span>
-                        {item.badgeVerified && (
-                          <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md flex items-center gap-1">
-                            <ShieldCheck size={10} /> Verified
+                      {/* Advanced Filters Dropdown Button */}
+                      <button
+                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-mono font-bold transition-all cursor-pointer ${
+                          showAdvancedFilters || activeFiltersCount > 0
+                            ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-xs'
+                            : 'bg-neutral-50 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-300 border-neutral-200/80 dark:border-white/5 hover:border-black/50'
+                        }`}
+                        title="Toggle Stage & Ecosystem Filters"
+                      >
+                        <SlidersHorizontal size={13} />
+                        <span className="hidden sm:inline">Filters</span>
+                        {activeFiltersCount > 0 && (
+                          <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center font-bold">
+                            {activeFiltersCount}
                           </span>
+                        )}
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                  {/* Row C: Collapsible Advanced Filters Drawer */}
+                  {showAdvancedFilters && (
+                    <div className="pt-3 border-t border-neutral-100 dark:border-white/5 space-y-3 font-mono text-xs">
+                      
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        {/* Stage Selector */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-neutral-400 font-bold uppercase text-[10px]">Stage:</span>
+                          {PRODUCT_STAGES.map((st) => (
+                            <button
+                              key={st}
+                              onClick={() => setSelectedStage(st)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                                selectedStage === st
+                                  ? 'bg-black text-white border-black dark:bg-white dark:text-black'
+                                  : 'bg-neutral-50 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-400 border-neutral-200/80 dark:border-white/5 hover:border-black/40'
+                              }`}
+                            >
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Reset button */}
+                        {activeFiltersCount > 0 && (
+                          <button
+                            onClick={resetAllFilters}
+                            className="text-red-500 hover:text-red-600 font-bold text-[11px] underline cursor-pointer shrink-0"
+                          >
+                            Reset filters
+                          </button>
                         )}
                       </div>
 
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mb-2 font-medium">
-                        {item.tagline}
-                      </p>
-
-                      <div className="text-[10px] font-mono text-neutral-400">
-                        By <strong className="text-black dark:text-white">{item.founder_name}</strong> • {item.maker_comment}
+                      {/* Ecosystem / Chain Selector */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-neutral-400 font-bold uppercase text-[10px]">Chain:</span>
+                        {ECOSYSTEM_CHAINS.map((chain) => (
+                          <button
+                            key={chain}
+                            onClick={() => setSelectedChain(chain)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                              selectedChain === chain
+                                ? 'bg-black text-white border-black dark:bg-white dark:text-black'
+                                : 'bg-neutral-50 dark:bg-[#18191e] text-neutral-600 dark:text-neutral-400 border-neutral-200/80 dark:border-white/5 hover:border-black/40'
+                            }`}
+                          >
+                            {chain}
+                          </button>
+                        ))}
                       </div>
-                    </div>
 
-                    <button
-                      onClick={(e) => handleVote(e, item.id)}
-                      className={`flex flex-col items-center justify-center min-w-[50px] py-2 px-2.5 rounded-xl border font-mono transition-all cursor-pointer shrink-0 ${
-                        hasVoted
-                          ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
-                          : 'bg-neutral-50 dark:bg-[#18191e] hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-neutral-200 dark:border-white/10 text-black dark:text-white'
-                      }`}
-                    >
-                      <ChevronUp size={14} className={hasVoted ? 'text-emerald-400' : 'text-current'} />
-                      <span className="text-xs font-black">{item.votes_count}</span>
-                    </button>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* ── IMAGE 1: HIGH-DENSITY RANKED LEADERBOARD LIST ── */}
+                <div className="space-y-3">
+                  {filteredLaunches.length === 0 ? (
+                    <div className="text-center py-12 bg-white dark:bg-[#121316] rounded-2xl border border-neutral-200/80 dark:border-white/5 p-6">
+                      <p className="text-neutral-500 dark:text-neutral-400 font-mono text-sm mb-3">
+                        No launches match your current filters.
+                      </p>
+                      <button
+                        onClick={resetAllFilters}
+                        className="px-4 py-2 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-xs font-bold"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  ) : (
+                    filteredLaunches.map((item, idx) => {
+                      const hasVoted = votedMap[item.id];
+                      const rankNumber = idx + 1;
+                      const isTop1 = rankNumber === 1;
+                      const isTop2 = rankNumber === 2;
+                      const isTop3 = rankNumber === 3;
+
+                      return (
+                        <React.Fragment key={item.id}>
+                          
+                          {/* ── IMAGE 1: INLINE SPONSORED BANNER (BETWEEN RANK #3 AND #4) ── */}
+                          {rankNumber === 4 && (
+                            <a
+                              href="https://t.me/akash_kumar107"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-2xl bg-gradient-to-r from-[#fff7f0] via-[#fef4ea] to-[#fffaf5] dark:from-[#1e1915] dark:via-[#261f1a] dark:to-[#1a1714] border border-[#f5d7b5] dark:border-amber-500/20 p-4 sm:p-5 flex items-center justify-between gap-4 transition-all hover:border-[#ea580c] hover:shadow-md cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                {/* SPONSORED vertical label */}
+                                <span className="font-mono text-[9px] font-black uppercase tracking-[2px] text-amber-700/80 dark:text-amber-400 [writing-mode:vertical-lr] rotate-180 hidden sm:block border-r border-amber-300/40 dark:border-amber-500/20 pr-2 select-none">
+                                  SPONSORED
+                                </span>
+
+                                <div className="min-w-0">
+                                  <div className="sm:hidden mb-1">
+                                    <span className="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+                                      SPONSORED
+                                    </span>
+                                  </div>
+                                  <h3 className="font-heading font-black text-sm sm:text-base text-black dark:text-white leading-tight mb-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                                    Launch once. Rank on Google with AI SEO on autopilot.
+                                  </h3>
+                                  <p className="text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+                                    — LAUNCHRANKED <span className="hidden sm:inline">• Book sponsor spot → 4,800+ founders &amp; angels</span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#ff6b4a] to-[#ff3b20] text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0 group-hover:scale-105 transition-transform">
+                                <TrendingUp size={24} strokeWidth={2.5} />
+                              </div>
+                            </a>
+                          )}
+
+                          {/* ── IMAGE 1: RANKED STARTUP ROW ── */}
+                          <div
+                            onClick={() => navigate(`/launch/${item.slug}`)}
+                            className="rounded-2xl bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 p-3.5 sm:p-4 flex items-center justify-between gap-3 sm:gap-4 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.02)] group cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                              
+                              {/* Rank Badge */}
+                              <div className="shrink-0 w-7 sm:w-8 flex items-center justify-center">
+                                {isTop1 ? (
+                                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 flex items-center justify-center font-mono font-black text-xs" title="#1 Weekly Leader">
+                                    👑 1
+                                  </span>
+                                ) : isTop2 ? (
+                                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200/80 text-slate-500 border border-slate-300 flex items-center justify-center font-mono font-black text-xs" title="#2 Runner Up">
+                                    🥈 2
+                                  </span>
+                                ) : isTop3 ? (
+                                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-600/15 text-amber-600 border border-amber-600/30 flex items-center justify-center font-mono font-black text-xs" title="#3 Finalist">
+                                    🥉 3
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-xs font-bold text-neutral-400">
+                                    #{rankNumber}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* App Logo Avatar */}
+                              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${item.icon_bg || 'bg-neutral-100 dark:bg-[#1c1d22] text-black dark:text-white'} border border-neutral-200/80 dark:border-white/5 overflow-hidden shrink-0 flex items-center justify-center font-heading font-black text-base shadow-2xs`}>
+                                {item.logo_url && !item.logo_url.includes('unsplash') ? (
+                                  <img src={item.logo_url} alt={item.company_name} className="w-full h-full object-cover" />
+                                ) : item.icon_symbol ? (
+                                  <span className="text-lg font-black">{item.icon_symbol}</span>
+                                ) : (
+                                  <span>{item.company_name.slice(0, 2).toUpperCase()}</span>
+                                )}
+                              </div>
+
+                              {/* Product Information */}
+                              <div className="min-w-0 flex-1">
+                                
+                                {/* Title Line + Yellow Checkmark Badge */}
+                                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                  <span className="font-heading font-black text-sm sm:text-base text-black dark:text-white group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors truncate">
+                                    {item.company_name}
+                                  </span>
+                                  {item.badgeVerified && (
+                                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-400 text-black shrink-0" title="Verified Product">
+                                      <Check size={10} strokeWidth={3.5} />
+                                    </span>
+                                  )}
+                                  {item.product_stage && (
+                                    <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded-md bg-neutral-100 dark:bg-[#1e1f26] text-neutral-500 hidden sm:inline">
+                                      {item.product_stage}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* One-line Tagline */}
+                                <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-1 font-medium leading-relaxed mb-1.5">
+                                  {item.tagline}
+                                </p>
+
+                                {/* Meta Line: Stars, Comments, Tags */}
+                                <div className="flex items-center gap-2.5 text-[11px] font-mono text-neutral-400 flex-wrap">
+                                  {/* Star Rating */}
+                                  <span className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400">
+                                    <Star size={11} className="text-amber-400 fill-amber-400" />
+                                    <span>{item.rating ? item.rating.toFixed(1) : '5.0'}</span>
+                                    {item.review_count && item.review_count > 0 ? (
+                                      <>
+                                        <span>·</span>
+                                        <span>{item.review_count}</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-neutral-400">· Review</span>
+                                    )}
+                                  </span>
+
+                                  {/* Comments */}
+                                  <span className="flex items-center gap-1">
+                                    <MessageSquare size={11} />
+                                    <span>{item.comments_count || 0}</span>
+                                  </span>
+
+                                  {/* Tags */}
+                                  <span className="hidden sm:inline text-neutral-300 dark:text-neutral-700">|</span>
+                                  <span className="text-[10px] text-neutral-400 truncate max-w-[200px]">
+                                    {item.target_keywords?.slice(0, 3).join(', ') || item.category}
+                                  </span>
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                            {/* Upvote Button on Right */}
+                            <button
+                              onClick={(e) => handleVote(e, item.id)}
+                              className={`flex flex-col items-center justify-center min-w-[50px] sm:min-w-[54px] py-2 sm:py-2.5 px-3 rounded-2xl border font-mono transition-all cursor-pointer shrink-0 ${
+                                hasVoted
+                                  ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                                  : 'bg-white dark:bg-[#18191e] hover:bg-neutral-100 dark:hover:bg-neutral-800 border-neutral-200/90 dark:border-white/10 text-neutral-700 dark:text-neutral-200'
+                              }`}
+                            >
+                              <ChevronUp size={16} strokeWidth={2.5} className={hasVoted ? 'text-emerald-400' : 'text-current'} />
+                              <span className="text-xs sm:text-sm font-black">{item.votes_count}</span>
+                            </button>
+
+                          </div>
+
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </div>
+
+              </div>
+
+              {/* ── RIGHT COLUMN (4 cols): IMAGE 3 SIDEBAR WIDGETS ── */}
+              <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
+                
+                {/* ── IMAGE 3 TOP CARD: YOUR AD HERE ── */}
+                <div className="rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-5 text-center shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
+                  <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-[#1a1b20] border border-neutral-200 dark:border-white/10 flex items-center justify-center mx-auto mb-3 text-neutral-800 dark:text-neutral-200 shadow-2xs">
+                    <Megaphone size={20} />
                   </div>
-                );
-              })}
+                  <h3 className="font-heading font-black text-base text-black dark:text-white mb-1">
+                    Your ad here
+                  </h3>
+                  <p className="text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-4">
+                    From $29 per ISO week
+                  </p>
+                  <a
+                    href="https://t.me/akash_kumar107"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 w-full py-2.5 px-4 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all active:scale-95 shadow-xs"
+                  >
+                    <span>Book Sponsor Spot</span>
+                    <ArrowUpRight size={14} />
+                  </a>
+                </div>
+
+                {/* ── IMAGE 3 BOTTOM CARD: LAST WEEK'S BEST ── */}
+                <div className="rounded-[24px] bg-white dark:bg-[#121316] border border-[#e8e6df] dark:border-white/10 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:border-black/30 dark:hover:border-white/20">
+                  <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-neutral-100 dark:border-white/5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🏆</span>
+                      <h3 className="font-heading font-black text-sm text-black dark:text-white">
+                        Last week's best
+                      </h3>
+                    </div>
+                    <a
+                      href="#directory-board"
+                      className="text-neutral-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer text-sm"
+                    >
+                      →
+                    </a>
+                  </div>
+
+                  <div className="space-y-3.5">
+                    {LAST_WEEKS_BEST.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-3 group cursor-pointer">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={`w-10 h-10 rounded-xl ${item.bg} border border-neutral-200/80 dark:border-white/5 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs`}>
+                            {item.icon}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-heading font-black text-xs text-black dark:text-white group-hover:text-[#4f46e5] dark:group-hover:text-[#38bdf8] transition-colors truncate">
+                                {item.name}
+                              </span>
+                              <span className="text-[11px]">{item.medal}</span>
+                            </div>
+                            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                              {item.tagline}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 font-mono text-xs font-bold text-neutral-500 dark:text-neutral-400 shrink-0">
+                          <Flame size={13} className="text-orange-500 fill-orange-500" />
+                          <span>{item.votes}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── COHORT PRIZE & TELEMETRY QUICK CARD ── */}
+                <div className="rounded-[24px] bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/10 p-5 shadow-xs space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-200/80 dark:border-white/5">
+                    <span className="font-bold text-neutral-500">Weekly Voting Prize</span>
+                    <span className="text-emerald-500 font-black">Live</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500">#1 Winner:</span>
+                      <span className="font-black text-black dark:text-white">3 VC Partner Meetings</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500">SEO Value:</span>
+                      <span className="font-black text-black dark:text-white">100% Dofollow Backlink</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-500">Fast-Pass SLA:</span>
+                      <span className="text-[#0070F3] font-black">Under 24 Hours</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleProtectedAction('/dashboard/launch/submit')}
+                    className="w-full mt-2 py-2.5 rounded-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 font-extrabold text-xs transition-all active:scale-95 cursor-pointer block text-center"
+                  >
+                    Submit Your Launch (+50 Credits)
+                  </button>
+                </div>
+
+              </div>
+
             </div>
 
             {/* ══════════════════════════════════════════════════════════
-                5. ROW 5: DUAL BENTO - SOURCE & EARN (Image 7) + FREE CREDITS
+                3. ROW 5: DUAL BENTO - SOURCE & EARN + FREE CREDITS
                ══════════════════════════════════════════════════════════ */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               
@@ -692,7 +1333,7 @@ export default function LaunchDirectory() {
                       <div key={i} className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#18191e] border border-neutral-200/80 dark:border-white/5 flex items-center justify-between gap-3 text-xs">
                         <div className="min-w-0 flex-1">
                           <div className="font-heading font-black text-xs text-black dark:text-white truncate">{c.company}</div>
-                          <div className="text-[10px] font-mono text-neutral-400 truncate ">{c.desc}</div>
+                          <div className="text-[10px] font-mono text-neutral-400 truncate">{c.desc}</div>
                         </div>
                         <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[9px] font-bold text-center">
                           {c.value}
@@ -713,7 +1354,7 @@ export default function LaunchDirectory() {
             </div>
 
             {/* ══════════════════════════════════════════════════════════
-                6. ROW 6: TRIPLE BENTO (Market + Hire + SEO Dofollow Boost)
+                4. ROW 6: TRIPLE BENTO (Market + Hire + SEO Dofollow Boost)
                ══════════════════════════════════════════════════════════ */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               
