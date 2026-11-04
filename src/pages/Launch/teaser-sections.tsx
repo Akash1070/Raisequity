@@ -302,66 +302,42 @@ export function HeroShowcase({ launch, screenshots, selectedIndex, onSelectScree
   visitUrl: string;
   cleanDomain: string;
 }) {
+  if (!screenshots || screenshots.length === 0) {
+    return null;
+  }
+
   return (
     <div className="rounded-3xl bg-white dark:bg-[#0A0A0A] border border-slate-200/80 dark:border-[#202020] overflow-hidden shadow-xs">
-      {screenshots.length > 0 ? (
-        <div className="space-y-4 p-4 sm:p-6">
-          <div className="w-full aspect-[16/10] bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-[#262626] flex items-center justify-center shadow-inner">
-            <img
-              src={screenshots[selectedIndex]}
-              alt={`${launch.company_name} screenshot ${selectedIndex + 1}`}
-              className="w-full h-full object-contain"
-            />
-          </div>
-          {screenshots.length > 1 && (
-            <div className="flex items-center gap-3 overflow-x-auto pb-1">
-              {screenshots.map((shot, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => onSelectScreenshot(idx)}
-                  className={`w-24 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
-                    selectedIndex === idx
-                      ? 'border-[#0070F3] shadow-xs'
-                      : 'border-transparent opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  <img src={shot} alt="thumbnail" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="text-center text-xs font-mono text-slate-500 dark:text-slate-400">
-            {launch.company_name} — {launch.tagline}
-          </p>
+      <div className="space-y-4 p-4 sm:p-6">
+        <div className="w-full aspect-[16/10] bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-[#262626] flex items-center justify-center shadow-inner">
+          <img
+            src={screenshots[selectedIndex]}
+            alt={`${launch.company_name} screenshot ${selectedIndex + 1}`}
+            className="w-full h-full object-contain"
+          />
         </div>
-      ) : (
-        /* Sleek Enterprise Visual Showcase Banner if no screenshots uploaded */
-        <div className="p-8 sm:p-12 bg-gradient-to-br from-slate-900 via-[#0B0D14] to-black text-white relative overflow-hidden">
-          <div className="relative z-10 max-w-xl space-y-4">
-            <span className="px-3 py-1 rounded-full bg-white/10 font-mono text-[10px] font-bold text-slate-300 border border-white/10">
-              OFFICIAL PRODUCT SHOWCASE
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-heading font-black tracking-tight leading-snug">
-              {launch.company_name}
-            </h2>
-            <p className="text-sm text-slate-300 font-sans leading-relaxed">
-              {launch.description || launch.tagline}
-            </p>
-            <div className="pt-2 flex items-center gap-3">
-              <a
-                href={visitUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-xl bg-white text-black font-mono font-bold text-xs hover:bg-slate-200 transition-all flex items-center gap-2 shadow-xs"
+        {screenshots.length > 1 && (
+          <div className="flex items-center gap-3 overflow-x-auto pb-1">
+            {screenshots.map((shot, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onSelectScreenshot(idx)}
+                className={`w-24 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                  selectedIndex === idx
+                    ? 'border-[#0070F3] shadow-xs'
+                    : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
               >
-                <span>Open {cleanDomain}</span>
-                <ExternalLink size={13} />
-              </a>
-            </div>
+                <img src={shot} alt="thumbnail" className="w-full h-full object-cover" />
+              </button>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+        <p className="text-center text-xs font-mono text-slate-500 dark:text-slate-400">
+          {launch.company_name} — {launch.tagline}
+        </p>
+      </div>
     </div>
   );
 }
