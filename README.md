@@ -259,6 +259,52 @@ All client read/write interactions are guarded by institutional-grade Firestore 
 
 ---
 
+## 🚀 Launch Readiness & Rollback Plan
+
+**Rollback (launch day):**
+1. Vercel → Deployments → select the previous successful deployment → **Promote to Production** (instant, no rebuild).
+2. If the failure is data-related (bad seed, broken account), use Firebase Console → Firestore → **Restore from backup** (backups auto-run daily; keep the previous day's restore available for 30 days).
+3. Dodo Payments: pause the product (Products → Archive) to stop new charges; existing subscriptions continue safely.
+4. If AI provider misbehaves: remove `GEMINI_API_KEY` from Vercel env → redeploy → all AI calls fail over to the deterministic matching engine (no downtime).
+
+**Monitored pre-launch checklist (20):**
+1. ✅ API keys hidden — no secrets in frontend or git (`.env` ignored; only public Firebase web config ships).
+2. ⚠️ **Rotate/restrict the Firebase web API key** (`AIzaSyDA2sTTcOvZFvlA0h3Tf1echp84saV82iQ` was committed in the first release). It is public-by-design, but on an open-source repo you must add **HTTP referrer restrictions** in Google Cloud Console (allow only `https://raisequity.com/*` and localhost).
+3. ✅ Rate limiting on all mutating `/api/*` (per-IP in-memory 10–20/min) — add Cloudflare WAF rate rules for multi-instance safety.
+4. ✅ Auth enforced server-side on payment/email/esign/AI endpoints (Firebase ID token); route guards are UX-only, Firestore rules are the real gate.
+5. ✅ Firestore rules locked: users see only their own data, admins only; catch-all deny; private investor contacts subcollection-gated.
+6. ✅ Server input validation: payload size caps + field truncation on all endpoints.
+7. ⚠️ AI spend cap — set a hard monthly cap in Google AI Studio (manual step; task enum + rate limits already bound usage).
+8. ✅ Errors never leak stack traces (generic JSON errors; client console-only).
+9. ⚠️ Error tracking — none shipped; add Sentry/Cloudflare analytics post-launch or before scale.
+10. ⚠️ Database backups — Firebase daily automatic backups; **test a restore once** in a scratch project before launch.
+11. ✅ 404/500 — SPA catch-all returns home; API 404/500 are styled text; Terms/Privacy HTML pages now exist at `/terms`, `/privacy`.
+12. ✅ Works on cheap Android — single 110 KB gzip JS bundle; server throttling n/a (static hosting).
+13. ✅ Sub-3s loads — Vite static build, edge-cached assets, s-maxage caching on API responses.
+14. ✅ Meta tags + OG image — per-page titles/descriptions/canonicals, `og:image` `/logo.png`, `ai-summary`, JSON-LD Organization/WebSite/Article/Breadcrumb.
+15. ✅ Privacy Policy + Terms — HTML pages + markdown alternates (`/privacy.md`, `/terms.md`).
+16. ⚠️ Analytics — none; install GA4/Plausible with cookie consent before marketing scale.
+17. ✅ Signup/payment/reset — unit-tested contracts; verify live Dodo test-mode payment + reset email once post-deploy.
+18. ⚠️ Email deliverability — verify `RESEND_FROM_EMAIL` domain SPF/DKIM records in Resend (needed to avoid spam).
+19. ✅ Contact — footer mailto + Telegram links; support email `support@raisequity.com`.
+20. ✅ Rollback plan above.
+
+## 🔏 E-Sign Workflow (OpenSign optional)
+
+- **If `OPENSIGN_API_KEY` is configured**: `/api/opensign-agreement` generates the document via OpenSign; both parties sign on OpenSign; the app records the document ref.
+- **If not configured (current default)**: the app uses the **Raisequity in-app sealed agreement flow** (`src/lib/sealedAgreement.ts`):
+  1. Investor submits SAFE terms via the 1-Click SAFE modal.
+  2. System builds the canonical agreement text, records the investor's typed-name consent + timestamp.
+  3. Founder is notified (in-app + email) and reviews the full terms in Messages (`SealedSafeInbox`).
+  4. Founder signs or declines; on signature the document is **sealed with a SHA-256 digest** and emailed to both parties.
+- Payment expectations: the in-app flow records the investor's capital commitment (portfolio + safes) pending signature completion; it is an auditable consent record, not a licensed certification service.
+
+## 🔒 Security Notes for Open-Source Repo
+
+- The Firebase web API key is public by design but **must be referrer-restricted** (see checklist item 2).
+- Admin access is protected by `VITE_ADMIN_EMAIL` + Firestore role; change the admin email env to a private address.
+- All server keys (`DODO_*`, `RESEND_*`, `GEMINI_*`, `OPENSIGN_*`, `FIREBASE_SERVICE_ACCOUNT_JSON`) live only in Vercel env — never in the repo.
+
 ## 📄 License
 
 Proprietary © 2026 Raisequity Technologies Inc. All rights reserved. Built with precision for the next generation of institutional builders and capital allocators.

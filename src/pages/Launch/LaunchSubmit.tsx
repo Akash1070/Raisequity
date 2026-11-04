@@ -40,6 +40,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePageMeta } from '../../hooks/usePageMeta';
 import { scrapeWebsiteMetadata, verifyBacklink } from '../../lib/metadataScraper';
 import { createLaunch } from '../../lib/launches';
 import { spendCredits, getCreditBalance } from '../../lib/credits';
@@ -122,6 +123,14 @@ function getUpcomingWeeks(count = 8) {
 export default function LaunchSubmit() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+
+  usePageMeta({
+    title: "Submit Your Launch - Raisequity Directory",
+    description: "Get your Web3 or SaaS product in front of 6,000+ readers, check-writers, and ecosystem scouts. Standard launch free, Premium $11, Spotlight $39.",
+    aiSummary: "Raisequity's launch submission page for Web3/SaaS products: free standard tier with backlink verification, paid Premium and Spotlight tiers, and weekly cohort scheduling.",
+    canonicalPath: "/launch/submit",
+    mdAlternate: "/launch/submit.md",
+  });
 
   const uid = user?.uid || (user as any)?.id;
 

@@ -25,6 +25,7 @@ const BlogIndex = lazy(() => import("./pages/Blog/BlogIndex"));
 const BlogDetail = lazy(() => import("./pages/Blog/BlogDetail"));
 const ExpertProfile = lazy(() => import("./pages/ExpertProfile"));
 const ExpertCategory = lazy(() => import("./pages/ExpertCategory"));
+const LegalDoc = lazy(() => import("./pages/LegalDoc"));
 
 // Lazy-Loaded Dashboard & Onboarding Pages
 const Onboarding = lazy(() => import("./pages/Dashboard/Onboarding"));
@@ -105,6 +106,8 @@ export default function App() {
             <Route path="/blog/:slug" element={<BlogDetail />} />
             <Route path="/expert/:id" element={<ExpertProfile />} />
             <Route path="/experts/category/:categoryId" element={<ExpertCategory />} />
+            <Route path="/terms" element={<LegalDoc doc="terms" />} />
+            <Route path="/privacy" element={<LegalDoc doc="privacy" />} />
             
             {/* Subpages redirects */}
             <Route path="/scouts" element={<Navigate to="/founders" replace />} />

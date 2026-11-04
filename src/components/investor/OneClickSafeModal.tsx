@@ -8,6 +8,7 @@ import {
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { issueStandardSafeAgreement, SafeAgreementPayload } from '../../lib/opensign';
+import { investorSignsSealedSafe } from '../../lib/sealedAgreement';
 import { getOrCreateConversation, sendDirectMessage } from '../../lib/messages';
 
 interface OneClickSafeModalProps {
@@ -37,6 +38,8 @@ export default function OneClickSafeModal({
   const [executedDocUrl, setExecutedDocUrl] = useState<string | null>(null);
   const [createdConvId, setCreatedConvId] = useState<string | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
+  const [sealedFlow, setSealedFlow] = useState<{ id: string } | null>(null);
+  const [signingMode, setSigningMode] = useState<'opensign' | 'inapp' | null>(null);
 
   if (!isOpen || !company) return null;
 
@@ -62,11 +65,42 @@ export default function OneClickSafeModal({
         instrumentType: instrument,
       };
 
-      // Fail-closed: agreement must be generated first. If the service is
-      // unavailable we surface the error and record nothing.
-      const result = await issueStandardSafeAgreement(payload);
-      const docSigningUrl = result.signingUrl || `https://app.opensignlabs.com/sign/${result.documentId}`;
-      setExecutedDocUrl(docSigningUrl);
+      // Try the OpenSign e-sign proxy first. If it is unavailable (no
+      // OPENSIGN_API_KEY configured), we fall back to the Raisequity in-app
+      // sealed agreement flow — both parties sign on-platform, the document is
+      // sealed with a SHA-256 digest and emailed to both.
+      let result: Awaited<ReturnType<typeof issueStandardSafeAgreement>> | null = null;
+      try {
+        result = await issueStandardSafeAgreement(payload);
+        setSigningMode('opensign');
+      } catch (openSignErr) {
+        console.warn('[OneClickSafe] OpenSign unavailable, using in-app sealed flow:', openSignErr);
+        const sealed = await investorSignsSealedSafe({
+          companyId: company.id,
+          companyName: company.name,
+          founderId,
+          founderName,
+          founderEmail,
+          investorId: investor.id,
+          investorName: investor.name,
+          investorEmail: investor.email,
+          checkAmountUsd: checkAmount,
+          valuationCapUsd: valCap,
+          discountPct: discountPct,
+          instrumentType: instrument,
+        });
+        if (!sealed.success || !sealed.agreementId) {
+          throw new Error(sealed.error || 'In-app signature recording failed.');
+        }
+        setSigningMode('inapp');
+        setSealedFlow({ id: sealed.agreementId });
+      }
+
+      const docSigningUrl = result?.signingUrl
+        ? (result.signingUrl || `https://app.opensignlabs.com/sign/${result.documentId}`)
+        : null;
+      const agreementDocId = result?.documentId || (sealedFlow?.id || '');
+      if (docSigningUrl) setExecutedDocUrl(docSigningUrl);
 
       const now = new Date().toISOString();
 
@@ -86,24 +120,28 @@ export default function OneClickSafeModal({
         instrument_type: instrument,
         discount_pct: discountPct,
         status: 'Active',
-        document_url: docSigningUrl,
-        document_id: result.documentId,
+        document_url: docSigningUrl || undefined,
+        document_id: agreementDocId || undefined,
+        signing_mode: signingMode || undefined,
         created_at: now,
       }).catch((err) => console.warn('[OneClickSafe] investor_portfolio write err:', err));
 
-      // 2. Record standardized SAFE agreement
-      await addDoc(collection(db, 'safes'), {
-        investor_id: investor.id,
-        founder_id: founderId,
-        company_id: company.id,
-        company_name: company.name,
-        amount: checkAmount,
-        val_cap: valCap,
-        instrument,
-        status: 'pending_signatures',
-        doc_id: result.documentId,
-        created_at: now,
-      }).catch((err) => console.warn('[OneClickSafe] safes write err:', err));
+      // 2. Record standardized SAFE agreement (in-app flow already wrote its
+      //    own safes record — skip the duplicate write in that case).
+      if (signingMode !== 'inapp') {
+        await addDoc(collection(db, 'safes'), {
+          investor_id: investor.id,
+          founder_id: founderId,
+          company_id: company.id,
+          company_name: company.name,
+          amount: checkAmount,
+          val_cap: valCap,
+          instrument,
+          status: 'pending_signatures',
+          doc_id: agreementDocId,
+          created_at: now,
+        }).catch((err) => console.warn('[OneClickSafe] safes write err:', err));
+      }
 
       // 3. Deliver real-time notification to the Founder
       await addDoc(collection(db, 'notifications'), {
@@ -152,13 +190,17 @@ export default function OneClickSafeModal({
           },
           recipientId: founderId,
           recipientRole: 'founder',
-          content: `📜 Official SAFE Issued: I have committed $${checkAmount.toLocaleString()} via ${instrument} ($${(valCap / 1000000).toFixed(1)}M Valuation Cap). The agreement is pre-vetted. Let's align on countersignature and wire settlement.`,
+          content: signingMode === 'inapp'
+            ? `📜 SAFE Issued via Raisequity in-app signing: I have committed $${checkAmount.toLocaleString()} via ${instrument} ($${(valCap / 1000000).toFixed(1)}M Valuation Cap). Please review and sign in your dashboard to seal the agreement.`
+            : `📜 Official SAFE Issued: I have committed $${checkAmount.toLocaleString()} via ${instrument} ($${(valCap / 1000000).toFixed(1)}M Valuation Cap). The agreement is pre-vetted. Let's align on countersignature and wire settlement.`,
           messageType: 'safe_offer',
           metadata: {
             checkAmount,
             valCap,
             instrument,
-            documentUrl: docSigningUrl,
+            documentUrl: docSigningUrl || undefined,
+            signingMode: signingMode || undefined,
+            agreementId: agreementDocId || undefined,
           },
         });
       } catch (chatErr) {
@@ -238,6 +280,36 @@ export default function OneClickSafeModal({
                       onClose();
                       navigate(createdConvId 
                         ? `/investor-dashboard/messages?convId=${createdConvId}` 
+                        : `/investor-dashboard/messages?to=${founderId}&name=${encodeURIComponent(founderName)}&company=${encodeURIComponent(company.name)}`
+                      );
+                    }}
+                    className="px-6 py-3 bg-[#0070F3] hover:bg-[#0060DF] text-white rounded-xl font-black flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <MessageSquare size={14} />
+                    <span>Open Chat with Founder</span>
+                  </button>
+                </div>
+              </div>
+            ) : sealedFlow ? (
+              <div className="text-center py-6 space-y-4">
+                <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto text-sky-600 shadow-xs">
+                  <Scale size={36} />
+                </div>
+                <div>
+                  <h4 className="text-xl font-black text-slate-900">In-App Sealed Agreement Initiated</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
+                    The {instrument} was recorded with your typed consent and timestamp (SHA-256 sealed once the founder signs). We notified <strong>{founderName}</strong> to review and countersign — you will both receive the sealed copy by email.
+                  </p>
+                </div>
+                <div className="bg-sky-50 border border-sky-200/80 rounded-2xl p-4 text-sky-900 font-bold text-xs max-w-md mx-auto">
+                  Agreement Ref: {sealedFlow.id}
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
+                  <button
+                    onClick={() => {
+                      onClose();
+                      navigate(createdConvId
+                        ? `/investor-dashboard/messages?convId=${createdConvId}`
                         : `/investor-dashboard/messages?to=${founderId}&name=${encodeURIComponent(founderName)}&company=${encodeURIComponent(company.name)}`
                       );
                     }}

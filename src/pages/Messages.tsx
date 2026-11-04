@@ -37,6 +37,7 @@ import type {
   DirectMessageType
 } from '../types/messages';
 import OneClickSafeModal from '../components/investor/OneClickSafeModal';
+import SealedSafeInbox from '../components/investor/SealedSafeInbox';
 
 export default function Messages() {
   const { user, profile } = useAuth();
@@ -263,6 +264,11 @@ export default function Messages() {
           <span>New Conversation</span>
         </button>
       </div>
+
+      {/* ── PENDING SEALED SAFE SIGNATURES (founder inbox) ── */}
+      {user?.uid && (profile?.role === 'founder' || founderProfile?.id) && (
+        <SealedSafeInbox founderId={user.uid} />
+      )}
 
       {/* ── MAIN 2-PANE CHAT CONTAINER ── */}
       <div className="flex-1 flex bg-white dark:bg-[#121316] rounded-[28px] border border-[#e8e6df] dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden min-h-0">
