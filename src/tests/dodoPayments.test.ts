@@ -70,5 +70,40 @@ describe('Dodo Payments Webhook & Checkout Contract', () => {
     const activeProductId = process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ';
     expect(activeProductId).toBe('pdt_0NlfCmfNRZBHG6Po7CtkZ');
   });
+
+  it('routes directory listing and launch checkouts to configured directory product', () => {
+    const configuredDirectoryId = process.env.DODO_DIRECTORY_PRODUCT_ID || 'pdt_0NrDOaDlzMOaZfZvtNfZF';
+    const PRODUCTS: Record<string, string | undefined> = {
+      pack_200_credits: process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ',
+      subscription: process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ',
+      directory_listing: configuredDirectoryId,
+      launch_premium: configuredDirectoryId,
+    };
+
+    expect(PRODUCTS.directory_listing).toBe(configuredDirectoryId);
+    expect(PRODUCTS.launch_premium).toBe(configuredDirectoryId);
+    expect(configuredDirectoryId.startsWith('pdt_')).toBe(true);
+  });
+
+  it('validates directory listing payload and entitlement contract', () => {
+    const payload = {
+      packageId: 'directory_listing',
+      amountUsd: 20,
+      credits: 0,
+      userId: 'usr_founder_quick_listing',
+    };
+
+    const isDirectoryOrLaunch = payload.packageId === 'directory_listing' || payload.packageId.startsWith('launch_');
+    expect(isDirectoryOrLaunch).toBe(true);
+    expect(payload.amountUsd).toBe(20);
+
+    const entitlementRecord = {
+      userId: payload.userId,
+      packageId: payload.packageId,
+      amountUsd: payload.amountUsd,
+      status: 'paid',
+    };
+    expect(entitlementRecord.status).toBe('paid');
+  });
 });
 

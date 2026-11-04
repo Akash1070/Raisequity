@@ -150,12 +150,13 @@ async function activateSubscription(admin: any, userId: string, paymentId: strin
 
     // Paid directory listing: record the entitlement so the team can list
     // the founder's product in the Substack + directory audience.
-    if (metadata.packageId === 'directory_listing') {
+    const isDirectoryOrLaunch = metadata.packageId === 'directory_listing' || String(metadata.packageId || '').startsWith('launch_');
+    if (isDirectoryOrLaunch) {
       const dirRef = db.doc(`directory_listings/${userId}`);
       tx.set(dirRef, {
         userId,
         paymentId,
-        packageId: 'directory_listing',
+        packageId: metadata.packageId || 'directory_listing',
         amountUsd: Number(metadata.amountUsd) || 20,
         paidAt: new Date().toISOString(),
         status: 'paid',
@@ -166,7 +167,7 @@ async function activateSubscription(admin: any, userId: string, paymentId: strin
 
     tx.set(db.doc(`transactions/${paymentId}`), {
       userId,
-      type: 'subscription',
+      type: isDirectoryOrLaunch ? 'directory_listing' : 'subscription',
       amount: Number(metadata?.amountUsd) || 20,
       currency: 'USD',
       platform_fee_pct: 0,

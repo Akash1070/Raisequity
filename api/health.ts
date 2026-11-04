@@ -5,6 +5,7 @@ export default function handler(_req: any, res: any) {
     services: {
       email: Boolean(process.env.RESEND_API_KEY),
       payments: Boolean(process.env.DODO_PAYMENTS_API_KEY && (process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ')),
+      directoryProduct: Boolean(process.env.DODO_DIRECTORY_PRODUCT_ID || process.env.DODO_SUBSCRIPTION_PRODUCT_ID),
       esign: Boolean(process.env.OPENSIGN_API_KEY),
       ai: Boolean(process.env.GEMINI_API_KEY),
       webhookActivation: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON && process.env.DODO_WEBHOOK_SECRET),
