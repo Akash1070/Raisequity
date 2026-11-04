@@ -434,7 +434,7 @@ export default function LaunchSubmit() {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             packageId: `launch_${formData.launch_tier}`,
-            amountUsd: formData.launch_tier === 'spotlight' ? 39 : 11,
+            amountUsd: formData.launch_tier === 'spotlight' ? 39 : 20,
             credits: requiredCredits,
           }),
         });
@@ -1131,7 +1131,7 @@ export default function LaunchSubmit() {
                   </div>
                   <div className="flex items-baseline gap-1.5 my-2">
                     <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono">
-                      {paymentMethod === 'credits' ? '110 Credits' : '$11'}
+                      {paymentMethod === 'credits' ? '200 Credits' : '$20'}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">once, per product</span>
                   </div>
@@ -1473,7 +1473,7 @@ export default function LaunchSubmit() {
                   }}
                   className="text-emerald-600 dark:text-emerald-400 font-extrabold underline cursor-pointer ml-1"
                 >
-                  Upgrade to Premium ($11) →
+                  Upgrade to Premium ($20) →
                 </button>
               </div>
 

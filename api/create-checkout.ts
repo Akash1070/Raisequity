@@ -14,12 +14,14 @@ export default async function handler(req: any, res: any) {
 
   // Product selection: packageId determines which Dodo product is charged.
   const packageId = str(body.packageId, 64) || 'pack_200_credits';
+  const directoryProductId = process.env.DODO_DIRECTORY_PRODUCT_ID || process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ';
   const PRODUCTS: Record<string, string | undefined> = {
     pack_200_credits: process.env.DODO_SUBSCRIPTION_PRODUCT_ID,
     subscription: process.env.DODO_SUBSCRIPTION_PRODUCT_ID,
-    directory_listing: process.env.DODO_DIRECTORY_PRODUCT_ID,
+    directory_listing: directoryProductId,
+    launch_premium: directoryProductId,
   };
-  const productId = PRODUCTS[packageId] || process.env.DODO_SUBSCRIPTION_PRODUCT_ID;
+  const productId = PRODUCTS[packageId] || process.env.DODO_SUBSCRIPTION_PRODUCT_ID || 'pdt_0NlfCmfNRZBHG6Po7CtkZ';
   if (!key) return res.status(503).json({ error: 'payments_not_configured' });
   if (!productId) {
     return res.status(503).json({ error: `product_not_configured:${packageId}` });
