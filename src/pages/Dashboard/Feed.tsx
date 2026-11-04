@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Loader2, Coins, Users, Gift, MessageSquare, AlertCircle, 
@@ -23,7 +23,7 @@ import {
   FeedPost 
 } from "../../lib/posts";
 import { getMonthlyIntroRequestUsage, MonthlyIntroQuotaStatus } from "../../lib/quota";
-import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, orderBy, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { spendCredits } from "../../lib/credits";
 
@@ -202,7 +202,21 @@ export default function Feed() {
     }
   }, [user?.uid]);
 
-  const userCredits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
+  const [liveCredits, setLiveCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleCreditUpdate = (e: any) => {
+      if (e?.detail?.newBalance !== undefined) {
+        setLiveCredits(e.detail.newBalance);
+      }
+    };
+    window.addEventListener('rq_credits_updated', handleCreditUpdate);
+    return () => window.removeEventListener('rq_credits_updated', handleCreditUpdate);
+  }, []);
+
+  const userCredits = liveCredits ?? (profile?.credit_balance !== undefined && profile?.credit_balance !== null
+    ? profile.credit_balance
+    : (founderProfile?.credits ?? 50));
   const [introError, setIntroError] = useState<string | null>(null);
 
   const handleRequestIntro = async (opp: OpportunityItem) => {
@@ -228,6 +242,9 @@ export default function Feed() {
         setIntroError(spend.error || "Credit deduction failed.");
         return;
       }
+
+      setLiveCredits(spend.newBalance);
+      await refetchProfile?.();
 
       // 2. Persist a real intro request routed through the admin bridge so a
       //    human can facilitate the connection (no fake local toast).
@@ -257,7 +274,53 @@ export default function Feed() {
     }
   };
 
-  const filteredOpportunities = CURATED_OPPORTUNITIES.filter((opp) => {
+  // Load crowdsourced investor connections declared by verified founders
+  const [declaredOpportunities, setDeclaredOpportunities] = useState<OpportunityItem[]>([]);
+
+  useEffect(() => {
+    getDocs(query(collection(db, "investor_connections"), orderBy("createdAt", "desc"), limit(25)))
+      .then((snap) => {
+        const conns: OpportunityItem[] = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: `conn_${d.id}`,
+            name: data.investorFirm || data.investorName,
+            firm: data.investorFirm || "Angel Portfolio",
+            type: "VC Fund",
+            sectors: (data.sectors && data.sectors.length > 0) ? data.sectors : ["AI & Agents", "Web3 Infra", "SaaS"],
+            stage: Array.isArray(data.stage) ? data.stage.join(" / ") : (data.stage || "Pre-Seed / Seed"),
+            checkSize: data.ticketSize || "$100k - $500k",
+            matchScore: 98,
+            matchLevel: "TIER-1 CONVICTION",
+            location: "San Francisco & Global",
+            partnerName: data.investorName,
+            partnerRole: "General Partner",
+            responseSla: "< 48 Hours",
+            thesisSummary: `Focuses on early-stage founders. Direct warm introduction available via verified founder network (${data.founderName || 'Founder'}).`,
+            warmIntroAvailable: true,
+            warmIntroFounder: data.founderName || "Akash Kumar Jha",
+            verified: true,
+          };
+        });
+        setDeclaredOpportunities(conns);
+      })
+      .catch((err) => console.warn("[Feed] Error loading declared connections:", err));
+  }, []);
+
+  const allOpportunities = useMemo(() => {
+    const seen = new Set<string>();
+    const list: OpportunityItem[] = [];
+    for (const opp of [...declaredOpportunities, ...CURATED_OPPORTUNITIES]) {
+      const key = `${opp.partnerName.toLowerCase()}_${opp.firm.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(opp);
+      }
+    }
+    return list;
+  }, [declaredOpportunities]);
+
+  const filteredOpportunities = allOpportunities.filter((opp) => {
     if (activeCategoryPill === "vcs" && opp.type !== "VC Fund") return false;
     if (activeCategoryPill === "matches" && !opp.warmIntroAvailable) return false;
     if (activeCategoryPill === "grants" && opp.type !== "Ecosystem Grant") return false;

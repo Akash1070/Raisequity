@@ -72,6 +72,23 @@ export default function Investors() {
   const [introConnection, setIntroConnection] = useState<InvestorConnection | null>(null);
   const [introSending, setIntroSending] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [liveCredits, setLiveCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleCreditUpdate = (e: any) => {
+      if (e?.detail?.newBalance !== undefined) {
+        setLiveCredits(e.detail.newBalance);
+      }
+    };
+    window.addEventListener('rq_credits_updated', handleCreditUpdate);
+    return () => window.removeEventListener('rq_credits_updated', handleCreditUpdate);
+  }, []);
+
+  const currentCredits = liveCredits ?? (profile?.credit_balance !== undefined && profile?.credit_balance !== null
+    ? profile.credit_balance
+    : (founderProfile?.credits !== undefined && founderProfile?.credits !== null
+    ? founderProfile.credits
+    : 50));
 
   // Fetch Web3 Investor Dataset & User Unlocked IDs
   const loadDirectory = async () => {
@@ -134,7 +151,6 @@ export default function Investors() {
       return;
     }
 
-    const currentCredits = founderProfile?.credits ?? profile?.credit_balance ?? 0;
     if (currentCredits < 1) {
       setCreditModalOpen(true);
       return;
@@ -145,6 +161,9 @@ export default function Investors() {
 
     const res = await unlockInvestorContact(user.uid, investorId, currentCredits);
     if (res.success) {
+      if (res.remainingCredits !== undefined) {
+        setLiveCredits(res.remainingCredits);
+      }
       setUnlockedIds((prev) => [...prev, investorId]);
       if (res.unlockedData) {
         setDirectoryInvestors((prev) =>
@@ -228,6 +247,52 @@ export default function Investors() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Merge crowdsourced/founder declared connections into the directory view
+  const allInvestors = useMemo(() => {
+    const convertedConns: Web3Investor[] = declaredConnections.map((c) => ({
+      id: `conn_${c.id}`,
+      name: c.investorName,
+      firm: c.investorFirm || "Angel Portfolio",
+      category: "ANGEL",
+      role: "Partner / Angel",
+      sectors: (c.sectors && c.sectors.length > 0) ? (c.sectors as any) : ["AI", "Tech", "SaaS"],
+      stage: Array.isArray(c.stage) ? c.stage.join(" / ") : (c.stage || "Pre-Seed / Seed"),
+      check_size: c.ticketSize || "$50k - $250k",
+      location: "Global / Remote",
+      email: "f***@vc-fund.com",
+      telegram: "@t***_handle",
+      twitter: "",
+      linkedin: "",
+      website: "",
+      verified: true,
+      know_count: 1,
+      warm_intro_founder: c.founderName,
+      warm_intro_company: c.founderCompany,
+    }));
+
+    const seen = new Set<string>();
+    const combined: Web3Investor[] = [];
+
+    // Prioritize declared connections with warm intro at the top
+    for (const c of convertedConns) {
+      const key = `${c.name.toLowerCase()}_${c.firm.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(c);
+      }
+    }
+
+    for (const inv of directoryInvestors) {
+      const key = `${inv.name.toLowerCase()}_${inv.firm.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        combined.push(inv);
+      }
+    }
+
+    return combined;
+  }, [directoryInvestors, declaredConnections]);
+
   // Memoize ranking against founder's startup profile
   const { rankedDirectory, matchById } = useMemo(() => {
     const myStartup = {
@@ -239,7 +304,7 @@ export default function Investors() {
       traction: founderProfile?.traction_signal || undefined,
     };
     const ranked = rankInvestorsForStartup(
-      directoryInvestors.map((inv) => ({
+      allInvestors.map((inv) => ({
         ...inv,
         sectors: inv.sectors,
         stage: inv.stage,
@@ -247,12 +312,12 @@ export default function Investors() {
         location: inv.location
       })),
       myStartup,
-      { minScore: 0, limit: directoryInvestors.length || 1 }
+      { minScore: 0, limit: allInvestors.length || 1 }
     ) as (Web3Investor & { match: import("../../lib/matching").MatchResult })[];
 
     const map = new Map(ranked.map((r) => [r.id, r.match]));
     return { rankedDirectory: ranked, matchById: map };
-  }, [directoryInvestors, founderProfile]);
+  }, [allInvestors, founderProfile]);
 
   // Memoize filtering so dropdown toggles are instantaneous (<5ms)
   const filteredDirectory = useMemo(() => {
@@ -363,7 +428,7 @@ export default function Investors() {
               Investor Network &amp; Check-Writers Directory
             </h1>
             <span className="px-3 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 rounded-full text-xs font-black border border-amber-500/30 flex items-center gap-1.5 shadow-2xs">
-              <Sparkles size={14} className="text-amber-500" /> {founderProfile?.credits ?? profile?.credit_balance ?? 50} Credits Available
+              <Sparkles size={14} className="text-amber-500" /> {currentCredits} Credits Available
             </span>
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium text-xs md:text-sm">
@@ -761,6 +826,32 @@ export default function Investors() {
 
                     {/* Card Actions */}
                     <div className="space-y-2 pt-2">
+                      {inv.warm_intro_founder && (
+                        <button
+                          onClick={() => {
+                            const connMatch = declaredConnections.find(
+                              (c) => c.investorName.toLowerCase() === inv.name.toLowerCase()
+                            ) || {
+                              id: inv.id.replace('conn_', ''),
+                              founderId: 'network',
+                              founderName: inv.warm_intro_founder || 'Community Founder',
+                              founderCompany: (inv as any).warm_intro_company || 'Portfolio Co',
+                              investorName: inv.name,
+                              investorFirm: inv.firm,
+                              sectors: (inv.sectors || ['AI', 'Web3']) as any,
+                              stage: [inv.stage || 'Seed'],
+                              ticketSize: inv.check_size || '$100k',
+                              createdAt: new Date().toISOString()
+                            };
+                            setIntroConnection(connMatch);
+                          }}
+                          className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-[#00F5A0] border border-emerald-500/30 rounded-2xl text-xs font-mono font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                        >
+                          <Sparkles size={14} className="text-emerald-500" />
+                          <span>Request Warm Intro via {inv.warm_intro_founder}</span>
+                        </button>
+                      )}
+
                       {!isUnlocked ? (
                         <button
                           onClick={() => handleUnlockContact(inv.id)}

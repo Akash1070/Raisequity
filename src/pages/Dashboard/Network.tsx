@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, ExternalLink, CheckCircle2, Loader2, X, Briefcase, Zap, ShieldCheck } from "lucide-react";
 import { useFounderProfile } from "../../hooks/useFounderProfile";
 import { useFounderMatches } from "../../hooks/useFounderMatches";
+import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../lib/firebase";
 import { 
   collection, 
@@ -12,7 +13,8 @@ import {
   getDocs, 
   addDoc, 
   doc, 
-  updateDoc 
+  updateDoc,
+  limit 
 } from "firebase/firestore";
 import { spendCredits } from "../../lib/credits";
 import type { FounderInvestorContact, FounderProfile } from "../../types/founder";
@@ -23,6 +25,7 @@ interface NetworkContact extends FounderInvestorContact {
 
 export default function DashboardNetwork() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const { founderProfile, refetch: refetchProfile } = useFounderProfile();
   const { matches } = useFounderMatches();
   const [contacts, setContacts] = useState<NetworkContact[]>([]);
@@ -31,41 +34,91 @@ export default function DashboardNetwork() {
   const [showIntroModal, setShowIntroModal] = useState<NetworkContact | null>(null);
   const [introSending, setIntroSending] = useState(false);
   const [introError, setIntroError] = useState<string | null>(null);
+  const [liveCredits, setLiveCredits] = useState<number | null>(null);
 
-  // Fetch investor contacts from all accepted matches
+  useEffect(() => {
+    const handleCreditUpdate = (e: any) => {
+      if (e?.detail?.newBalance !== undefined) {
+        setLiveCredits(e.detail.newBalance);
+      }
+    };
+    window.addEventListener('rq_credits_updated', handleCreditUpdate);
+    return () => window.removeEventListener('rq_credits_updated', handleCreditUpdate);
+  }, []);
+
+  // Fetch investor contacts from matches, user's own contributions, and crowdsourced connections
   useEffect(() => {
     const fetchNetworkContacts = async () => {
-      if (!founderProfile || matches.length === 0) { 
-        setLoading(false); 
-        return; 
-      }
-
+      const activeUid = user?.uid || (user as any)?.id || founderProfile?.id;
       const acceptedMatches = matches.filter(m => m.status === "accepted");
       const otherFounderIds = acceptedMatches.map(m => m.otherFounder?.id).filter(Boolean) as string[];
 
-      if (otherFounderIds.length === 0) { 
-        setLoading(false); 
-        return; 
-      }
-
       try {
-        const contactsRef = collection(db, "founder_investor_contacts");
-        const chunkSize = 10;
-        let fetchedDocs: any[] = [];
+        let allItems: NetworkContact[] = [];
+        const seenIds = new Set<string>();
 
-        for (let i = 0; i < otherFounderIds.length; i += chunkSize) {
-          const chunk = otherFounderIds.slice(i, i + chunkSize);
-          const q = query(contactsRef, where("founder_id", "in", chunk));
-          const snap = await getDocs(q);
-          snap.docs.forEach((d) => fetchedDocs.push({ id: d.id, ...d.data() }));
+        // 1. Fetch from other matched founders
+        if (otherFounderIds.length > 0) {
+          const contactsRef = collection(db, "founder_investor_contacts");
+          const chunkSize = 10;
+          for (let i = 0; i < otherFounderIds.length; i += chunkSize) {
+            const chunk = otherFounderIds.slice(i, i + chunkSize);
+            const q = query(contactsRef, where("founder_id", "in", chunk));
+            const snap = await getDocs(q);
+            snap.docs.forEach((d) => {
+              if (!seenIds.has(d.id)) {
+                seenIds.add(d.id);
+                const data = d.data();
+                const match = acceptedMatches.find(m => m.otherFounder?.id === data.founder_id);
+                allItems.push({ id: d.id, ...data, ownerFounder: match?.otherFounder || undefined } as NetworkContact);
+              }
+            });
+          }
         }
 
-        const enriched: NetworkContact[] = fetchedDocs.map((c: any) => {
-          const match = acceptedMatches.find(m => m.otherFounder?.id === c.founder_id);
-          return { ...c, ownerFounder: match?.otherFounder || undefined };
+        // 2. Fetch user's own contributed contacts
+        if (activeUid) {
+          const ownRef = collection(db, "founder_investor_contacts");
+          const ownQ = query(ownRef, where("founder_id", "==", activeUid));
+          const ownSnap = await getDocs(ownQ);
+          const ownerMe = {
+            id: activeUid,
+            full_name: founderProfile?.full_name || profile?.full_name || user?.displayName || "You",
+            company_name: founderProfile?.company_name || profile?.company_name || "My Startup",
+            profile_photo_url: founderProfile?.profile_photo_url || profile?.profile_photo_url || (user as any)?.photoURL,
+          };
+          ownSnap.docs.forEach((d) => {
+            if (!seenIds.has(d.id)) {
+              seenIds.add(d.id);
+              allItems.push({ id: d.id, ...d.data(), ownerFounder: ownerMe } as NetworkContact);
+            }
+          });
+        }
+
+        // 3. Fetch declared connections from investor_connections
+        const connsSnap = await getDocs(query(collection(db, "investor_connections"), limit(25)));
+        connsSnap.docs.forEach((d) => {
+          const c = d.data();
+          const connKey = `conn_${d.id}`;
+          if (!seenIds.has(connKey)) {
+            seenIds.add(connKey);
+            allItems.push({
+              id: connKey,
+              founder_id: c.founderId || "network",
+              investor_name: c.investorName,
+              fund_name: c.investorFirm,
+              sectors_invested_in: c.sectors || ["AI", "Web3"],
+              relationship_description: `Direct check-writer connection declared by ${c.founderName} (${c.founderCompany || 'Portfolio Co'}).`,
+              ownerFounder: {
+                id: c.founderId,
+                full_name: c.founderName || "Community Founder",
+                company_name: c.founderCompany || "Portfolio Co",
+              },
+            } as NetworkContact);
+          }
         });
 
-        setContacts(enriched);
+        setContacts(allItems);
       } catch (err) {
         console.error("[Network] Error fetching contacts:", err);
       } finally {
@@ -74,7 +127,7 @@ export default function DashboardNetwork() {
     };
 
     fetchNetworkContacts();
-  }, [founderProfile, matches]);
+  }, [founderProfile, matches, user?.uid]);
 
   const handleRequestIntro = async (contact: NetworkContact) => {
     if (!founderProfile) return;
@@ -97,6 +150,8 @@ export default function DashboardNetwork() {
         setIntroSending(false);
         return;
       }
+
+      setLiveCredits(spend.newBalance);
 
       await addDoc(collection(db, "warm_intro_requests"), {
         requesting_founder_id: founderProfile.id,

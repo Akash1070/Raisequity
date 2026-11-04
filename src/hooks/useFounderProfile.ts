@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import type { FounderProfile } from '../types/founder';
 
@@ -19,7 +19,6 @@ export function useFounderProfile() {
     }
 
     try {
-      console.log('[useFounderProfile] Fetching Firestore profile for user:', uid);
       const docRef = doc(db, 'founder_profiles', uid);
       const snap = await getDoc(docRef);
 
@@ -28,10 +27,8 @@ export function useFounderProfile() {
         if (data.credits === undefined || data.credits === null) {
           data.credits = 50;
         }
-        console.log('[useFounderProfile] Profile loaded:', data.id, data.full_name);
         setFounderProfile(data);
       } else {
-        console.log('[useFounderProfile] Creating/fallback founder_profile doc for:', uid);
         const userDocRef = doc(db, 'users', uid);
         const userSnap = await getDoc(userDocRef);
         const userData = userSnap.exists() ? userSnap.data() : null;
@@ -65,8 +62,44 @@ export function useFounderProfile() {
   }, [user]);
 
   useEffect(() => {
+    const uid = user?.uid || (user as any)?.id;
+    if (!uid) {
+      setLoading(false);
+      setFounderProfile(null);
+      return;
+    }
+
+    // Initial load
     fetchProfile();
-  }, [fetchProfile]);
+
+    // Real-time listener on founder_profiles document
+    const docRef = doc(db, 'founder_profiles', uid);
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as FounderProfile;
+        setFounderProfile((prev) => ({
+          ...(prev || {}),
+          ...data,
+          credits: data.credits ?? prev?.credits ?? 50,
+        } as FounderProfile));
+      }
+    }, (err) => {
+      console.warn('[useFounderProfile] live snapshot warning:', err);
+    });
+
+    // Real-time event listener for immediate UI responsiveness
+    const handleCreditUpdate = (e: any) => {
+      if (e?.detail?.newBalance !== undefined) {
+        setFounderProfile((prev) => prev ? { ...prev, credits: e.detail.newBalance } : prev);
+      }
+    };
+    window.addEventListener('rq_credits_updated', handleCreditUpdate);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('rq_credits_updated', handleCreditUpdate);
+    };
+  }, [user, fetchProfile]);
 
   const updateProfile = async (updates: Partial<FounderProfile>) => {
     const uid = user?.uid || (user as any)?.id;

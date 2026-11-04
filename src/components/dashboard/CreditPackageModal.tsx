@@ -16,7 +16,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { earnCredits } from '../../lib/credits';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
 
 interface CreditPackageModalProps {
   isOpen: boolean;
@@ -47,16 +47,24 @@ export default function CreditPackageModal({
   const currentBalance = profile?.credit_balance ?? profile?.credits ?? 0;
 
   const handleCheckout = async () => {
-    if (!user?.uid) return;
+    const activeUid = user?.uid || auth.currentUser?.uid;
+    if (!activeUid) return;
     setIsProcessing(true);
     setPurchaseError(null);
 
     try {
+      let token = '';
+      if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken();
+      } else if (user && typeof (user as any).getIdToken === 'function') {
+        token = await (user as any).getIdToken();
+      }
+
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${await user.getIdToken()}`
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           packageId: 'pack_200_credits',
@@ -71,8 +79,9 @@ export default function CreditPackageModal({
         window.location.href = data.checkout_url;
         return;
       }
-      throw new Error(data?.error || 'Checkout unavailable');
+      throw new Error(data?.error || 'Payment gateway returned no checkout session.');
     } catch (err: any) {
+      console.error('[CreditPackageModal] Checkout failed:', err);
       setPurchaseError(err?.message || 'Payment processing is unavailable right now. No credits were added — please try again later.');
     } finally {
       setIsProcessing(false);

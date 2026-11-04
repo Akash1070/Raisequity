@@ -25,7 +25,7 @@ import {
   Loader2,
   AlertCircle
 } from "lucide-react";
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
 import { collection, query, getDocs, limit } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { getWeb3Investors } from "../lib/investors";
@@ -128,7 +128,9 @@ export default function Founders() {
     setCheckoutBusy(true);
     setCheckoutError(null);
     try {
-      const token = await user.getIdToken();
+      const token = auth.currentUser
+        ? await auth.currentUser.getIdToken()
+        : (user && typeof (user as any).getIdToken === "function" ? await (user as any).getIdToken() : "");
       const res = await fetch("/api/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

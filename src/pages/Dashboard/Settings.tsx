@@ -17,6 +17,7 @@ import CreditPackageModal from "../../components/dashboard/CreditPackageModal";
 import { db } from "../../lib/firebase";
 import { collection, addDoc, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { earnCredits } from "../../lib/credits";
+import { declareInvestorConnection } from "../../lib/connections";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -362,46 +363,50 @@ export default function Settings() {
     setAddingContact(true);
     setContactError(null);
     try {
-      const founderName = founderProfile?.full_name || profile?.full_name || user?.displayName || "Verified Founder";
+      const activeUid = user?.uid || (user as any)?.id || founderProfile?.id;
+      if (!activeUid) {
+        throw new Error("Please sign in to contribute investor contacts.");
+      }
+
+      const founderName = founderProfile?.full_name || profile?.full_name || user?.displayName || user?.email?.split('@')[0] || "Akash Kumar Jha";
       const founderCompany = founderProfile?.company_name || profile?.company_name || "Portfolio Co";
       const checkMin = parseFloat(newContact.check_size_min) || 50;
       const checkMax = parseFloat(newContact.check_size_max) || 250;
+      const sectors = (newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["AI", "Tech", "SaaS"]) as any;
+      const stages = newContact.investment_stages?.length ? newContact.investment_stages : ["Pre-Seed", "Seed"];
+      const ticketSize = `$${checkMin}k - $${checkMax}k`;
 
-      await addContact({
+      // 1. Add to personal contributed contacts rolodex
+      const addRes = await addContact({
         investor_name: newContact.investor_name,
         investor_email: newContact.investor_email || null,
         investor_linkedin: newContact.investor_linkedin || null,
         fund_name: newContact.fund_name || null,
         relationship_description: newContact.relationship_description || null,
-        sectors_invested_in: newContact.sectors_invested_in,
+        sectors_invested_in: sectors,
         check_size_min: checkMin,
         check_size_max: checkMax,
         verified: true
       });
 
-      // Seed into the global investor directory ONLY when we have a real
-      // contact email — never a fabricated placeholder.
-      if (newContact.investor_email?.trim()) {
-        try {
-          await addDoc(collection(db, "web3_investors"), {
-            name: newContact.investor_name,
-            firm: newContact.fund_name || "Private Angel",
-            category: newContact.fund_name ? "FUND" : "ANGEL",
-            email: newContact.investor_email.trim(),
-            linkedin: newContact.investor_linkedin || "",
-            sectors: newContact.sectors_invested_in?.length ? newContact.sectors_invested_in : ["AI", "Tech", "SaaS"],
-            check_size: `$${checkMin}k - $${checkMax}k`,
-            know_count: 1,
-            warm_intro_founder: founderName,
-            warm_intro_company: founderCompany,
-            verified: true,
-            created_at: new Date().toISOString()
-          });
-        } catch (seedErr) {
-          console.warn("Direct investor seeding warning:", seedErr);
-        }
+      if (addRes?.error) {
+        throw new Error(addRes.error);
       }
 
+      // 2. Declare into the crowdsourced investor_connections graph
+      // (This collection allows create if founderId == request.auth.uid)
+      await declareInvestorConnection(
+        activeUid,
+        founderName,
+        founderCompany,
+        newContact.investor_name,
+        newContact.fund_name || "Private Angel",
+        sectors,
+        stages,
+        ticketSize
+      );
+
+      // 3. Clear form
       setNewContact({
         investor_name: "",
         investor_email: "",
@@ -413,15 +418,18 @@ export default function Settings() {
         check_size_max: ""
       });
 
-      // The button promises +100 credits — actually award them (ledger-backed).
-      const activeUid = user?.uid || (user as any)?.id;
-      if (activeUid) {
-        try {
-          await earnCredits(activeUid, 'referral', 100, { action: 'investor_contact_contribution', investor: newContact.investor_name });
-        } catch (earnErr) {
-          console.warn("Contact reward credit error:", earnErr);
-        }
+      // 4. Award 100 credits to the founder (ledger-backed)
+      try {
+        await earnCredits(activeUid, 'referral', 100, {
+          action: 'investor_contact_contribution',
+          investor: newContact.investor_name,
+          fund: newContact.fund_name || "Private Angel"
+        });
+      } catch (earnErr) {
+        console.warn("Contact reward credit error:", earnErr);
       }
+
+      await refetchProfile?.();
     } catch (err: any) {
       setContactError(err.message || "Failed to add investor contact.");
     } finally {

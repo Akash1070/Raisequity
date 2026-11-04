@@ -29,6 +29,7 @@ type AuthContextType = {
   signInWithGoogle: (preferredRole?: UserRole) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  getIdToken: (forceRefresh?: boolean) => Promise<string>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -41,6 +42,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => ({ error: null }),
   signOut: async () => {},
   refreshProfile: async () => {},
+  getIdToken: async () => '',
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -64,15 +66,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       clearTimeout(safetyTimeout);
       console.log('[AuthContext] Firebase auth state changed:', currentUser?.uid);
-      const authUser = currentUser ? ({
-        ...currentUser,
-        uid: currentUser.uid,
-        id: currentUser.uid,
-        email: currentUser.email,
-        displayName: currentUser.displayName,
-        photoURL: currentUser.photoURL,
-      } as unknown as AuthUser) : null;
-      setUser(authUser);
+      if (currentUser) {
+        // Attach id while strictly preserving all Firebase User prototype methods (getIdToken, reload, etc.)
+        Object.defineProperty(currentUser, 'id', {
+          value: currentUser.uid,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+        setUser(currentUser as unknown as AuthUser);
+      } else {
+        setUser(null);
+      }
 
       if (currentUser) {
         const userRef = doc(db, 'users', currentUser.uid);
@@ -342,6 +347,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setProfile(null);
   };
 
+  const getIdToken = useCallback(async (forceRefresh = false): Promise<string> => {
+    if (auth.currentUser) return auth.currentUser.getIdToken(forceRefresh);
+    if (user && typeof (user as any).getIdToken === 'function') {
+      return (user as any).getIdToken(forceRefresh);
+    }
+    return '';
+  }, [user]);
+
   const value = {
     user,
     profile,
@@ -354,6 +367,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     refreshProfile: async () => {
       if (user) await fetchProfile(user.uid);
     },
+    getIdToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,7 +3,7 @@ import { ShieldCheck, CheckCircle, Info, Lock, Coins, Sparkles, Loader2, Externa
 import { useAuth } from '../../contexts/AuthContext';
 import { getGlobalConfig } from '../../lib/config';
 import { earnCredits } from '../../lib/credits';
-import { db } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { GlobalConfig } from '../../types';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +45,12 @@ export default function SubscriptionCheckoutModal({ onSuccess, onCancel }: Subsc
 
     try {
       // SECURITY: Creates live session via Dodo Payments API
-      const token = user ? await user.getIdToken() : '';
+      let token = '';
+      if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken();
+      } else if (user && typeof (user as any).getIdToken === 'function') {
+        token = await (user as any).getIdToken();
+      }
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 

@@ -62,7 +62,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     (user as any)?.photoURL ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName.split(" ")[0]}`;
   const plan = founderProfile?.plan || 'basic';
-  const credits = founderProfile?.credits ?? profile?.credit_balance ?? 50;
+
+  const [liveCredits, setLiveCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleCreditUpdate = (e: any) => {
+      if (e?.detail?.newBalance !== undefined) {
+        setLiveCredits(e.detail.newBalance);
+      }
+    };
+    window.addEventListener('rq_credits_updated', handleCreditUpdate);
+    return () => window.removeEventListener('rq_credits_updated', handleCreditUpdate);
+  }, []);
+
+  const credits = liveCredits ?? (profile?.credit_balance !== undefined && profile?.credit_balance !== null
+    ? profile.credit_balance
+    : (founderProfile?.credits !== undefined && founderProfile?.credits !== null
+    ? founderProfile.credits
+    : 50));
 
   const planColors: Record<string, string> = {
     basic: "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700",

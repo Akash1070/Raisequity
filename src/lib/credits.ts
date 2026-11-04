@@ -143,13 +143,15 @@ export async function earnCredits(
   const userRef = doc(db, 'users', userId);
   const ledgerRef = collection(db, 'credit_transactions');
 
-  return await runTransaction(db, async (tx) => {
+  const resultBalance = await runTransaction(db, async (tx) => {
     const userDoc = await tx.get(userRef);
     const currentBalance = userDoc.exists() ? (userDoc.data().credit_balance || 0) : 0;
     const newBalance = currentBalance + amountCredits;
 
     // Update user profile credit balance
     tx.set(userRef, { credit_balance: newBalance }, { merge: true });
+    const founderRef = doc(db, 'founder_profiles', userId);
+    tx.set(founderRef, { credits: newBalance, updated_at: new Date().toISOString() }, { merge: true });
 
     // Append to credit_transactions ledger
     const ledgerEntry: Omit<CreditTransaction, 'id'> = {
@@ -166,6 +168,14 @@ export async function earnCredits(
 
     return newBalance;
   });
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('rq_credits_updated', {
+      detail: { userId, newBalance: resultBalance, diff: amountCredits, type: 'earn' }
+    }));
+  }
+
+  return resultBalance;
 }
 
 /**
@@ -207,6 +217,8 @@ export async function spendCredits(
 
       // Deduct balance on user profile
       tx.update(userRef, { credit_balance: updatedBalance });
+      const founderRef = doc(db, 'founder_profiles', userId);
+      tx.set(founderRef, { credits: updatedBalance, updated_at: new Date().toISOString() }, { merge: true });
 
       // Append ledger entry
       const ledgerEntry: Omit<CreditTransaction, 'id'> = {
@@ -223,6 +235,12 @@ export async function spendCredits(
 
       return updatedBalance;
     });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('rq_credits_updated', {
+        detail: { userId, newBalance, diff: -amountCredits, type: 'spend' }
+      }));
+    }
 
     return { success: true, newBalance };
   } catch (err: any) {

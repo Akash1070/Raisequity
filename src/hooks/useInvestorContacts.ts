@@ -10,16 +10,21 @@ import {
   doc 
 } from 'firebase/firestore';
 import { useFounderProfile } from './useFounderProfile';
+import { useAuth } from '../contexts/AuthContext';
 import type { FounderInvestorContact } from '../types/founder';
 
 export function useInvestorContacts() {
+  const { user } = useAuth();
   const { founderProfile } = useFounderProfile();
   const [contacts, setContacts] = useState<FounderInvestorContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const activeUid = user?.uid || (user as any)?.id || founderProfile?.id;
+
   const fetchContacts = useCallback(async () => {
-    if (!founderProfile?.id) {
+    const uid = user?.uid || (user as any)?.id || founderProfile?.id;
+    if (!uid) {
       setLoading(false);
       setContacts([]);
       return;
@@ -27,7 +32,7 @@ export function useInvestorContacts() {
 
     try {
       const contactsRef = collection(db, 'founder_investor_contacts');
-      const q = query(contactsRef, where('founder_id', '==', founderProfile.id));
+      const q = query(contactsRef, where('founder_id', '==', uid));
       const snap = await getDocs(q);
 
       const items = snap.docs.map((d) => ({
@@ -42,19 +47,20 @@ export function useInvestorContacts() {
     } finally {
       setLoading(false);
     }
-  }, [founderProfile]);
+  }, [user, founderProfile]);
 
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
 
   const addContact = async (contact: Partial<FounderInvestorContact>) => {
-    if (!founderProfile?.id) return { error: 'No founder profile' };
+    const uid = user?.uid || (user as any)?.id || founderProfile?.id;
+    if (!uid) return { error: 'No authenticated founder' };
 
     try {
       const contactsRef = collection(db, 'founder_investor_contacts');
       const newDoc = {
-        founder_id: founderProfile.id,
+        founder_id: uid,
         ...contact,
         created_at: new Date().toISOString(),
       };
@@ -66,8 +72,9 @@ export function useInvestorContacts() {
       } as FounderInvestorContact;
 
       setContacts((prev) => [createdItem, ...prev]);
-      return { error: null };
+      return { error: null, id: docRef.id };
     } catch (err: any) {
+      console.error('[useInvestorContacts] Add error:', err);
       return { error: err?.message || 'Failed to add contact' };
     }
   };
