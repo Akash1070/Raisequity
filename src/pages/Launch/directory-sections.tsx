@@ -8,8 +8,10 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Crown,
   Flame,
   LayoutGrid,
+  Medal,
   Megaphone,
   MessageSquare,
   Rocket,
@@ -545,21 +547,24 @@ export function LaunchCard({ item, rankNumber, hasVoted, onOpen, onVote }: Launc
       className="rounded-2xl bg-white dark:bg-[#121316] border border-neutral-200/80 dark:border-white/5 hover:border-black/30 dark:hover:border-white/20 p-3.5 sm:p-4 flex items-center justify-between gap-3 sm:gap-4 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.02)] group cursor-pointer"
     >
       <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-        <div className="shrink-0 w-7 sm:w-8 flex items-center justify-center">
+        <div className="shrink-0 w-8 sm:w-10 flex items-center justify-center">
           {isTop1 ? (
-            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 flex items-center justify-center font-mono font-black text-xs" title="#1 Weekly Leader">
-              👑 1
+            <span className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/15 text-amber-600 dark:text-amber-400 border border-amber-400/30 font-mono font-black text-xs whitespace-nowrap shadow-2xs" title="#1 Weekly Leader">
+              <Crown size={12} className="text-amber-500 fill-amber-500/20 shrink-0" />
+              1
             </span>
           ) : isTop2 ? (
-            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200/80 text-slate-500 border border-slate-300 flex items-center justify-center font-mono font-black text-xs" title="#2 Runner Up">
-              🥈 2
+            <span className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-slate-700 font-mono font-black text-xs whitespace-nowrap shadow-2xs" title="#2 Runner Up">
+              <Medal size={12} className="text-slate-500 shrink-0" />
+              2
             </span>
           ) : isTop3 ? (
-            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-600/15 text-amber-600 border border-amber-600/30 flex items-center justify-center font-mono font-black text-xs" title="#3 Finalist">
-              🥉 3
+            <span className="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md bg-amber-700/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-500 border border-amber-700/30 font-mono font-black text-xs whitespace-nowrap shadow-2xs" title="#3 Finalist">
+              <Medal size={12} className="text-amber-700 dark:text-amber-500 shrink-0" />
+              3
             </span>
           ) : (
-            <span className="font-mono text-xs font-bold text-neutral-400">
+            <span className="font-mono text-xs font-bold text-neutral-400 dark:text-neutral-500">
               #{rankNumber}
             </span>
           )}
